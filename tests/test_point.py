@@ -14,6 +14,14 @@ def test_add():
     q = Point(0,1)
     assert p + q == Point(1,1)
 
+def test_parallel():
+    p = Point(0,1)
+    q = Point(1,1)
+    r = Point(0,0)
+    l = Line(p, q)
+    m = l.parallel(through=r)
+    assert m == Line(0,1,0)
+
 def test_3d():
     p1 = Point(1,1,0)
     p2 = Point(2,1,0)

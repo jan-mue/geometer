@@ -72,11 +72,16 @@ class Line(ProjectiveElement):
         else:
             super(Line, self).__init__(*args)
 
-    def contains(self, pt):
+    def contains(self, pt:Point):
         return np.isclose(self.array.dot(pt.array), 0)
 
     def meet(self, other):
         return meet(self, other)
+
+    def parallel(self, through: Point):
+        l = Line(0,0,1)
+        p = self.meet(l)
+        return p.join(through)
 
 
 class Plane(ProjectiveElement):
