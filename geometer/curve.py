@@ -8,9 +8,11 @@ from numpy.polynomial import polynomial as pl
 
 class AlgebraicCurve:
 
-    def __init__(self, poly, symbols=None):
+    def __init__(self, poly, symbols=None, origin=None):
         if symbols is None:
             symbols = sympy.symbols(["x" + str(i) for i in range(len(poly.shape))])
+
+        self.origin = origin or Point(*([0] * (len(symbols) - 1)))
 
         if isinstance(poly, np.ndarray):
             self.coeff = poly
@@ -50,10 +52,40 @@ class AlgebraicCurve:
         return f
 
     def tangent(self, at: Point):
-        dx = polyval(at.array, pl.polyder(self.coeff, axis=0))
-        dy = polyval(at.array, pl.polyder(self.coeff, axis=1))
-        dz = polyval(at.array, pl.polyder(self.coeff, axis=2))
-        return Line(dx, dy, dz)
+        dx = polyval((at - self.origin).array, pl.polyder(self.coeff, axis=0))
+        dy = polyval((at - self.origin).array, pl.polyder(self.coeff, axis=1))
+        dz = polyval((at - self.origin).array, pl.polyder(self.coeff, axis=2))
+        return Line(dx, dy, dz) + self.origin
 
     def contains(self, pt: Point):
-        return np.isclose(polyval(pt.array, self.coeff), 0)
+        return np.isclose(polyval((pt - self.origin).array, self.coeff), 0)
+
+
+class Conic(AlgebraicCurve):
+
+    def __init__(self, matrix, origin=Point(0,0)):
+        self.array = np.array(matrix)
+        m = sympy.Matrix(matrix)
+        x, y, z = sympy.symbols("x y z")
+        super(Conic, self).__init__(sum(a*b for a,b in zip(m.dot([x, y, z]), [x, y, z])), symbols=[x,y,z], origin=origin)
+
+    @classmethod
+    def from_points(cls, a, b, c, d, e, *, origin=Point(0,0)):
+        ace = np.linalg.det([a.array, c.array, e.array])
+        bde = np.linalg.det([b.array, d.array, e.array])
+        ade = np.linalg.det([a.array, d.array, e.array])
+        bce = np.linalg.det([b.array, c.array, e.array])
+        m = ace*bde*np.outer(np.cross(a.array, d.array), np.cross(b.array, c.array))\
+            - ade*bce*np.outer(np.cross(a.array, c.array), np.cross(b.array, d.array))
+        return Conic(m+m.T, origin=origin)
+
+    def tangent(self, at: Point):
+        return Line(self.array.dot((at - self.origin).array)) + self.origin
+
+
+class Circle(Conic):
+
+    def __init__(self, center: Point, radius: float):
+        super(Circle, self).__init__([[1,0,0],
+                                      [0,1,0],
+                                      [0,0,-radius**2]], center)

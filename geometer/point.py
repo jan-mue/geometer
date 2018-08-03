@@ -59,6 +59,22 @@ class Point(ProjectiveElement):
         result = np.append(result, 1)
         return Point(result)
 
+    def __sub__(self, other):
+        result = self.array[:-1] - other.array[:-1]
+        result = np.append(result, 1)
+        return Point(result)
+
+    def __mul__(self, other):
+        result = self.array[:-1] * other
+        result = np.append(result, self.array[-1])
+        return Point(result)
+
+    def __rmul__(self, other):
+        return self * other
+
+    def __neg__(self):
+        return (-1)*self
+
     def join(self, other):
         return join(self, other)
 
@@ -77,6 +93,13 @@ class Line(ProjectiveElement):
 
     def meet(self, other):
         return meet(self, other)
+
+    def __add__(self, point):
+        t = np.array([[1, 0, 0], [0, 1, 0], (-point).array]).T
+        return Line(self.array.dot(t))
+
+    def __radd__(self, other):
+        return self + other
 
     def parallel(self, through: Point):
         l = Line(0,0,1)

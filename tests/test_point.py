@@ -9,6 +9,21 @@ def test_collinear():
     assert l.contains(p3)
     assert is_collinear(p1, p2, p3)
 
+def test_pappos():
+    a1 = Point(0, 1)
+    b1 = Point(1, 2)
+    c1 = Point(2, 3)
+
+    a2 = Point(0, 0)
+    b2 = Point(1, 0)
+    c2 = Point(2, 0)
+
+    p = a1.join(b2).meet(b1.join(a2))
+    q = b1.join(c2).meet(c1.join(b2))
+    r = c1.join(a2).meet(a1.join(c2))
+
+    assert is_collinear(p, q, r)
+
 def test_add():
     p = Point(1,0)
     q = Point(0,1)
