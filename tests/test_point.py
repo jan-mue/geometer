@@ -15,9 +15,9 @@ def test_add():
     assert p + q == Point(1,1)
 
 def test_3d():
-    p1 = Point(1,1,0, dimension=3)
-    p2 = Point(2,1,0, dimension=3)
-    p3 = Point(3,4,0, dimension=3)
-    p4 = Point(0,2,0, dimension=3)
+    p1 = Point(1,1,0)
+    p2 = Point(2,1,0)
+    p3 = Point(3,4,0)
+    p4 = Point(0,2,0)
     assert join(p1,p2,p3).contains(p4)
     assert is_collinear(p1, p2, p3, p4)

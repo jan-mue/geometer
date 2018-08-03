@@ -24,15 +24,11 @@ def meet(*args):
 
 class ProjectiveElement:
 
-    def __init__(self, *args, dimension=2):
-        if len(args) == 1:
-            self.array = np.array(args[0])
-        elif len(args) == dimension:
-            self.array = np.array([*args, 1])
-        elif len(args) == dimension + 1:
-            self.array = np.array(args)
+    def __init__(self, *args):
+        if len(args) == 1 and isinstance(args[0], np.ndarray):
+            self.array = args[0]
         else:
-            raise ValueError("arguments have wrong dimension")
+            self.array = np.array([*args])
 
     def __eq__(self, other):
         pq = self.array.dot(other.array)
@@ -51,6 +47,12 @@ class ProjectiveElement:
 
 
 class Point(ProjectiveElement):
+    
+    def __init__(self, *args):
+        if len(args) == 1 and isinstance(args[0], np.ndarray):
+            super(Point, self).__init__(*args)
+        else:
+            super(Point, self).__init__(*args, 1)
 
     def __add__(self, other):
         result = self.array[:-1] + other.array[:-1]
