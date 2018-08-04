@@ -61,8 +61,9 @@ class AlgebraicCurve:
 
 class Conic(AlgebraicCurve):
 
-    def __init__(self, matrix):
+    def __init__(self, matrix, is_dual=False):
         self.array = np.array(matrix)
+        self.is_dual = is_dual
         m = sympy.Matrix(matrix)
         x, y, z = sympy.symbols("x y z")
         super(Conic, self).__init__(sum(a*b for a,b in zip(m.dot([x, y, z]), [x, y, z])), symbols=[x,y,z])
@@ -77,13 +78,51 @@ class Conic(AlgebraicCurve):
             - ade*bce*np.outer(np.cross(a.array, c.array), np.cross(b.array, d.array))
         return Conic(m+m.T)
 
+    @classmethod
+    def from_lines(cls, g:Line, h:Line):
+        m = np.outer(g.array, h.array)
+        return Conic(m + m.T)
+
+    @property
+    def components(self):
+        if not np.isclose(np.linalg.det(self.array), 0):
+            return [self]
+        a = np.sqrt(-np.linalg.det(self.array[np.array([1,2])[:,np.newaxis],np.array([1,2])]))
+        b = np.sqrt(-np.linalg.det(self.array[np.array([0,2])[:, np.newaxis], np.array([0,2])]))
+        c = np.sqrt(-np.linalg.det(self.array[np.array([0,1])[:, np.newaxis], np.array([0,1])]))
+        m = np.array([[0, c, -b],
+                      [-c, 0, a],
+                      [b, -a, 0]])
+        t = self.array + m
+        x, y = np.nonzero(t)
+        result = []
+        for a in np.concatenate((t[x,:], t[:,y].T)):
+            l = Point(a) if self.is_dual else Line(a)
+            if l not in result:
+                result.append(l)
+        return result
+
+    def intersections(self, other):
+        if isinstance(other, Line):
+            x,y,z = tuple(other.array)
+            m = np.array([[0, z, -y],
+                          [-z, 0, x],
+                          [y, -x, 0]])
+            b = m.T.dot(self.array).dot(m)
+            return Conic(b, is_dual=True).components
+
+
     def tangent(self, at: Point):
         return Line(self.array.dot(at.array))
+
+    @property
+    def dual(self):
+        return Conic(np.linalg.inv(self.array), is_dual=not self.is_dual)
 
 
 class Circle(Conic):
 
-    def __init__(self, center: Point, radius: float):
+    def __init__(self, center: Point = Point(0,0), radius: float = 1):
         super(Circle, self).__init__([[1,0,-center.array[0]],
                                       [0,1,-center.array[1]],
                                       [-center.array[0],-center.array[1],center.array[:-1].dot(center.array[:-1])-radius**2]])
