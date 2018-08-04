@@ -41,6 +41,13 @@ def test_circle():
     assert c.contains(Point(1,1))
     assert c.tangent(at=Point(0,0)) == Line(0,1,0)
 
+def test_intersections():
+    c = Circle(Point(0, 0), 1)
+    i = c.intersections(Line(0,1,0))
+    assert len(i) == 2
+    assert Point(1,0) in i
+    assert Point(-1,0) in i
+
 def test_conic():
     c = Conic([[1,0,0],
                [0,1,0],
