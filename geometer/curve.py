@@ -4,6 +4,7 @@ import sympy
 from .point import Point, Line
 from .utils import polyval
 from numpy.polynomial import polynomial as pl
+from numpy.lib.scimath import sqrt as csqrt
 
 
 class AlgebraicCurve:
@@ -27,7 +28,7 @@ class AlgebraicCurve:
 
         self.symbols = symbols
 
-        c = np.zeros([poly.degree() + 1]*len(symbols))
+        c = np.zeros([poly.degree() + 1]*len(symbols), dtype=complex)
 
         indices = [range(poly.degree() + 1)]*len(symbols)
         for idx in itertools.product(*indices):
@@ -85,11 +86,11 @@ class Conic(AlgebraicCurve):
 
     @property
     def components(self):
-        if not np.isclose(np.linalg.det(self.array), 0):
+        if not self.is_degenerate:
             return [self]
-        a = np.sqrt(-np.linalg.det(self.array[np.array([1,2])[:,np.newaxis],np.array([1,2])]))
-        b = np.sqrt(-np.linalg.det(self.array[np.array([0,2])[:, np.newaxis], np.array([0,2])]))
-        c = np.sqrt(-np.linalg.det(self.array[np.array([0,1])[:, np.newaxis], np.array([0,1])]))
+        a = csqrt(-np.linalg.det(self.array[np.array([1,2])[:,np.newaxis],np.array([1,2])]))
+        b = csqrt(-np.linalg.det(self.array[np.array([0,2])[:, np.newaxis], np.array([0,2])]))
+        c = csqrt(-np.linalg.det(self.array[np.array([0,1])[:, np.newaxis], np.array([0,1])]))
         m = np.array([[0, c, -b],
                       [-c, 0, a],
                       [b, -a, 0]])
@@ -110,7 +111,36 @@ class Conic(AlgebraicCurve):
                           [y, -x, 0]])
             b = m.T.dot(self.array).dot(m)
             return Conic(b, is_dual=True).components
+        if isinstance(other, Conic):
+            if other.is_degenerate:
+                if self.is_degenerate:
+                    results = []
+                    for g in self.components:
+                        for h in other.components:
+                            if g != h:
+                                results.append(g.meet(h))
+                    return results
+                results = []
+                for l in other.components:
+                    for i in self.intersections(l):
+                        if i not in results:
+                            results.append(i)
+                return results
+            x = sympy.symbols("x")
+            m = sympy.Matrix(self.array + x * other.array)
+            f = sympy.Poly(m.det(), x)
+            roots = np.roots(f.coeffs())
+            c = Conic(self.array + roots[0]*other.array)
+            results = []
+            for l in c.components:
+                for i in self.intersections(l):
+                    if i not in results:
+                        results.append(i)
+            return results
 
+    @property
+    def is_degenerate(self):
+        return np.isclose(np.linalg.det(self.array), 0)
 
     def tangent(self, at: Point):
         return Line(self.array.dot(at.array))
