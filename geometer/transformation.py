@@ -1,5 +1,6 @@
 import numpy as np
 from .point import Point, Line
+from .curve import Conic
 
 
 class Transformation:
@@ -34,3 +35,6 @@ class Transformation:
             return Point(self.array.dot(other.array))
         if isinstance(other, Line):
             return Line(np.linalg.solve(self.array.T, other.array))
+        if isinstance(other, Conic):
+            m = np.linalg.inv(self.array)
+            return Conic(m.T.dot(other.array).dot(m))
