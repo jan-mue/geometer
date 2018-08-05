@@ -65,6 +65,8 @@ class Point(ProjectiveElement):
         return Point(result)
 
     def __mul__(self, other):
+        if not np.isscalar(other):
+            raise NotImplementedError
         result = self.array[:-1] * other
         result = np.append(result, self.array[-1])
         return Point(result)

@@ -1,4 +1,5 @@
-from geometer import Point, Line, Plane, join, meet, is_collinear
+import numpy as np
+from geometer import Point, Line, Plane, join, meet, is_collinear, Transformation, crossratio, translation, rotation
 
 
 def test_collinear():
@@ -36,6 +37,24 @@ def test_parallel():
     l = Line(p, q)
     m = l.parallel(through=r)
     assert m == Line(0,1,0)
+
+def test_cp1():
+    p = Point(1+0j)
+    q = Point(0+1j)
+    m = Transformation([[np.e**(np.pi/2*1j), 0], [0, 1]])
+    assert m*p == q
+    c = crossratio(p,q,m*q,m*m*q)
+    assert np.isclose(np.real(c), c)
+
+def test_translation():
+    p = Point(0,1)
+    t = translation(0,-1)
+    assert t*p == Point(0,0)
+
+def test_rotation():
+    p = Point(0, 1)
+    t = rotation(-np.pi)
+    assert t*p == Point(0,-1)
 
 def test_3d():
     p1 = Point(1,1,0)

@@ -3,10 +3,21 @@ from .point import Point, Line
 from .curve import Conic
 
 
+def rotation(angle:float):
+    return Transformation(np.array([[np.cos(angle), - np.sin(angle), 0],
+                                    [np.sin(angle), np.cos(angle), 0],
+                                    [0, 0, 1]]))
+
+def translation(*coordinates):
+    m = np.eye(len(coordinates) + 1)
+    m[:-1, -1] = [*coordinates]
+    return Transformation(m)
+
+
 class Transformation:
 
     def __init__(self, array):
-        self.array = array
+        self.array = np.array(array)
 
     @classmethod
     def from_points(cls, a, b, c, d):
@@ -18,18 +29,6 @@ class Transformation:
         m2 = np.array([a1.array, b1.array, c1.array]).T.dot(np.diag(d1.array))
         return Transformation(m1.dot(np.linalg.inv(m2)))
 
-    @classmethod
-    def from_rotation(cls, angle):
-        return Transformation(np.array([[np.cos(angle), - np.sin(angle), 0],
-                                        [np.sin(angle), np.cos(angle), 0],
-                                        [0, 0, 1]]))
-
-    @classmethod
-    def from_translation(cls, x, y):
-        return Transformation(np.array([[1, 0, x],
-                                        [0, 1, y],
-                                        [0, 0, 1]]))
-
     def __mul__(self, other):
         if isinstance(other, Point):
             return Point(self.array.dot(other.array))
@@ -38,3 +37,12 @@ class Transformation:
         if isinstance(other, Conic):
             m = np.linalg.inv(self.array)
             return Conic(m.T.dot(other.array).dot(m))
+        if isinstance(other, Transformation):
+            return Transformation(self.array.dot(other.array))
+        raise NotImplementedError
+
+    def inverse(self):
+        return Transformation(np.linalg.inv(self.array))
+
+    def __rmul__(self, other):
+        return self*other
