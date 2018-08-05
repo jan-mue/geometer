@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Line, Plane, join, meet, is_collinear, Transformation, crossratio, translation, rotation
+from geometer import Point, Line, join, is_collinear, Transformation, crossratio, translation, rotation, is_cocircular
 
 
 def test_collinear():
@@ -45,6 +45,12 @@ def test_cp1():
     assert m*p == q
     c = crossratio(p,q,m*q,m*m*q)
     assert np.isclose(np.real(c), c)
+
+def test_is_cocircular():
+    p = Point(0,1)
+    t = rotation(np.pi/3)
+
+    assert is_cocircular(p, t*p, t*t*p, t*t*t*p)
 
 def test_translation():
     p = Point(0,1)
