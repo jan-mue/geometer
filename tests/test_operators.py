@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Line, is_collinear, Transformation, crossratio, rotation, is_perpendicular, is_cocircular
+from geometer import *
 
 
 def test_is_collinear():
@@ -10,6 +10,18 @@ def test_is_collinear():
     assert l.contains(p3)
     assert is_collinear(p1, p2, p3)
 
+
+def test_dist():
+    p = Point(0,0)
+    q = Point(1,0)
+    assert dist(p, q) == 1
+
+
+def test_angle():
+    a = Point(0, 0)
+    b = Point(1, 1)
+    c = Point(1,0)
+    assert np.isclose(angle(a,b,c), np.pi/4)
 
 def test_is_cocircular():
     p = Point(0,1)

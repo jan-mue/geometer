@@ -1,8 +1,7 @@
 import numpy as np
 import itertools
 import sympy
-from .point import Point, Line
-from .operators import I, J
+from .point import Point, Line, I, J
 from .utils import polyval
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
