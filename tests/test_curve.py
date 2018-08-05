@@ -40,6 +40,7 @@ def test_circle():
     assert c.contains(Point(0,2))
     assert c.contains(Point(1,1))
     assert c.tangent(at=Point(0,0)) == Line(0,1,0)
+    assert c.center == Point(0,1)
 
 def test_intersections():
     c = Circle(Point(0,0), 1)

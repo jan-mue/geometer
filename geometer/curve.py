@@ -2,6 +2,7 @@ import numpy as np
 import itertools
 import sympy
 from .point import Point, Line
+from .crossratio import I, J
 from .utils import polyval
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
@@ -156,3 +157,9 @@ class Circle(Conic):
         super(Circle, self).__init__([[1,0,-center.array[0]],
                                       [0,1,-center.array[1]],
                                       [-center.array[0],-center.array[1],center.array[:-1].dot(center.array[:-1])-radius**2]])
+
+    @property
+    def center(self):
+        l = self.tangent(at=I)
+        m = self.tangent(at=J)
+        return l.meet(m)
