@@ -1,8 +1,10 @@
 import numpy as np
-from .point import Point
+from .point import Point, Line
 
 I = Point(np.array([-1j, 1, 0]))
 J = Point(np.array([1j, 1, 0]))
+
+infty = Line(0,0,1)
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -23,3 +25,8 @@ def is_cocircular(a,b,c,d):
         i = crossratio(a,b,c,d, I)
         j = crossratio(a,b,c,d, J)
         return np.isclose(i, j)
+
+def is_perpendicular(l, m):
+    L = l.meet(infty)
+    M = m.meet(infty)
+    return np.isclose(crossratio(L,M, I,J, Point(1,1)), -1)

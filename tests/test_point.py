@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Line, join, is_collinear, Transformation, crossratio, translation, rotation, is_cocircular
+from geometer import *
 
 
 def test_collinear():
@@ -51,6 +51,11 @@ def test_is_cocircular():
     t = rotation(np.pi/3)
 
     assert is_cocircular(p, t*p, t*t*p, t*t*t*p)
+
+def test_is_perpendicular():
+    l = Line(0,1,0)
+    m = Line(1,0,0)
+    assert is_perpendicular(l,m)
 
 def test_translation():
     p = Point(0,1)
