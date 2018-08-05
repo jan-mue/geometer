@@ -57,6 +57,12 @@ def test_is_perpendicular():
     m = Line(1,0,0)
     assert is_perpendicular(l,m)
 
+def test_perpendicular():
+    p = Point(1,1)
+    l = Line(1,1,0)
+    m = l.perpendicular(p)
+    assert m == Line(-1,1,0)
+
 def test_translation():
     p = Point(0,1)
     t = translation(0,-1)

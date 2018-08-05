@@ -1,10 +1,5 @@
 import numpy as np
-from .point import Point, Line
-
-I = Point(np.array([-1j, 1, 0]))
-J = Point(np.array([1j, 1, 0]))
-
-infty = Line(0,0,1)
+from .point import Point, I, J, infty
 
 
 def crossratio(a, b, c, d, from_point=None):

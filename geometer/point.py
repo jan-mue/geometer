@@ -80,6 +80,8 @@ class Point(ProjectiveElement):
     def join(self, other):
         return join(self, other)
 
+I = Point(np.array([-1j, 1, 0]))
+J = Point(np.array([1j, 1, 0]))
 
 class Line(ProjectiveElement):
 
@@ -108,6 +110,19 @@ class Line(ProjectiveElement):
         p = self.meet(l)
         return p.join(through)
 
+    def perpendicular(self, through: Point):
+        return self.mirror(through).join(through)
+
+    def mirror(self, pt: Point):
+        l1 = I.join(pt)
+        l2 = J.join(pt)
+        p1 = self.meet(l1)
+        p2 = self.meet(l2)
+        m1 = p1.join(J)
+        m2 = p2.join(I)
+        return m1.meet(m2)
+
+infty = Line(0, 0, 1)
 
 class Plane(ProjectiveElement):
 
