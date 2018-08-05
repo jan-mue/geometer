@@ -25,3 +25,10 @@ def is_perpendicular(l, m):
     L = l.meet(infty)
     M = m.meet(infty)
     return np.isclose(crossratio(L,M, I,J, Point(1,1)), -1)
+
+
+def is_collinear(*args):
+    return np.isclose(np.linalg.det([p.array for p in args]), 0)
+
+
+is_concurrent = is_collinear

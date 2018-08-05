@@ -2,7 +2,7 @@ import numpy as np
 import itertools
 import sympy
 from .point import Point, Line
-from .crossratio import I, J
+from .operators import I, J
 from .utils import polyval
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt

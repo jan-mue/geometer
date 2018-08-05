@@ -1,4 +1,5 @@
-from geometer import Point, Line, Plane, join, meet, Transformation
+import numpy as np
+from geometer import Point, Line, Transformation, translation, rotation
 
 
 def test_from_points():
@@ -13,3 +14,14 @@ def test_from_points():
     assert M*p3 == Point(1,2)
     assert (M*l).contains(M*p1)
     assert (M*l).contains(M*p3)
+
+
+def test_translation():
+    p = Point(0,1)
+    t = translation(0,-1)
+    assert t*p == Point(0,0)
+
+def test_rotation():
+    p = Point(0, 1)
+    t = rotation(-np.pi)
+    assert t*p == Point(0,-1)
