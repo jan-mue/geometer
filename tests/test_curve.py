@@ -1,6 +1,7 @@
 import numpy as np
 from sympy import symbols
-from geometer import Point, Line, Conic, Circle
+from geometer import Point, Line, Conic, Circle, EllipticCurve
+from geometer.fields import ModularInteger
 from geometer.curve import AlgebraicCurve
 
 
@@ -51,6 +52,13 @@ def test_intersections():
 
     c2 = Circle(Point(0,2), 1)
     assert c.intersections(c2) == [Point(0,1)]
+
+def test_elliptic_curve():
+    E = EllipticCurve(1, 6)
+    p = Point(ModularInteger(2,11), ModularInteger(4,11))
+    q = Point(ModularInteger(3,11), ModularInteger(5,11))
+    r = Point(ModularInteger(7,11), ModularInteger(2,11))
+    assert E.add(p, q) == r
 
 def test_conic():
     c = Conic([[1,0,0],

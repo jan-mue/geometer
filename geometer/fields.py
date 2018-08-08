@@ -36,21 +36,39 @@ class FieldElement(ABC):
 class ModularInteger(FieldElement):
 
     def __init__(self, number, p):
-        self.number = number % p
+        self.number = int(number) % p
         self.p = p
 
-    def __add__(self, other): return ModularInteger(self.number + other.number, self.p)
+    def __add__(self, other):
+        if isinstance(other, (int, float)):
+            other = ModularInteger(other, self.p)
+        if not isinstance(other, ModularInteger):
+            raise NotImplementedError
+        return ModularInteger(self.number + other.number, self.p)
 
-    def __sub__(self, other): return ModularInteger(self.number - other.number, self.p)
+    def __sub__(self, other):
+        if isinstance(other, (int, float)):
+            other = ModularInteger(other, self.p)
+        if not isinstance(other, ModularInteger):
+            raise NotImplementedError
+        return ModularInteger(self.number - other.number, self.p)
 
-    def __mul__(self, other): return ModularInteger(self.number * other.number, self.p)
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            other = ModularInteger(other, self.p)
+        if not isinstance(other, ModularInteger):
+            raise NotImplementedError
+        return ModularInteger(self.number * other.number, self.p)
 
     def __pow__(self, power):
         return ModularInteger(pow(self.number, power, self.p), self.p)
 
     def __neg__(self): return ModularInteger(-self.number, self.p)
 
-    def __eq__(self, other): return isinstance(other, ModularInteger) and self.number == other.number
+    def __eq__(self, other):
+        if isinstance(other, (int, float)):
+            return self.number == other
+        return isinstance(other, ModularInteger) and self.number == other.number
 
     def __abs__(self): return abs(self.number)
 
@@ -61,6 +79,12 @@ class ModularInteger(FieldElement):
     def __divmod__(self, divisor):
         q, r = divmod(self.number, divisor.number)
         return ModularInteger(q, self.p), ModularInteger(r, self.p)
+
+    def __int__(self): return int(self.number)
+
+    def __float__(self): return float(self.number)
+
+    def __complex__(self): return complex(self.number)
 
     def inverse(self):
         d,x,y = xgcd(self.number, self.p)

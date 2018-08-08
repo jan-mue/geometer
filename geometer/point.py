@@ -32,7 +32,7 @@ class ProjectiveElement:
 
     def __eq__(self, other):
         pq = self.array.dot(other.array)
-        return np.isclose(pq**2, self.array.dot(self.array)*other.array.dot(other.array))
+        return np.isclose(float(pq**2), float(self.array.dot(self.array)*other.array.dot(other.array)))
 
     def __len__(self):
         return len(self.array)
@@ -93,7 +93,7 @@ class Line(ProjectiveElement):
             super(Line, self).__init__(*args)
 
     def contains(self, pt:Point):
-        return np.isclose(self.array.dot(pt.array), 0)
+        return np.isclose(float(self.array.dot(pt.array)), 0)
 
     def meet(self, other):
         return meet(self, other)
@@ -127,4 +127,4 @@ infty = Line(0, 0, 1)
 class Plane(ProjectiveElement):
 
     def contains(self, pt):
-        return np.isclose(self.array.dot(pt.array), 0)
+        return np.isclose(float(self.array.dot(pt.array)), 0)
