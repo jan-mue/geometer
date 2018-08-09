@@ -1,2 +1,5 @@
 # geometer
-Projective &amp; Hyperbolic Geometry for Python
+
+A Python geometry package based on projective geometry and numpy.
+
+WORK IN PROGRESS!
