@@ -43,21 +43,21 @@ class ModularInteger(FieldElement):
         if isinstance(other, (int, float)):
             other = ModularInteger(other, self.p)
         if not isinstance(other, ModularInteger):
-            raise NotImplementedError
+            return NotImplemented
         return ModularInteger(self.number + other.number, self.p)
 
     def __sub__(self, other):
         if isinstance(other, (int, float)):
             other = ModularInteger(other, self.p)
         if not isinstance(other, ModularInteger):
-            raise NotImplementedError
+            return NotImplemented
         return ModularInteger(self.number - other.number, self.p)
 
     def __mul__(self, other):
         if isinstance(other, (int, float)):
             other = ModularInteger(other, self.p)
         if not isinstance(other, ModularInteger):
-            raise NotImplementedError
+            return NotImplemented
         return ModularInteger(self.number * other.number, self.p)
 
     def __pow__(self, power):
@@ -80,11 +80,13 @@ class ModularInteger(FieldElement):
         q, r = divmod(self.number, divisor.number)
         return ModularInteger(q, self.p), ModularInteger(r, self.p)
 
+    def __truediv__(self, other):
+        other = ModularInteger(other, self.p)
+        return self * other.inverse()
+
     def __int__(self): return int(self.number)
 
     def __float__(self): return float(self.number)
-
-    def __complex__(self): return complex(self.number)
 
     def inverse(self):
         d,x,y = xgcd(self.number, self.p)

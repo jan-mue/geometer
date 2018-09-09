@@ -4,9 +4,10 @@ from .curve import Conic
 
 
 def rotation(angle:float):
-    return Transformation(np.array([[np.cos(angle), - np.sin(angle), 0],
-                                    [np.sin(angle), np.cos(angle), 0],
-                                    [0, 0, 1]]))
+    return Transformation([[np.cos(angle), - np.sin(angle), 0],
+                           [np.sin(angle), np.cos(angle), 0],
+                           [0, 0, 1]])
+
 
 def translation(*coordinates):
     m = np.eye(len(coordinates) + 1)
