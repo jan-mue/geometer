@@ -61,10 +61,10 @@ def test_intersections():
 
 
 def test_elliptic_curve():
-    E = EllipticCurve(1, 6)
-    p = Point(ModularInteger(2, 11), ModularInteger(4, 11))
-    q = Point(ModularInteger(3, 11), ModularInteger(5, 11))
-    r = Point(ModularInteger(7, 11), ModularInteger(2, 11))
+    E = EllipticCurve(-1, 0)
+    p = Point(-1, 0)
+    q = Point(1, 0)
+    r = Point(0, 0)
     assert E.add(p, q) == r
 
 

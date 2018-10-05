@@ -106,7 +106,9 @@ class Line(ProjectiveElement):
 
     @property
     def polynomial(self):
-        return sum(x * s for x, s in zip(self.array, sympy.symbols("x y z")))
+        symbols = sympy.symbols("x y z")
+        f = sum(x*s for x,s in zip(self.array, symbols))
+        return sympy.Poly(f, symbols)
 
     def contains(self, pt:Point):
         return np.isclose(float(self.array.dot(pt.array)), 0)

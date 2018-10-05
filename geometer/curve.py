@@ -1,8 +1,7 @@
 import numpy as np
-import itertools
 import sympy
-from .point import Point, Line, I, J, infty
-from .utils import polyval
+from .point import Point, Line, I, J
+from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
@@ -30,27 +29,11 @@ class AlgebraicCurve:
 
         poly = poly.homogenize(symbols[-1])
 
-        c = np.zeros([poly.homogeneous_order() + 1]*len(symbols), dtype=complex)
-
-        indices = [range(poly.homogeneous_order() + 1)]*len(symbols)
-        for idx in itertools.product(*indices):
-            x = 1
-            for i, p in enumerate(idx):
-                x *= symbols[i] ** p
-            c[idx] = poly.coeff_monomial(x)
-
-        self.coeff = c
+        self.coeff = poly_to_np_array(poly, symbols)
 
     @property
     def polynomial(self):
-        f = 0
-        indices = [range(i) for i in self.coeff.shape]
-        for index in itertools.product(*indices):
-            x = 1
-            for i, s in enumerate(self.symbols):
-                x *= s**index[i]
-            f += self.coeff[index] * x
-        return sympy.Poly(f, self.symbols)
+        return np_array_to_poly(self.coeff, self.symbols)
 
     def tangent(self, at: Point):
         dx = polyval(at.array, pl.polyder(self.coeff, axis=0))
@@ -62,7 +45,7 @@ class AlgebraicCurve:
     def degree(self):
         return self.polynomial.homogeneous_order()
 
-    def is_tangent(self, line:Line):
+    def is_tangent(self, line: Line):
         return len(self.intersections(line)) < self.degree
 
     def contains(self, pt: Point):
@@ -70,19 +53,29 @@ class AlgebraicCurve:
 
     def intersections(self, other):
         if isinstance(other, Line):
-            if other == infty:
-                f = self.polynomial.subs(self.symbols[-1], 0)
-                x = sympy.roots(f, *self.symbols[-1])
-                return [Point(*cor) for cor in x]
+            sol = set()
 
-            f = self.polynomial.subs(self.symbols[-1], 1)
-            g = sum(x * s for x, s in zip(other.array, list(self.symbols[:-1]) + [1]))
+            for z in [0, 1]:
+                f = self.polynomial.subs(self.symbols[-1], z)
+                g = other.polynomial.subs(self.symbols[-1], z)
+                try:
+                    x = sympy.solve_poly_system([f, g], *self.symbols[:-1])
+                    sol.update(cor + (z,) for cor in x)
+                except NotImplementedError:
+                    continue
 
-            x = sympy.solve_poly_system([f, g], *self.symbols[:-1])
-            return [Point(*cor) for cor in x]
+            if (0,0,0) in sol:
+                sol.remove((0,0,0))
+
+            return [Point(p) for p in sol]
 
 
 class EllipticCurve(AlgebraicCurve):
+    """Representation of an Elliptic Curve.
+
+    f(x, y) = y**2 - x**3 - a*x* - b
+
+    """
 
     o = Point([0,1,0])
 
@@ -114,10 +107,6 @@ class EllipticCurve(AlgebraicCurve):
 
     def invert(self, pt: Point):
         return self._join_and_intersect(self.o, pt)
-
-    def intersections(self, other):
-        # TODO: insert formula for parameters a & b
-        return []
 
 
 class Conic(AlgebraicCurve):

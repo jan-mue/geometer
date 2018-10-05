@@ -25,10 +25,12 @@ def angle(*args):
 
     return 1/2j*np.log(crossratio(b,c, I,J, a))
 
+
 def dist(p, q):
     pqi = np.linalg.det([p.array, q.array, I.array])
     pqj = np.linalg.det([p.array, q.array, J.array])
     return np.sqrt(pqi*pqj)
+
 
 def is_cocircular(a,b,c,d):
     if np.any(np.iscomplex([a.array, b.array, c.array, d.array])) :
@@ -38,6 +40,7 @@ def is_cocircular(a,b,c,d):
         i = crossratio(a,b,c,d, I)
         j = crossratio(a,b,c,d, J)
         return np.isclose(i, j)
+
 
 def is_perpendicular(l, m):
     L = l.meet(infty)

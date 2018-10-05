@@ -1,14 +1,19 @@
-from numpy.polynomial import polynomial as pl
 import numpy as np
+import sympy
 from numpy.lib.scimath import sqrt as csqrt
+from scipy.integrate import quad
 
 
-def polyval(x, c):
-    if len(x) != len(c.shape):
-        raise ValueError("Dimension of point and polynomial do not match.")
-    for xi in x:
-        c = pl.polyval(xi, c, tensor=False)
-    return c
+def integrate(fn, variable, domain):
+    def u(x):
+        return sympy.re(fn.evalf(subs={variable: x}))
+
+    def v(x):
+        return sympy.im(fn.evalf(subs={variable: x}))
+
+    a = quad(u, *domain)
+    b = quad(v, *domain)
+    return a[0] + 1j*b[0]
 
 
 def xgcd(b, a):

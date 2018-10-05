@@ -1,1 +1,1 @@
-from .math import xgcd, polyval, cubic_roots
+from .math import xgcd, cubic_roots, integrate
