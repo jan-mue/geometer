@@ -23,6 +23,7 @@ def test_angle():
     c = Point(1,0)
     assert np.isclose(angle(a,b,c), np.pi/4)
 
+
 def test_is_cocircular():
     p = Point(0,1)
     t = rotation(np.pi/3)

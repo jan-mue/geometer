@@ -1,6 +1,7 @@
 import sympy
 import numpy as np
 from .utils import integrate
+from .base import GeometryObject
 
 
 def residue(f, variable, z):
@@ -9,24 +10,32 @@ def residue(f, variable, z):
     return 1/(2*np.pi*1j)*c.integrate(f, variable)
 
 
-class Manifold:
-    pass
+class Manifold(GeometryObject):
+
+    def __init__(self, parametrization, variables, domain):
+        self.parametrization = parametrization
+        self._variables = variables
+        self.domain = domain
+
+    def plot(self):
+        pass
+
+    def intersect(self, other):
+        pass
 
 
 class ComplexCurve(Manifold):
 
     def __init__(self, parametrization, variable, domain=(0, 1)):
-        self.parametrization = parametrization
-        self.variable = variable
-        self.domain = domain
+        super(ComplexCurve, self).__init__(parametrization, variable, domain)
 
     @property
     def length(self):
-        return integrate(abs(sympy.diff(self.parametrization, self.variable)), self.variable, self.domain)
+        return integrate(abs(sympy.diff(self.parametrization, self._variables)), self._variables, self.domain)
 
     def integrate(self, f, variable):
-        dy = sympy.diff(self.parametrization, self.variable)
-        return integrate(f.subs(variable, self.parametrization)*dy, self.variable, self.domain)
+        dy = sympy.diff(self.parametrization, self._variables)
+        return integrate(f.subs(variable, self.parametrization) * dy, self._variables, self.domain)
 
     def winding_number(self, pt):
         z = sympy.symbols("z")
@@ -38,7 +47,7 @@ class ComplexCurve(Manifold):
         return Cycle(self, other)
 
     def __neg__(self):
-        return ComplexCurve(self.parametrization.subs(self.variable, self.domain[1]-self.variable), self.variable, self.domain)
+        return ComplexCurve(self.parametrization.subs(self._variables, self.domain[1] - self._variables), self._variables, self.domain)
 
     def __sub__(self, other):
         if not isinstance(other, ComplexCurve):

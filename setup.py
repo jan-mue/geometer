@@ -10,7 +10,7 @@ from setuptools import find_packages, setup, Command
 
 # Package meta-data.
 NAME = 'geometer'
-DESCRIPTION = 'Projective and Hyperbolic Geometry for Python.'
+DESCRIPTION = 'Geometry for Python.'
 URL = 'https://github.com/jan-mue/geometer'
 EMAIL = 'me@example.com'
 AUTHOR = 'Jan Müller'
@@ -19,7 +19,7 @@ VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'numpy', 'sympy', 'scipy'
+    'numpy', 'sympy', 'scipy', 'matplotlib'
 ]
 
 # What packages are optional?

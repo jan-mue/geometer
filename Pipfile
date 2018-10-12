@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 numpy = "*"
 sympy = "*"
+scipy = "*"
+matplotlib = "*"
 
 [dev-packages]
 twine = "*"

@@ -1,12 +1,15 @@
 import numpy as np
 import sympy
+from sympy.utilities.lambdify import lambdify
 from .point import Point, Line, I, J
+from .base import GeometryObject
 from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
+import matplotlib.pyplot as plt
 
 
-class AlgebraicCurve:
+class AlgebraicCurve(GeometryObject):
 
     def __init__(self, poly, symbols=None):
         if symbols is None:
@@ -35,6 +38,16 @@ class AlgebraicCurve:
     def polynomial(self):
         return np_array_to_poly(self.coeff, self.symbols)
 
+    def plot(self, ax=None):
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.axes()
+        y, x = np.ogrid[-5:5:100j, -5:5:100j]
+        f = lambdify(self.symbols, self.polynomial.as_expr(), "numpy")
+        ax.contour(x.ravel(), y.ravel(), f(x, y, 1), [0])
+        plt.show()
+        return ax
+
     def tangent(self, at: Point):
         dx = polyval(at.array, pl.polyder(self.coeff, axis=0))
         dy = polyval(at.array, pl.polyder(self.coeff, axis=1))
@@ -46,12 +59,12 @@ class AlgebraicCurve:
         return self.polynomial.homogeneous_order()
 
     def is_tangent(self, line: Line):
-        return len(self.intersections(line)) < self.degree
+        return len(self.intersect(line)) < self.degree
 
     def contains(self, pt: Point):
         return np.isclose(float(polyval(pt.array, self.coeff)), 0)
 
-    def intersections(self, other):
+    def intersect(self, other):
         if isinstance(other, Line):
             sol = set()
 
@@ -89,7 +102,7 @@ class EllipticCurve(AlgebraicCurve):
         else:
             l = a.join(b)
 
-        intersections = self.intersections(l)
+        intersections = self.intersect(l)
         if len(intersections) == 1:
             return intersections[0]
         if len(intersections) == 2:
@@ -152,7 +165,7 @@ class Conic(AlgebraicCurve):
                 result.append(l)
         return result
 
-    def intersections(self, other):
+    def intersect(self, other):
         if isinstance(other, Line):
             x,y,z = tuple(other.array)
             m = np.array([[0, z, -y],
@@ -171,7 +184,7 @@ class Conic(AlgebraicCurve):
                     return results
                 results = []
                 for l in other.components:
-                    for i in self.intersections(l):
+                    for i in self.intersect(l):
                         if i not in results:
                             results.append(i)
                 return results
@@ -182,7 +195,7 @@ class Conic(AlgebraicCurve):
             c = Conic(self.array + roots[0]*other.array)
             results = []
             for l in c.components:
-                for i in self.intersections(l):
+                for i in self.intersect(l):
                     if i not in results:
                         results.append(i)
             return results

@@ -21,6 +21,7 @@ def test_translation():
     t = translation(0,-1)
     assert t*p == Point(0,0)
 
+
 def test_rotation():
     p = Point(0, 1)
     t = rotation(-np.pi)

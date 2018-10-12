@@ -1,7 +1,10 @@
+from abc import ABC
 from collections import Iterable
+import matplotlib.pyplot as plt
 
 import numpy as np
 import sympy
+from .base import GeometryObject
 
 
 def join(*args):
@@ -28,7 +31,7 @@ def meet(*args):
             return Point(n)
 
 
-class ProjectiveElement:
+class ProjectiveElement(GeometryObject, ABC):
 
     def __init__(self, *args):
         if len(args) == 1:
@@ -45,7 +48,7 @@ class ProjectiveElement:
 
 
 class Point(ProjectiveElement):
-    
+
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], Iterable):
             super(Point, self).__init__(*args)
@@ -53,14 +56,12 @@ class Point(ProjectiveElement):
             super(Point, self).__init__(*args, 1)
 
     def __add__(self, other):
-        result = self.array[:-1] + other.array[:-1]
+        result = self.normalized().array[:-1] + other.normalized().array[:-1]
         result = np.append(result, 1)
         return Point(result)
 
     def __sub__(self, other):
-        result = self.array[:-1] - other.array[:-1]
-        result = np.append(result, 1)
-        return Point(result)
+        return self + (-other)
 
     def __mul__(self, other):
         if not np.isscalar(other):
@@ -87,8 +88,28 @@ class Point(ProjectiveElement):
             return self.__class__(self.array)
         return self.__class__(self.array / self.array[-1])
 
+    @property
+    def x(self):
+        return self.normalized().array[0]
+
+    @property
+    def y(self):
+        return self.normalized().array[1]
+
     def join(self, other):
         return join(self, other)
+
+    def intersect(self, other):
+        if isinstance(other, Line):
+            if other.contains(self):
+                return [self]
+
+    def plot(self, ax=None):
+        if ax is None:
+            ax = plt.axes()
+        ax.plot(self.x, self.y, 'ro')
+        plt.show()
+        return ax
 
 
 I = Point([-1j, 1, 0])
@@ -111,10 +132,14 @@ class Line(ProjectiveElement):
         return sympy.Poly(f, symbols)
 
     def contains(self, pt:Point):
-        return np.isclose(float(self.array.dot(pt.array)), 0)
+        return np.isclose(abs(self.array.dot(pt.array)), 0)
 
     def meet(self, other):
         return meet(self, other)
+
+    def intersect(self, other):
+        if isinstance(other, Line):
+            return [self.meet(other)]
 
     def __add__(self, point):
         t = np.array([[1, 0, 0], [0, 1, 0], (-point).array]).T
@@ -131,8 +156,52 @@ class Line(ProjectiveElement):
         p = self.meet(l)
         return p.join(through)
 
+    def is_parallel(self, other):
+        p = self.meet(other)
+        return np.isclose(p.array[-1], 0)
+
     def perpendicular(self, through: Point):
         return self.mirror(through).join(through)
+
+    def plot(self, ax=None):
+        if ax is None:
+            ax = plt.axes()
+
+        xmin, xmax = ax.get_xbound()
+        ymin, ymax = ax.get_ybound()
+        # TODO: calculate differently
+        r = Rectangle(Point(xmin, ymin), Point(xmin, ymax), Point(xmax, ymax), Point(xmax, ymin))
+        i = r.intersect(self)
+
+        if len(i) == 2:
+            l = plt.Line2D(i[0].normalized().array[:2], i[1].normalized().array[:2])
+            ax.add_line(l)
+        plt.show()
+        return ax
+
+    def project(self, pt: Point):
+        l = self.mirror(pt).join(pt)
+        return self.meet(l)
+
+    @property
+    def base_point(self):
+        if np.isclose(self.array[2], 0):
+            return Point(0, 0)
+        elif not np.isclose(self.array[1], 0):
+            return Point([0, -self.array[2], self.array[1]])
+        else:
+            return Point([self.array[2], 0, -self.array[0]])
+
+    @property
+    def direction(self):
+        if np.isclose(self.array[0], 0) and np.isclose(self.array[1], 0):
+            return Point([0, 1, 0])
+        return Point(self.array[1], -self.array[0])
+
+    def basic_coeffs(self, pt: Point):
+        a = self.base_point.array
+        b = np.cross(self.array, a)
+        return a.dot(pt.array)/a.dot(a), b.dot(pt.array)/b.dot(b)
 
     def mirror(self, pt: Point):
         l1 = I.join(pt)
@@ -149,5 +218,11 @@ infty = Line(0, 0, 1)
 
 class Plane(ProjectiveElement):
 
+    def plot(self):
+        pass
+
     def contains(self, pt):
         return np.isclose(float(self.array.dot(pt.array)), 0)
+
+    def intersect(self, other):
+        pass
