@@ -1,10 +1,9 @@
-from abc import ABC
 from collections import Iterable
 import matplotlib.pyplot as plt
 
 import numpy as np
 import sympy
-from .base import GeometryObject
+from .base import ProjectiveElement
 
 
 def join(*args):
@@ -29,22 +28,6 @@ def meet(*args):
             a, b, c, d = q
             n = (np.linalg.det([b,c,d]), -np.linalg.det([a,c,d]), np.linalg.det([a,b,d]), -np.linalg.det([a,b,c]))
             return Point(n)
-
-
-class ProjectiveElement(GeometryObject, ABC):
-
-    def __init__(self, *args):
-        if len(args) == 1:
-            self.array = np.atleast_1d(args[0])
-        else:
-            self.array = np.array([*args])
-
-    def __eq__(self, other):
-        pq = self.array.dot(other.array)
-        return np.isclose(float(pq**2), float(self.array.dot(self.array)*other.array.dot(other.array)))
-
-    def __len__(self):
-        return len(self.array)
 
 
 class Point(ProjectiveElement):

@@ -31,4 +31,3 @@ class TestLine:
         p3 = Point(3,4,0)
         p4 = Point(0,2,0)
         assert join(p1,p2,p3).contains(p4)
-        assert is_collinear(p1, p2, p3, p4)

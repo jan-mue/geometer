@@ -2,22 +2,22 @@ import numpy as np
 import sympy
 from sympy.utilities.lambdify import lambdify
 from .point import Point, Line, I, J
-from .base import GeometryObject
+from .base import ProjectiveElement
 from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 import matplotlib.pyplot as plt
 
 
-class AlgebraicCurve(GeometryObject):
+class AlgebraicCurve(ProjectiveElement):
 
     def __init__(self, poly, symbols=None):
         if symbols is None:
             symbols = sympy.symbols(["x" + str(i) for i in range(len(poly.shape))])
 
         if isinstance(poly, np.ndarray):
-            self.coeff = poly
             self.symbols = symbols
+            super(AlgebraicCurve, self).__init__(poly)
             return
 
         if not isinstance(poly, sympy.Expr):
@@ -32,11 +32,11 @@ class AlgebraicCurve(GeometryObject):
 
         poly = poly.homogenize(symbols[-1])
 
-        self.coeff = poly_to_np_array(poly, symbols)
+        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols))
 
     @property
     def polynomial(self):
-        return np_array_to_poly(self.coeff, self.symbols)
+        return np_array_to_poly(self.array, self.symbols)
 
     def plot(self, ax=None):
         if ax is None:
@@ -49,9 +49,9 @@ class AlgebraicCurve(GeometryObject):
         return ax
 
     def tangent(self, at: Point):
-        dx = polyval(at.array, pl.polyder(self.coeff, axis=0))
-        dy = polyval(at.array, pl.polyder(self.coeff, axis=1))
-        dz = polyval(at.array, pl.polyder(self.coeff, axis=2))
+        dx = polyval(at.array, pl.polyder(self.array, axis=0))
+        dy = polyval(at.array, pl.polyder(self.array, axis=1))
+        dz = polyval(at.array, pl.polyder(self.array, axis=2))
         return Line(dx, dy, dz)
 
     @property
@@ -62,7 +62,7 @@ class AlgebraicCurve(GeometryObject):
         return len(self.intersect(line)) < self.degree
 
     def contains(self, pt: Point):
-        return np.isclose(float(polyval(pt.array, self.coeff)), 0)
+        return np.isclose(float(polyval(pt.array, self.array)), 0)
 
     def intersect(self, other):
         if isinstance(other, Line):
@@ -125,7 +125,7 @@ class EllipticCurve(AlgebraicCurve):
 class Conic(AlgebraicCurve):
 
     def __init__(self, matrix, is_dual=False):
-        self.array = np.array(matrix)
+        self.matrix = np.array(matrix)
         self.is_dual = is_dual
         m = sympy.Matrix(matrix)
         x, y, z = sympy.symbols("x y z")
@@ -150,13 +150,13 @@ class Conic(AlgebraicCurve):
     def components(self):
         if not self.is_degenerate:
             return [self]
-        a = csqrt(-np.linalg.det(self.array[np.array([1,2])[:,np.newaxis],np.array([1,2])]))
-        b = csqrt(-np.linalg.det(self.array[np.array([0,2])[:, np.newaxis], np.array([0,2])]))
-        c = csqrt(-np.linalg.det(self.array[np.array([0,1])[:, np.newaxis], np.array([0,1])]))
+        a = csqrt(-np.linalg.det(self.matrix[np.array([1,2])[:, np.newaxis], np.array([1,2])]))
+        b = csqrt(-np.linalg.det(self.matrix[np.array([0,2])[:, np.newaxis], np.array([0,2])]))
+        c = csqrt(-np.linalg.det(self.matrix[np.array([0,1])[:, np.newaxis], np.array([0,1])]))
         m = np.array([[0, c, -b],
                       [-c, 0, a],
                       [b, -a, 0]])
-        t = self.array + m
+        t = self.matrix + m
         x, y = np.nonzero(t)
         result = []
         for a in np.concatenate((t[x,:], t[:,y].T)):
@@ -171,7 +171,7 @@ class Conic(AlgebraicCurve):
             m = np.array([[0, z, -y],
                           [-z, 0, x],
                           [y, -x, 0]])
-            b = m.T.dot(self.array).dot(m)
+            b = m.T.dot(self.matrix).dot(m)
             return Conic(b, is_dual=True).components
         if isinstance(other, Conic):
             if other.is_degenerate:
@@ -189,10 +189,10 @@ class Conic(AlgebraicCurve):
                             results.append(i)
                 return results
             x = sympy.symbols("x")
-            m = sympy.Matrix(self.array + x * other.array)
+            m = sympy.Matrix(self.matrix + x * other.matrix)
             f = sympy.Poly(m.det(), x)
             roots = np.roots(f.coeffs())
-            c = Conic(self.array + roots[0]*other.array)
+            c = Conic(self.matrix + roots[0]*other.matrix)
             results = []
             for l in c.components:
                 for i in self.intersect(l):
@@ -202,14 +202,14 @@ class Conic(AlgebraicCurve):
 
     @property
     def is_degenerate(self):
-        return np.isclose(float(np.linalg.det(self.array)), 0)
+        return np.isclose(float(np.linalg.det(self.matrix)), 0)
 
     def tangent(self, at: Point):
-        return Line(self.array.dot(at.array))
+        return Line(self.matrix.dot(at.array))
 
     @property
     def dual(self):
-        return Conic(np.linalg.inv(self.array), is_dual=not self.is_dual)
+        return Conic(np.linalg.inv(self.matrix), is_dual=not self.is_dual)
 
 
 class Circle(Conic):
