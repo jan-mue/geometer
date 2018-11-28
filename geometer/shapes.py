@@ -1,6 +1,7 @@
 import numpy as np
 from .point import Line, Point
 from .base import GeometryObject
+from .operators import angle
 
 
 class Segment(GeometryObject):
@@ -36,6 +37,10 @@ class Segment(GeometryObject):
 class Polygon(GeometryObject):
 
     def __init__(self, *args):
+
+        if len(args) < 2:
+            raise ValueError("A polygon needs at least 2 vertices.")
+
         self._segments = []
         self._vertices = list(args)
         a = None
@@ -51,8 +56,16 @@ class Polygon(GeometryObject):
 
     @property
     def angles(self):
-        # TODO: implement this
-        return {}
+        if len(self._segments) < 2:
+            return []
+
+        result = []
+        a = self._segments[-1]
+        for b in self._segments:
+            result.append(angle(a._points[1], a._points[0], b._points[1]))
+            a = b
+
+        return result
 
     def convex_hull(self):
         # TODO: find efficient algorithm
