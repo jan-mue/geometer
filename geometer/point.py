@@ -115,7 +115,7 @@ class Line(ProjectiveElement):
         return sympy.Poly(f, symbols)
 
     def contains(self, pt:Point):
-        return np.isclose(abs(self.array.dot(pt.array)), 0)
+        return np.isclose(np.vdot(self.array, pt.array), 0)
 
     def meet(self, other):
         return meet(self, other)
@@ -125,7 +125,7 @@ class Line(ProjectiveElement):
             return [self.meet(other)]
 
     def __add__(self, point):
-        t = np.array([[1, 0, 0], [0, 1, 0], (-point).array]).T
+        t = np.array([[1, 0, 0], [0, 1, 0], (-point.normalized()).array]).T
         return Line(self.array.dot(t))
 
     def __radd__(self, other):
@@ -184,7 +184,8 @@ class Line(ProjectiveElement):
     def basic_coeffs(self, pt: Point):
         a = self.base_point.array
         b = np.cross(self.array, a)
-        return a.dot(pt.array)/a.dot(a), b.dot(pt.array)/b.dot(b)
+        # calculate coordinates of projection of pt on the orthonormal basis {a/|a|, b/|b|}
+        return np.vdot(pt.array, a)/np.vdot(a, a), np.vdot(pt.array, b)/np.vdot(b, b)
 
     def mirror(self, pt: Point):
         l1 = I.join(pt)
@@ -205,7 +206,7 @@ class Plane(ProjectiveElement):
         pass
 
     def contains(self, pt):
-        return np.isclose(float(self.array.dot(pt.array)), 0)
+        return np.isclose(np.vdot(self.array, pt.array), 0)
 
     def intersect(self, other):
         pass

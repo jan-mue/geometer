@@ -80,7 +80,7 @@ def is_collinear(a,b,c, *args):
         return False
     n = np.cross(a.array, b.array)
     for d in args:
-        if not np.isclose(n.dot(d.array), 0):
+        if not np.isclose(np.vdot(n, d.array), 0):
             return False
     return True
 
