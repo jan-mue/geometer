@@ -1,5 +1,4 @@
 from collections import Iterable
-import matplotlib.pyplot as plt
 
 import numpy as np
 import sympy
@@ -87,13 +86,6 @@ class Point(ProjectiveElement):
             if other.contains(self):
                 return [self]
 
-    def plot(self, ax=None):
-        if ax is None:
-            ax = plt.axes()
-        ax.plot(self.x, self.y, 'ro')
-        plt.show()
-        return ax
-
 
 I = Point([-1j, 1, 0])
 J = Point([1j, 1, 0])
@@ -146,22 +138,6 @@ class Line(ProjectiveElement):
     def perpendicular(self, through: Point):
         return self.mirror(through).join(through)
 
-    def plot(self, ax=None):
-        if ax is None:
-            ax = plt.axes()
-
-        xmin, xmax = ax.get_xbound()
-        ymin, ymax = ax.get_ybound()
-        # TODO: calculate differently
-        r = Rectangle(Point(xmin, ymin), Point(xmin, ymax), Point(xmax, ymax), Point(xmax, ymin))
-        i = r.intersect(self)
-
-        if len(i) == 2:
-            l = plt.Line2D(i[0].normalized().array[:2], i[1].normalized().array[:2])
-            ax.add_line(l)
-        plt.show()
-        return ax
-
     def project(self, pt: Point):
         l = self.mirror(pt).join(pt)
         return self.meet(l)
@@ -201,9 +177,6 @@ infty = Line(0, 0, 1)
 
 
 class Plane(ProjectiveElement):
-
-    def plot(self):
-        pass
 
     def contains(self, pt):
         return np.isclose(np.vdot(self.array, pt.array), 0)

@@ -17,9 +17,6 @@ class Manifold(GeometryObject):
         self._variables = variables
         self.domain = domain
 
-    def plot(self):
-        pass
-
     def intersect(self, other):
         pass
 

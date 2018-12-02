@@ -1,12 +1,10 @@
 import numpy as np
 import sympy
-from sympy.utilities.lambdify import lambdify
 from .point import Point, Line, I, J
 from .base import ProjectiveElement
 from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
-import matplotlib.pyplot as plt
 
 
 class AlgebraicCurve(ProjectiveElement):
@@ -37,16 +35,6 @@ class AlgebraicCurve(ProjectiveElement):
     @property
     def polynomial(self):
         return np_array_to_poly(self.array, self.symbols)
-
-    def plot(self, ax=None):
-        if ax is None:
-            fig = plt.figure()
-            ax = plt.axes()
-        y, x = np.ogrid[-5:5:100j, -5:5:100j]
-        f = lambdify(self.symbols, self.polynomial.as_expr(), "numpy")
-        ax.contour(x.ravel(), y.ravel(), f(x, y, 1), [0])
-        plt.show()
-        return ax
 
     def tangent(self, at: Point):
         dx = polyval(at.array, pl.polyder(self.array, axis=0))

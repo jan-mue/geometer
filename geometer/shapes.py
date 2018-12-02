@@ -6,9 +6,6 @@ from .operators import angle
 
 class Segment(GeometryObject):
 
-    def plot(self):
-        pass
-
     def __init__(self, p: Point, q: Point):
         self._points = (p, q)
         self._line = Line(p, q)
@@ -77,10 +74,6 @@ class Polygon(GeometryObject):
 
     def area(self):
         return sum(t.area() for t in self.triangulate())
-
-    def plot(self):
-        for s in self._segments:
-            s.plot()
 
     def contains(self, pt: Point):
         for s in self._segments:
