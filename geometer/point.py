@@ -2,34 +2,37 @@ from collections import Iterable
 
 import numpy as np
 import sympy
-from .base import ProjectiveElement
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor
 
 
 def join(*args):
-    if len(args[0]) == 3:
-        p, q = args
-        return Line(np.cross(p.array, q.array))
-    if len(args[0]) == 4:
-        if len(args) == 3:
-            q = np.array([p.array for p in args]).T
-            a, b, c, d = q
-            n = (np.linalg.det([b,c,d]), -np.linalg.det([a,c,d]), np.linalg.det([a,b,d]), -np.linalg.det([a,b,c]))
-            return Plane(n)
+    n = len(args[0])
+    e = LeviCivitaTensor(n, covariant=False)
+    diagram = TensorDiagram(*[(p, e) for p in args])
+    result = diagram.calculate()
+
+    if sum(a.dim for a in args) == 2:
+        return Line(result)
+    else:
+        return Plane(result)
 
 
 def meet(*args):
-    if len(args[0]) == 3:
-        l, m = args
-        return Point(np.cross(l.array, m.array))
-    if len(args[0]) == 4:
-        if len(args) == 3:
-            q = np.array([p.array for p in args]).T
-            a, b, c, d = q
-            n = (np.linalg.det([b,c,d]), -np.linalg.det([a,c,d]), np.linalg.det([a,b,d]), -np.linalg.det([a,b,c]))
-            return Point(n)
+    n = len(args[0])
+    e = LeviCivitaTensor(n)
+    diagram = TensorDiagram(*[(e, l) for l in args])
+    result = diagram.calculate()
+
+    # TODO: fix type of returned object
+    if n == 3:
+        return Point(result)
+    else:
+        return Line(result)
 
 
 class Point(ProjectiveElement):
+
+    dim = 1
 
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], Iterable):
@@ -93,12 +96,14 @@ J = Point([1j, 1, 0])
 
 class Line(ProjectiveElement):
 
+    dim = 2
+
     def __init__(self, *args):
         if len(args) == 2:
             pt1, pt2 = args
-            self.array = pt1.join(pt2).array
+            super(Line, self).__init__(pt1.join(pt2).array, contravariant_indices=[0])
         else:
-            super(Line, self).__init__(*args)
+            super(Line, self).__init__(*args, contravariant_indices=[0])
 
     @property
     def polynomial(self):
@@ -177,6 +182,8 @@ infty = Line(0, 0, 1)
 
 
 class Plane(ProjectiveElement):
+
+    dim = 3
 
     def contains(self, pt):
         return np.isclose(np.vdot(self.array, pt.array), 0)
