@@ -61,7 +61,7 @@ class AlgebraicCurve(ProjectiveElement):
                 g = other.polynomial.subs(self.symbols[-1], z)
                 try:
                     x = sympy.solve_poly_system([f, g], *self.symbols[:-1])
-                    sol.update(cor + (z,) for cor in x)
+                    sol.update(tuple(float(x) for x in cor) + (z,) for cor in x)
                 except NotImplementedError:
                     continue
 

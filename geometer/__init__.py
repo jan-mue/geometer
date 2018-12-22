@@ -3,4 +3,4 @@ from .shapes import Segment, Polygon, Triangle, Rectangle
 from .curve import EllipticCurve, Conic, Circle
 from .transformation import Transformation, rotation, translation
 from .operators import crossratio, is_cocircular, is_perpendicular, is_collinear, is_concurrent, dist, angle
-from .manifold import ComplexCurve, residue
+from .manifold import Path, residue
