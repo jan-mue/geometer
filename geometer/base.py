@@ -6,12 +6,29 @@ class Tensor:
 
     def __init__(self, *args, contravariant_indices=None):
         if len(args) == 1:
-            self.array = np.atleast_1d(args[0])
+            if isinstance(args[0], Tensor):
+                self.array = args[0].array
+                contravariant_indices = args[0]._contravariant_indices
+            else:
+                self.array = np.atleast_1d(args[0])
         else:
             self.array = np.array([*args])
 
         self._contravariant_indices = set(contravariant_indices or [])
         self._covariant_indices = set(range(len(self.array.shape))) - self._contravariant_indices
+
+    def __mul__(self, other):
+        d = TensorDiagram((other, self))
+        return d.calculate()
+
+    def __rmul__(self, other):
+        d = TensorDiagram((self, other))
+        return d.calculate()
+
+    def __eq__(self, other):
+        if other is 0:
+            return np.vectorize(lambda x: np.isclose(x, 0, atol=0.0))(self.array).all()
+        return self.array == other
 
 
 class LeviCivitaTensor(Tensor):
@@ -32,7 +49,9 @@ class TensorDiagram:
 
     def __init__(self, *edges):
         self._nodes = []
-        self._adjacency_matrix = np.zeros((2,2), dtype=int)
+        self._indices = []
+        self._free_indices = []
+        self._split_indices = []
         for e in edges or []:
             self.add_edge(*e)
 
@@ -41,12 +60,14 @@ class TensorDiagram:
         target_index = None
         index_count = 0
 
-        for tensor in self._nodes:
+        for ind, tensor in enumerate(self._nodes):
 
             if tensor is source:
                 source_index = index_count
+                free_source = self._free_indices[ind]
             if tensor is target:
                 target_index = index_count
+                free_target = self._free_indices[ind]
 
             index_count += len(tensor.array.shape)
 
@@ -55,46 +76,49 @@ class TensorDiagram:
 
         if source_index is None:
             source_index = index_count
+            self._split_indices.append(index_count)
             self._nodes.append(source)
+            free_source = {
+                "covariant": source._covariant_indices.copy(),
+                "contravariant": source._contravariant_indices.copy()
+            }
+            self._free_indices.append(free_source)
             index_count += len(source.array.shape)
 
         if target_index is None:
             target_index = index_count
+            self._split_indices.append(index_count)
             self._nodes.append(target)
+            free_target = {
+                "covariant": target._covariant_indices.copy(),
+                "contravariant": target._contravariant_indices.copy()
+            }
+            self._free_indices.append(free_target)
             index_count += len(target.array.shape)
 
-        n = index_count - self._adjacency_matrix.shape[0]
-        self._adjacency_matrix = np.pad(self._adjacency_matrix, ((0, n), (0, n)), "constant")
+        self._indices.extend(range(len(self._indices), index_count))
 
-        for i in source._covariant_indices:
-            if not self._adjacency_matrix[source_index+i, :].any():
-                break
-        else:
+        if len(free_source["covariant"]) == 0 or len(free_target["contravariant"]) == 0:
             raise ValueError("Could not add edge.")
 
-        for j in target._contravariant_indices:
-            if not self._adjacency_matrix[:, target_index+j].any():
-                break
-        else:
-            raise ValueError("Could not add edge.")
-
-        self._adjacency_matrix[source_index + i, target_index + j] = 1
+        i = source_index + free_source["covariant"].pop()
+        j = target_index + free_target["contravariant"].pop()
+        self._indices[max(i, j)] = min(i, j)
 
     def calculate(self):
-        indices = np.arange(1, self._adjacency_matrix.shape[0]+1)
-        x = self._adjacency_matrix.dot(indices)
-
-        for i, j in np.ndenumerate(x):
-            if j != 0:
-                indices[i] = j
-
-        i = 0
-        s = []
-        for n in self._nodes[:-1]:
-            i += len(n.array.shape)
-            s.append(i)
-
-        return np.einsum(*[x for i, node in enumerate(self._nodes) for x in (node.array, np.split(indices, s)[i].tolist())], optimize="optimal")
+        indices = np.split(self._indices, self._split_indices[1:])
+        args = [x for i, node in enumerate(self._nodes) for x in (node.array, indices[i].tolist())]
+        result_indices = {
+            "covariant": [],
+            "contravariant": []
+        }
+        for offset, ind in zip(self._split_indices, self._free_indices):
+            result_indices["covariant"].extend(offset + x for x in ind["covariant"])
+            result_indices["contravariant"].extend(offset + x for x in ind["contravariant"])
+        cov_count = len(result_indices["covariant"])
+        result_indices = result_indices["covariant"] + result_indices["contravariant"]
+        x = np.einsum(*args, result_indices, optimize="optimal")
+        return Tensor(x, contravariant_indices=range(cov_count, len(result_indices)))
 
 
 class GeometryObject(ABC):

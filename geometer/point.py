@@ -2,40 +2,63 @@ from collections import Iterable
 
 import numpy as np
 import sympy
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 
 
 def join(*args):
-    n = len(args[0])
-    e = LeviCivitaTensor(n, covariant=False)
-    diagram = TensorDiagram(*[(p, e) for p in args])
-    result = diagram.calculate()
+    if all(isinstance(o, Point) for o in args):
+        n = len(args[0])
+        e = LeviCivitaTensor(n, False)
+        diagram = TensorDiagram(*[(p, e) for p in args])
+        result = diagram.calculate()
 
-    if sum(a.dim for a in args) == 2:
-        return Line(result)
-    else:
-        return Plane(result)
+        if len(args) == 2:
+            return Line(result)
+        if len(args) == 3:
+            return Plane(result)
+        raise ValueError("Wrong number of arguments.")
+
+    if len(args) == 2:
+        if isinstance(args[0], Line):
+            return Plane(args[0]*args[1])
+        return Plane(args[1]*args[0])
 
 
 def meet(*args):
-    n = len(args[0])
-    e = LeviCivitaTensor(n)
-    diagram = TensorDiagram(*[(e, l) for l in args])
-    result = diagram.calculate()
 
-    # TODO: fix type of returned object
-    if n == 3:
-        return Point(result)
-    else:
-        return Line(result)
+    if all(isinstance(o, Plane) for o in args) or all(isinstance(o, Line) for o in args):
+        n = len(args[0])
+        e = LeviCivitaTensor(n)
+        diagram = TensorDiagram(*[(e, x) for x in args])
+        result = diagram.calculate()
+
+        if len(result._contravariant_indices) == 1:
+            return Line(result)
+        if len(result._covariant_indices) == 2:
+            e = LeviCivitaTensor(n, False)
+            diagram = TensorDiagram((result, e), (result, e))
+            return Line(diagram.calculate())
+        if len(args) == n-1:
+            return Point(result)
+        raise ValueError("Wrong number of arguments.")
+
+    if len(args) == 2:
+        if isinstance(args[0], Line) and isinstance(args[1], Plane):
+            l, p = args
+        elif isinstance(args[1], Line) and isinstance(args[0], Plane):
+            p, l = args
+        else:
+            raise ValueError("Operation not supported.")
+
+        e = LeviCivitaTensor(4)
+        diagram = TensorDiagram((e, l), (e, l), (e, p))
+        return Point(diagram.calculate())
 
 
 class Point(ProjectiveElement):
 
-    dim = 1
-
     def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], Iterable):
+        if len(args) == 1 and isinstance(args[0], (Iterable, Tensor)):
             super(Point, self).__init__(*args)
         else:
             super(Point, self).__init__(*args, 1)
@@ -96,8 +119,6 @@ J = Point([1j, 1, 0])
 
 class Line(ProjectiveElement):
 
-    dim = 2
-
     def __init__(self, *args):
         if len(args) == 2:
             pt1, pt2 = args
@@ -112,7 +133,7 @@ class Line(ProjectiveElement):
         return sympy.Poly(f, symbols)
 
     def contains(self, pt:Point):
-        return np.isclose(np.vdot(self.array, pt.array), 0)
+        return self*pt == 0
 
     def meet(self, other):
         return meet(self, other)
@@ -129,7 +150,7 @@ class Line(ProjectiveElement):
         return self + other
 
     def __repr__(self):
-        return f"Line({','.join(self.array.astype(str))})"
+        return f"Line({str(self.array.tolist())})"
 
     def parallel(self, through: Point):
         l = Line(0,0,1)
@@ -182,11 +203,15 @@ infty = Line(0, 0, 1)
 
 
 class Plane(ProjectiveElement):
-
-    dim = 3
+    
+    def __init__(self, *args):
+        super(Plane, self).__init__(*args, contravariant_indices=[0])
 
     def contains(self, pt):
         return np.isclose(np.vdot(self.array, pt.array), 0)
 
+    def meet(self, other):
+        return meet(self, other)
+
     def intersect(self, other):
-        pass
+        return [self.meet(other)]
