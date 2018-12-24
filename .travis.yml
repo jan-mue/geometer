@@ -2,8 +2,12 @@ sudo: required
 dist: xenial
 language: python
 python:
+  - 3.6
   - 3.7
+install:
+  - pip install pipenv --upgrade
+  - pipenv install --dev --skip-lock
 script:
-  - coverage run -m pytest
+  - pipenv run coverage run -m pytest
 after_success:
   - codecov
