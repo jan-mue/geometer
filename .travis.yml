@@ -8,6 +8,6 @@ install:
   - pip install pipenv --upgrade
   - pipenv install --dev --skip-lock
 script:
-  - pipenv run coverage run -m pytest
+  - pipenv run coverage run --source=geometer -m pytest
 after_success:
   - codecov
