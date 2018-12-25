@@ -65,6 +65,10 @@ class Test3D:
         m = Line(Point(0, 0, 0), Point(0, 1, 0))
         assert l == m
 
+        # two lines
+        m = Line(Point(0, 0, 0), Point(1, 2, 5))
+        assert l.meet(m) == Point(0, 0, 0)
+
         # plane and line
         assert p3.meet(l) == Point(0, 0, 0)
 

@@ -138,3 +138,7 @@ class ProjectiveElement(GeometryObject, Tensor, ABC):
 
     def __len__(self):
         return np.product(self.array.shape)
+
+    @property
+    def dim(self):
+        return self.array.shape[0] - 1

@@ -27,6 +27,12 @@ def join(*args):
 def meet(*args):
 
     if all(isinstance(o, Plane) for o in args) or all(isinstance(o, Line) for o in args):
+        if len(args[0]._contravariant_indices) == 2:
+            l, m = args
+            a = (m * l.covariant_tensor).array
+            i = np.unravel_index(a.argmax(), a.shape)[1]
+            return Point(a[:, i])
+
         n = len(args[0])
         e = LeviCivitaTensor(n)
         diagram = TensorDiagram(*[(e, x) for x in args])
