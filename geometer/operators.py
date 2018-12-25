@@ -1,6 +1,6 @@
 from itertools import product
 import numpy as np
-from .point import Point, Line, I, J, infty
+from .point import Point, Line, Plane, I, J, infty
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -81,6 +81,16 @@ def is_collinear(a,b,c, *args):
     n = np.cross(a.array, b.array)
     for d in args:
         if not np.isclose(np.vdot(n, d.array), 0):
+            return False
+    return True
+
+
+def is_coplanar(a, b, c, d, *args):
+    if not np.isclose(np.linalg.det([a.array, b.array, c.array, d.array]), 0):
+        return False
+    p = Plane(b, c, d)
+    for e in args:
+        if not p.contains(e):
             return False
     return True
 

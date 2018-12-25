@@ -67,3 +67,14 @@ class Test3D:
 
         # plane and line
         assert p3.meet(l) == Point(0, 0, 0)
+
+    def test_contains(self):
+        p1 = Point(1, 1, 0)
+        p2 = Point(2, 1, 0)
+        p3 = Point(3, 4, 0)
+        p4 = Point(0, 2, 0)
+
+        p = Plane(p1, p2, p3)
+        l = Line(p1, p2)
+        assert p.contains(p4)
+        assert p.contains(l)

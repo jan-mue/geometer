@@ -35,9 +35,7 @@ def meet(*args):
         if len(result._contravariant_indices) == 1:
             return Line(result)
         if len(result._covariant_indices) == 2:
-            e = LeviCivitaTensor(n, False)
-            diagram = TensorDiagram((result, e), (result, e))
-            return Line(diagram.calculate())
+            return Line(result).contravariant_tensor
         if len(args) == n-1:
             return Point(result)
         raise ValueError("Wrong number of arguments.")
@@ -122,7 +120,7 @@ class Line(ProjectiveElement):
     def __init__(self, *args):
         if len(args) == 2:
             pt1, pt2 = args
-            super(Line, self).__init__(pt1.join(pt2).array, contravariant_indices=[0])
+            super(Line, self).__init__(pt1.join(pt2))
         else:
             super(Line, self).__init__(*args, contravariant_indices=[0])
 
@@ -131,6 +129,22 @@ class Line(ProjectiveElement):
         symbols = sympy.symbols("x y z")
         f = sum(x*s for x,s in zip(self.array, symbols))
         return sympy.Poly(f, symbols)
+
+    @property
+    def covariant_tensor(self):
+        if len(self._covariant_indices) > 0:
+            return self
+        e = LeviCivitaTensor(4)
+        diagram = TensorDiagram((e, self), (e, self))
+        return Line(diagram.calculate())
+
+    @property
+    def contravariant_tensor(self):
+        if len(self._contravariant_indices) > 0:
+            return self
+        e = LeviCivitaTensor(4, False)
+        diagram = TensorDiagram((self, e), (self, e))
+        return Line(diagram.calculate())
 
     def contains(self, pt:Point):
         return self*pt == 0
@@ -205,10 +219,16 @@ infty = Line(0, 0, 1)
 class Plane(ProjectiveElement):
     
     def __init__(self, *args):
-        super(Plane, self).__init__(*args, contravariant_indices=[0])
+        if len(args) == 2 or len(args) == 3:
+            super(Plane, self).__init__(join(*args))
+        else:
+            super(Plane, self).__init__(*args, contravariant_indices=[0])
 
-    def contains(self, pt):
-        return np.isclose(np.vdot(self.array, pt.array), 0)
+    def contains(self, other):
+        if isinstance(other, Point):
+            return np.isclose(np.vdot(self.array, other.array), 0)
+        elif isinstance(other, Line):
+            return self*other.covariant_tensor == 0
 
     def meet(self, other):
         return meet(self, other)
