@@ -17,6 +17,10 @@ class Tensor:
         self._contravariant_indices = set(contravariant_indices or [])
         self._covariant_indices = set(range(len(self.array.shape))) - self._contravariant_indices
 
+    @property
+    def tensor_shape(self):
+        return len(self._covariant_indices), len(self._contravariant_indices)
+
     def __mul__(self, other):
         d = TensorDiagram((other, self))
         return d.calculate()
@@ -128,7 +132,7 @@ class GeometryObject(ABC):
         pass
 
 
-class ProjectiveElement(GeometryObject, Tensor, ABC):
+class ProjectiveElement(Tensor, ABC):
 
     def __eq__(self, other):
         # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy

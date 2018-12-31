@@ -2,7 +2,8 @@ from collections import Iterable
 
 import numpy as np
 import sympy
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
+import scipy
+from .base import ProjectiveElement, GeometryObject, TensorDiagram, LeviCivitaTensor, Tensor
 
 
 def join(*args):
@@ -19,15 +20,21 @@ def join(*args):
         raise ValueError("Wrong number of arguments.")
 
     if len(args) == 2:
-        if isinstance(args[0], Line):
+        if isinstance(args[0], Line) and isinstance(args[1], Point):
             return Plane(args[0]*args[1])
-        return Plane(args[1]*args[0])
+        if isinstance(args[0], Point) and isinstance(args[1], Line):
+            return Plane(args[1]*args[0])
+
+        l, m = args
+        a = (m * l.covariant_tensor).array
+        i = np.unravel_index(a.argmax(), a.shape)[0]
+        return Plane(a[i, :])
 
 
 def meet(*args):
 
     if all(isinstance(o, Plane) for o in args) or all(isinstance(o, Line) for o in args):
-        if len(args[0]._contravariant_indices) == 2:
+        if args[0].tensor_shape[1] == 2:
             l, m = args
             a = (m * l.covariant_tensor).array
             i = np.unravel_index(a.argmax(), a.shape)[1]
@@ -38,9 +45,9 @@ def meet(*args):
         diagram = TensorDiagram(*[(e, x) for x in args])
         result = diagram.calculate()
 
-        if len(result._contravariant_indices) == 1:
+        if result.tensor_shape[1] == 1:
             return Line(result)
-        if len(result._covariant_indices) == 2:
+        if result.tensor_shape[0] == 2:
             return Line(result).contravariant_tensor
         if len(args) == n-1:
             return Point(result)
@@ -59,7 +66,7 @@ def meet(*args):
         return Point(diagram.calculate())
 
 
-class Point(ProjectiveElement):
+class Point(ProjectiveElement, GeometryObject):
 
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], (Iterable, Tensor)):
@@ -108,8 +115,8 @@ class Point(ProjectiveElement):
     def y(self):
         return self.normalized().array[1]
 
-    def join(self, other):
-        return join(self, other)
+    def join(self, *others):
+        return join(self, *others)
 
     def intersect(self, other):
         if isinstance(other, Line):
@@ -121,7 +128,7 @@ I = Point([-1j, 1, 0])
 J = Point([1j, 1, 0])
 
 
-class Line(ProjectiveElement):
+class Line(ProjectiveElement, GeometryObject):
 
     def __init__(self, *args):
         if len(args) == 2:
@@ -130,15 +137,20 @@ class Line(ProjectiveElement):
         else:
             super(Line, self).__init__(*args, contravariant_indices=[0])
 
-    @property
-    def polynomial(self):
-        symbols = sympy.symbols("x y z")
-        f = sum(x*s for x,s in zip(self.array, symbols))
-        return sympy.Poly(f, symbols)
+    def polynomials(self, symbols=None):
+        symbols = symbols or sympy.symbols(["x" + str(i) for i in range(self.array.shape[0])])
+
+        def p(row):
+            f = sum(x*s for x, s in zip(row, symbols))
+            return sympy.Poly(f, symbols)
+
+        if self.dim == 2:
+            return [p(self.array)]
+        return np.apply_along_axis(p, axis=1, arr=self.array[np.any(self.array, axis=1)])
 
     @property
     def covariant_tensor(self):
-        if len(self._covariant_indices) > 0:
+        if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
         diagram = TensorDiagram((e, self), (e, self))
@@ -146,20 +158,30 @@ class Line(ProjectiveElement):
 
     @property
     def contravariant_tensor(self):
-        if len(self._contravariant_indices) > 0:
+        if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
         diagram = TensorDiagram((self, e), (self, e))
         return Line(diagram.calculate())
 
-    def contains(self, pt:Point):
+    def contains(self, pt: Point):
         return self*pt == 0
 
     def meet(self, other):
         return meet(self, other)
 
+    def join(self, other):
+        return join(self, other)
+
+    def is_coplanar(self, other):
+        l = other.covariant_tensor
+        d = TensorDiagram((l, self), (l, self))
+        return d.calculate() == 0
+
     def intersect(self, other):
         if isinstance(other, Line):
+            if self.dim == 3 and not self.is_coplanar(other):
+                return []
             return [self.meet(other)]
 
     def __add__(self, point):
@@ -173,8 +195,12 @@ class Line(ProjectiveElement):
         return f"Line({str(self.array.tolist())})"
 
     def parallel(self, through: Point):
-        l = Line(0,0,1)
-        p = self.meet(l)
+        if self.dim == 2:
+            p = self.meet(infty)
+        elif self.dim == 3:
+            p = self.meet(infty_plane)
+        else:
+            raise NotImplementedError
         return p.join(through)
 
     def is_parallel(self, other):
@@ -190,15 +216,23 @@ class Line(ProjectiveElement):
 
     @property
     def base_point(self):
+        if self.dim > 2:
+            val, vec = scipy.linalg.eigh(self.array.T.dot(self.array))
+            return Point(vec[:, np.argmin(val)])
+
         if np.isclose(self.array[2], 0):
             return Point(0, 0)
-        elif not np.isclose(self.array[1], 0):
+
+        if not np.isclose(self.array[1], 0):
             return Point([0, -self.array[2], self.array[1]])
-        else:
-            return Point([self.array[2], 0, -self.array[0]])
+
+        return Point([self.array[2], 0, -self.array[0]])
 
     @property
     def direction(self):
+        if self.dim > 2:
+            Z = scipy.linalg.null_space(self.array)
+            return Point(Z[:, 0] - Z[:, 1])
         if np.isclose(self.array[0], 0) and np.isclose(self.array[1], 0):
             return Point([0, 1, 0])
         return Point(self.array[1], -self.array[0])
@@ -222,7 +256,7 @@ class Line(ProjectiveElement):
 infty = Line(0, 0, 1)
 
 
-class Plane(ProjectiveElement):
+class Plane(ProjectiveElement, GeometryObject):
     
     def __init__(self, *args):
         if len(args) == 2 or len(args) == 3:
@@ -236,8 +270,34 @@ class Plane(ProjectiveElement):
         elif isinstance(other, Line):
             return self*other.covariant_tensor == 0
 
-    def meet(self, other):
-        return meet(self, other)
+    def meet(self, *others):
+        return meet(self, *others)
+
+    @property
+    def basis_matrix(self):
+        i = np.where(self.array != 0)[0][0]
+        result = np.zeros((4, 3))
+        a = [j for j in range(4) if j != i]
+        result[i, :] = self.array[a]
+        result[a, range(3)] = -self.array[i]
+        q, r = np.linalg.qr(result)
+        return q.T
+
+    @property
+    def polynomial(self):
+        symbols = sympy.symbols("x1 x2 x3 x4")
+        f = sum(x * s for x, s in zip(self.array, symbols))
+        return sympy.Poly(f, symbols)
+
+    def parallel(self, through: Point):
+        l = self.meet(infty_plane)
+        return join(l, through)
 
     def intersect(self, other):
+        if isinstance(other, Line):
+            if self.contains(other):
+                return [other]
         return [self.meet(other)]
+
+
+infty_plane = Plane(0, 0, 0, 1)

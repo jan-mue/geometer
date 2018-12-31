@@ -1,6 +1,7 @@
 from itertools import product
 import numpy as np
-from .point import Point, Line, Plane, I, J, infty
+from .point import Point, Line, Plane, I, J, infty, infty_plane
+from .curve import absolute_conic
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -8,9 +9,19 @@ def crossratio(a, b, c, d, from_point=None):
         if not is_concurrent(a,b,c,d):
             raise ValueError("The lines are not concurrent: " + str([a,b,c,d]))
         from_point = a.meet(b)
-        p = a.base_point + 2*a.direction
-        l = a.perpendicular(through=p)
-        a,b,c,d = intersection(l,a,b,c,d)
+        a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point
+
+    if isinstance(a, Plane):
+        l = a.meet(b)
+        e = Plane(l.direction.array)
+        a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
+        m = e.basis_matrix
+        p = e.meet(l)
+        from_point = Point(m.dot(p.array))
+        a = Point(m.dot((p + a.direction).array))
+        b = Point(m.dot((p + b.direction).array))
+        c = Point(m.dot((p + c.direction).array))
+        d = Point(m.dot((p + d.direction).array))
 
     if from_point is None and len(a.array) > 2:
         if not is_collinear(a,b,c,d):
@@ -34,6 +45,17 @@ def angle(*args):
     if len(args) == 3:
         a,b,c = args
     elif len(args) == 2:
+        if isinstance(args[0], Plane):
+            e, f = args
+            l = e.meet(f)
+            p = l.meet(infty_plane)
+            polar = Line(p.array[:-1])
+            tangent_points = absolute_conic.intersect(polar)
+            tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+            i = l.join(p.join(tangent_points[0]))
+            j = l.join(p.join(tangent_points[1]))
+            return 1/2j*np.log(crossratio(e, f, i, j))
+
         l, m = args
         a = l.meet(m)
         b = l.meet(infty)

@@ -1,6 +1,6 @@
 import numpy as np
 from sympy import symbols
-from geometer import Point, Line, Conic, Circle, EllipticCurve
+from geometer import Point, Line, Conic, Circle, EllipticCurve, Quadric, Plane
 from geometer.curve import AlgebraicCurve
 
 
@@ -73,3 +73,13 @@ def test_conic():
                [0, 0, -1]])
 
     assert c.contains(Point(1, 0))
+
+
+def test_quadric():
+    q = Quadric([[1, 0, 0, 0],
+                 [0, 1, 0, 0],
+                 [0, 0, 1, 0],
+                 [0, 0, 0, -1]])
+
+    assert q.contains(Point(1, 0, 0))
+    assert q.tangent(at=Point(1, 0, 0)) == Plane(Point(1, 0, 0), Point(1, 0, 1), Point(1, 1, 0))

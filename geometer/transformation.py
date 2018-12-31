@@ -1,9 +1,10 @@
 import numpy as np
+from .base import ProjectiveElement
 from .point import Point, Line
 from .curve import Conic
 
 
-def rotation(angle:float):
+def rotation(angle: float):
     return Transformation([[np.cos(angle), - np.sin(angle), 0],
                            [np.sin(angle), np.cos(angle), 0],
                            [0, 0, 1]])
@@ -15,10 +16,10 @@ def translation(*coordinates):
     return Transformation(m)
 
 
-class Transformation:
-
-    def __init__(self, array):
-        self.array = np.array(array)
+class Transformation(ProjectiveElement):
+    
+    def __init__(self, *args):
+        super(Transformation, self).__init__(*args, contravariant_indices=[0])
 
     @classmethod
     def from_points(cls, a, b, c, d):

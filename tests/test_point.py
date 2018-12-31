@@ -48,6 +48,10 @@ class Test3D:
         l = p1.join(p2)
         assert l.contains(Point(3, 1, 0))
 
+        # two lines
+        m = Line(Point(0, 0, 0), Point(1, 2, 0))
+        assert join(l, m) == Plane(0, 0, 1, 0)
+
         # point and line
         p = join(l, p3)
         assert p.contains(p4)
@@ -82,3 +86,11 @@ class Test3D:
         l = Line(p1, p2)
         assert p.contains(p4)
         assert p.contains(l)
+
+    def test_parallel(self):
+        p = Point(0, 0, 1)
+        q = Point(1, 0, 1)
+        r = Point(0, 1, 1)
+        e = Plane(p, q, r)
+        f = e.parallel(through=Point(0, 0, 0))
+        assert f == Plane(0, 0, 1, 0)

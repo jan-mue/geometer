@@ -1,6 +1,6 @@
 import numpy as np
 import sympy
-from .point import Point, Line, I, J
+from .point import Point, Line, Plane, I, J
 from .base import ProjectiveElement
 from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 from numpy.polynomial import polynomial as pl
@@ -30,7 +30,7 @@ class AlgebraicCurve(ProjectiveElement):
 
         poly = poly.homogenize(symbols[-1])
 
-        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols))
+        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols), contravariant_indices=[0, 1])
 
     @property
     def polynomial(self):
@@ -57,10 +57,12 @@ class AlgebraicCurve(ProjectiveElement):
             sol = set()
 
             for z in [0, 1]:
-                f = self.polynomial.subs(self.symbols[-1], z)
-                g = other.polynomial.subs(self.symbols[-1], z)
+                polys = [self.polynomial.subs(self.symbols[-1], z)]
+                for f in other.polynomials(self.symbols):
+                    polys.append(f.subs(self.symbols[-1], z))
+
                 try:
-                    x = sympy.solve_poly_system([f, g], *self.symbols[:-1])
+                    x = sympy.solve_poly_system(polys, *self.symbols[:-1])
                     sol.update(tuple(float(x) for x in cor) + (z,) for cor in x)
                 except NotImplementedError:
                     continue
@@ -108,16 +110,29 @@ class EllipticCurve(AlgebraicCurve):
 
     def invert(self, pt: Point):
         return self._join_and_intersect(self.o, pt)
+    
+    
+class Quadric(AlgebraicCurve):
+
+    def __init__(self, matrix):
+        self.matrix = np.array(matrix)
+        m = sympy.Matrix(matrix)
+        symbols = sympy.symbols(["x" + str(i) for i in range(m.shape[1])])
+        super(Quadric, self).__init__(sum(a*b for a, b in zip(m.dot(symbols), symbols)), symbols=symbols)
+
+    def tangent(self, at: Point):
+        return Plane(self.matrix.dot(at.array))
+
+    @property
+    def is_degenerate(self):
+        return np.isclose(float(np.linalg.det(self.matrix)), 0)
 
 
-class Conic(AlgebraicCurve):
+class Conic(Quadric):
 
     def __init__(self, matrix, is_dual=False):
-        self.matrix = np.array(matrix)
         self.is_dual = is_dual
-        m = sympy.Matrix(matrix)
-        x, y, z = sympy.symbols("x y z")
-        super(Conic, self).__init__(sum(a*b for a,b in zip(m.dot([x, y, z]), [x, y, z])), symbols=[x,y,z])
+        super(Conic, self).__init__(matrix)
 
     @classmethod
     def from_points(cls, a, b, c, d, e):
@@ -130,7 +145,7 @@ class Conic(AlgebraicCurve):
         return Conic(m+m.T)
 
     @classmethod
-    def from_lines(cls, g:Line, h:Line):
+    def from_lines(cls, g: Line, h: Line):
         m = np.outer(g.array, h.array)
         return Conic(m + m.T)
 
@@ -188,10 +203,6 @@ class Conic(AlgebraicCurve):
                         results.append(i)
             return results
 
-    @property
-    def is_degenerate(self):
-        return np.isclose(float(np.linalg.det(self.matrix)), 0)
-
     def tangent(self, at: Point):
         return Line(self.matrix.dot(at.array))
 
@@ -200,12 +211,15 @@ class Conic(AlgebraicCurve):
         return Conic(np.linalg.inv(self.matrix), is_dual=not self.is_dual)
 
 
+absolute_conic = Conic(np.eye(3))
+
+
 class Circle(Conic):
 
     def __init__(self, center: Point = Point(0,0), radius: float = 1):
-        super(Circle, self).__init__([[1,0,-center.array[0]],
-                                      [0,1,-center.array[1]],
-                                      [-center.array[0],-center.array[1],center.array[:-1].dot(center.array[:-1])-radius**2]])
+        super(Circle, self).__init__([[1, 0, -center.array[0]],
+                                      [0, 1, -center.array[1]],
+                                      [-center.array[0], -center.array[1], center.array[:-1].dot(center.array[:-1])-radius**2]])
 
     @property
     def center(self):
