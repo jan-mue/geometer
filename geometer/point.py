@@ -4,6 +4,7 @@ import numpy as np
 import sympy
 import scipy
 from .base import ProjectiveElement, GeometryObject, TensorDiagram, LeviCivitaTensor, Tensor
+from .exceptions import LinearDependenceError
 
 
 def join(*args):
@@ -12,6 +13,9 @@ def join(*args):
         e = LeviCivitaTensor(n, False)
         diagram = TensorDiagram(*[(p, e) for p in args])
         result = diagram.calculate()
+
+        if result == 0:
+            raise LinearDependenceError("Arguments are not linearly independent.")
 
         if len(args) == 2:
             return Line(result)
@@ -58,8 +62,6 @@ def meet(*args):
             l, p = args
         elif isinstance(args[1], Line) and isinstance(args[0], Plane):
             p, l = args
-        else:
-            raise ValueError("Operation not supported.")
 
         e = LeviCivitaTensor(4)
         diagram = TensorDiagram((e, l), (e, l), (e, p))

@@ -14,7 +14,12 @@ def test_is_collinear():
 def test_dist():
     p = Point(0, 0)
     q = Point(1, 0)
+
+    p1 = Point(0, 0, 0)
+    p2 = Point(1, 0, 0)
+
     assert dist(p, q) == 1
+    assert dist(p1, p2) == 1
 
 
 def test_angle():

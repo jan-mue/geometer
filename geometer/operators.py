@@ -2,12 +2,13 @@ from itertools import product
 import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane
 from .curve import absolute_conic
+from .exceptions import IncidenceError, NotCollinear, LinearDependenceError
 
 
 def crossratio(a, b, c, d, from_point=None):
     if isinstance(a, Line):
         if not is_concurrent(a,b,c,d):
-            raise ValueError("The lines are not concurrent: " + str([a,b,c,d]))
+            raise IncidenceError("The lines are not concurrent: " + str([a,b,c,d]))
         from_point = a.meet(b)
         a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point
 
@@ -25,7 +26,7 @@ def crossratio(a, b, c, d, from_point=None):
 
     if from_point is None and len(a.array) > 2:
         if not is_collinear(a,b,c,d):
-            raise ValueError("The points are not collinear: " + str([a, b, c, d]))
+            raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
         l = a.join(b)
         a = Point(l.basic_coeffs(a))
         b = Point(l.basic_coeffs(b))
@@ -67,8 +68,24 @@ def angle(*args):
 
 
 def dist(p, q):
-    pqi = np.linalg.det([p.array, q.array, I.array])
-    pqj = np.linalg.det([p.array, q.array, J.array])
+    # TODO: lines & planes
+    a, b = p.array, q.array
+    if p.dim == 3:
+        for i in range(4):
+            try:
+                r = np.zeros(4)
+                r[3-i] = 1
+                e = Plane(p, q, Point(r))
+            except LinearDependenceError:
+                continue
+            else:
+                break
+
+        m = e.basis_matrix
+        a, b = m.dot(a), m.dot(b)
+
+    pqi = np.linalg.det([a, b, I.array])
+    pqj = np.linalg.det([a, b, J.array])
     return np.sqrt(pqi*pqj)
 
 

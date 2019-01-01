@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+from .exceptions import TensorComputationError
 
 
 class Tensor:
@@ -103,7 +104,7 @@ class TensorDiagram:
         self._indices.extend(range(len(self._indices), index_count))
 
         if len(free_source["covariant"]) == 0 or len(free_target["contravariant"]) == 0:
-            raise ValueError("Could not add edge.")
+            raise TensorComputationError("Could not add the edge because no free indices are left.")
 
         i = source_index + free_source["covariant"].pop()
         j = target_index + free_target["contravariant"].pop()
