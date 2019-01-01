@@ -87,6 +87,12 @@ class Test3D:
         assert p.contains(p4)
         assert p.contains(l)
 
+    def test_project(self):
+        p1 = Point(1, 1, 0)
+        p2 = Point(2, 1, 0)
+        l = Line(p1, p2)
+        assert l.project(Point(0, 0, 0)) == Point(0, 1, 0)
+
     def test_parallel(self):
         p = Point(0, 0, 1)
         q = Point(1, 0, 1)

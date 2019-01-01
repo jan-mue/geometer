@@ -246,13 +246,24 @@ class Line(ProjectiveElement, GeometryObject):
         return np.vdot(pt.array, a)/np.vdot(a, a), np.vdot(pt.array, b)/np.vdot(b, b)
 
     def mirror(self, pt: Point):
+        l = self
+        if self.dim == 3:
+            e = Plane(self, pt)
+            m = e.basis_matrix
+            pt = Point(m.dot(pt.array))
+            basis = scipy.linalg.null_space(self.array)
+            a, b = m.dot(basis).T
+            l = Line(Point(a), Point(b))
         l1 = I.join(pt)
         l2 = J.join(pt)
-        p1 = self.meet(l1)
-        p2 = self.meet(l2)
+        p1 = l.meet(l1)
+        p2 = l.meet(l2)
         m1 = p1.join(J)
         m2 = p2.join(I)
-        return m1.meet(m2)
+        result = m1.meet(m2)
+        if self.dim == 3:
+            return Point(m.T.dot(result.array))
+        return result
 
 
 infty = Line(0, 0, 1)
