@@ -92,12 +92,14 @@ class Point(ProjectiveElement, GeometryObject):
 
     def __mul__(self, other):
         if not np.isscalar(other):
-            raise NotImplementedError
+            return super(Point, self).__mul__(other)
         result = self.array[:-1] * other
         result = np.append(result, self.array[-1])
         return Point(result)
 
     def __rmul__(self, other):
+        if not np.isscalar(other):
+            return super(Point, self).__rmul__(other)
         return self * other
 
     def __neg__(self):
@@ -239,17 +241,20 @@ class Line(ProjectiveElement, GeometryObject):
     @property
     def direction(self):
         if self.dim > 2:
-            Z = scipy.linalg.null_space(self.array)
-            return Point(Z[:, 0] - Z[:, 1])
+            base = self.basis_matrix
+            return Point(base[0, :] - base[1, :])
         if np.isclose(self.array[0], 0) and np.isclose(self.array[1], 0):
             return Point([0, 1, 0])
         return Point(self.array[1], -self.array[0])
 
-    def basic_coeffs(self, pt: Point):
-        a = self.base_point.array
-        b = np.cross(self.array, a)
-        # calculate coordinates of projection of pt on the orthonormal basis {a/|a|, b/|b|}
-        return np.vdot(pt.array, a)/np.vdot(a, a), np.vdot(pt.array, b)/np.vdot(b, b)
+    @property
+    def basis_matrix(self):
+        if self.dim == 2:
+            a = self.base_point.array
+            b = np.cross(self.array, a)
+            result = np.array([a, b])
+            return result/np.linalg.norm(result)
+        return scipy.linalg.null_space(self.array).T
 
     def mirror(self, pt: Point):
         l = self

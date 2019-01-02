@@ -124,3 +124,9 @@ def test_harmonic_set():
     c = Point(3, 3)
     d = harmonic_set(a, b, c)
     assert np.isclose(crossratio(a, b, c, d), -1)
+
+    a = Point(0, 0, 0)
+    b = Point(1, 1, 0)
+    c = Point(3, 3, 0)
+    d = harmonic_set(a, b, c)
+    assert np.isclose(crossratio(a, b, c, d), -1)

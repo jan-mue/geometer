@@ -2,6 +2,7 @@ from itertools import product
 import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
+from .base import LeviCivitaTensor, TensorDiagram
 from .exceptions import IncidenceError, NotCollinear, LinearDependenceError
 
 
@@ -24,14 +25,17 @@ def crossratio(a, b, c, d, from_point=None):
         c = Point(m.dot((p + c.direction).array))
         d = Point(m.dot((p + d.direction).array))
 
-    if from_point is None and len(a.array) > 2:
-        if not is_collinear(a,b,c,d):
+    if a.dim > 2 or (from_point is None and a.dim == 2):
+
+        if not is_collinear(a, b, c, d):
             raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
+
         l = a.join(b)
-        a = Point(l.basic_coeffs(a))
-        b = Point(l.basic_coeffs(b))
-        c = Point(l.basic_coeffs(c))
-        d = Point(l.basic_coeffs(d))
+        basis = l.basis_matrix
+        a = Point(basis.dot(a.array))
+        b = Point(basis.dot(b.array))
+        c = Point(basis.dot(c.array))
+        d = Point(basis.dot(d.array))
 
     o = (from_point or []) and [from_point.array]
     ac = np.linalg.det(o + [a.array, c.array])
@@ -51,9 +55,21 @@ def harmonic_set(a, b, c):
         o = Point(arr)
         if not l.contains(o):
             break
+    if n > 3:
+        e = Plane(l, o)
+        basis = e.basis_matrix
+        a = Point(basis.dot(a.array))
+        b = Point(basis.dot(b.array))
+        c = Point(basis.dot(c.array))
+        o = Point(basis.dot(o.array))
+        l = Line(a, b)
+
     m = Line(o, c)
     p = o + 1/2*m.direction
-    return l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
+    result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
+    if n > 3:
+        return Point(basis.T.dot(result.array))
+    return result
 
 
 def angle(*args):
@@ -168,24 +184,21 @@ def is_perpendicular(l, m):
     return np.isclose(crossratio(L,M, I,J, Point(1, 1)), -1)
 
 
-def is_collinear(a,b,c, *args):
-    if not np.isclose(np.linalg.det([a.array, b.array, c.array]), 0):
+def is_coplanar(*args):
+    n = args[0].dim + 1
+    if not np.isclose(np.linalg.det([a.array for a in args[:n]]), 0):
         return False
-    n = np.cross(a.array, b.array)
-    for d in args:
-        if not np.isclose(np.vdot(n, d.array), 0):
+    if len(args) == n:
+        return True
+    covariant = args[0].tensor_shape[1] > 0
+    e = LeviCivitaTensor(n, covariant=covariant)
+    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n-1]])
+    tensor = diagram.calculate()
+    for t in args[n:]:
+        if not (covariant and t*tensor == 0 or not covariant and tensor*t == 0):
             return False
     return True
 
 
-def is_coplanar(a, b, c, d, *args):
-    if not np.isclose(np.linalg.det([a.array, b.array, c.array, d.array]), 0):
-        return False
-    p = Plane(b, c, d)
-    for e in args:
-        if not p.contains(e):
-            return False
-    return True
-
-
-is_concurrent = is_collinear
+is_collinear = is_coplanar
+is_concurrent = is_coplanar
