@@ -37,11 +37,17 @@ class Tensor:
 
 
 class LeviCivitaTensor(Tensor):
+
+    _cache = {}
     
     def __init__(self, size, covariant=True):
         contravariant_indices = range(size) if not covariant else None
-        f = np.vectorize(self._calc)
-        array = np.fromfunction(f, tuple(size*[size]), dtype=int)
+        if size in self._cache:
+            array = self._cache[size]
+        else:
+            f = np.vectorize(self._calc)
+            array = np.fromfunction(f, tuple(size*[size]), dtype=int)
+            self._cache[size] = array
         super(LeviCivitaTensor, self).__init__(array, contravariant_indices=contravariant_indices)
 
     @staticmethod

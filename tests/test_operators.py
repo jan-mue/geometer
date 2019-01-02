@@ -41,6 +41,15 @@ def test_is_cocircular():
     assert is_cocircular(p, t*p, t*t*p, t*t*t*p)
 
 
+def test_is_coplanar():
+    p1 = Point(1, 1, 0)
+    p2 = Point(2, 1, 0)
+    p3 = Point(3, 4, 0)
+    p4 = Point(0, 2, 0)
+
+    assert is_coplanar(p1, p2, p3, p4)
+
+
 def test_is_perpendicular():
     l = Line(0, 1, 0)
     m = Line(1, 0, 0)
