@@ -25,14 +25,19 @@ def join(*args):
 
     if len(args) == 2:
         if isinstance(args[0], Line) and isinstance(args[1], Point):
-            return Plane(args[0]*args[1])
-        if isinstance(args[0], Point) and isinstance(args[1], Line):
-            return Plane(args[1]*args[0])
+            result = args[0]*args[1]
+        elif isinstance(args[0], Point) and isinstance(args[1], Line):
+            result = args[1]*args[0]
+        else:
+            l, m = args
+            a = (m * l.covariant_tensor).array
+            i = np.unravel_index(np.abs(a).argmax(), a.shape)[0]
+            result = Tensor(a[i, :], contravariant_indices=[0])
 
-        l, m = args
-        a = (m * l.covariant_tensor).array
-        i = np.unravel_index(a.argmax(), a.shape)[0]
-        return Plane(a[i, :])
+        if result == 0:
+            raise LinearDependenceError("Arguments are not linearly independent.")
+
+        return Plane(result)
 
 
 def meet(*args):
@@ -41,7 +46,7 @@ def meet(*args):
         if args[0].tensor_shape[1] == 2:
             l, m = args
             a = (m * l.covariant_tensor).array
-            i = np.unravel_index(a.argmax(), a.shape)[1]
+            i = np.unravel_index(np.abs(a).argmax(), a.shape)[1]
             return Point(a[:, i])
 
         n = len(args[0])
@@ -77,8 +82,9 @@ class Point(ProjectiveElement, GeometryObject):
             super(Point, self).__init__(*args, 1)
 
     def __add__(self, other):
-        result = self.normalized().array[:-1] + other.normalized().array[:-1]
-        result = np.append(result, 1)
+        a, b = self.normalized().array, other.normalized().array
+        result = a[:-1] + b[:-1]
+        result = np.append(result, min(a[-1], b[-1]))
         return Point(result)
 
     def __sub__(self, other):
@@ -102,12 +108,12 @@ class Point(ProjectiveElement, GeometryObject):
             pt = self
         else:
             pt = self.normalized()
-        return f"Point({','.join(pt.array[:-1].astype(str))})" + (" at Infinity" if self.array[-1] == 0 else "")
+        return f"Point({','.join(pt.array[:-1].astype(str))})" + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
 
     def normalized(self):
-        if self.array[-1] == 0:
-            return self.__class__(self.array)
-        return self.__class__(self.array / self.array[-1])
+        if np.isclose(self.array[-1], 0):
+            return self
+        return Point(self.array / self.array[-1])
 
     @property
     def x(self):
@@ -289,7 +295,7 @@ class Plane(ProjectiveElement, GeometryObject):
     @property
     def basis_matrix(self):
         i = np.where(self.array != 0)[0][0]
-        result = np.zeros((4, 3))
+        result = np.zeros((4, 3), dtype=self.array.dtype)
         a = [j for j in range(4) if j != i]
         result[i, :] = self.array[a]
         result[a, range(3)] = -self.array[i]

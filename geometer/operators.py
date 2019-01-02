@@ -44,7 +44,12 @@ def crossratio(a, b, c, d, from_point=None):
 
 def angle(*args):
     if len(args) == 3:
-        a,b,c = args
+        a, b, c = args
+        if a.dim == 3:
+            e = Plane(*args)
+            basis = e.basis_matrix
+            a, b, c = Point(basis.dot(a.array)), Point(basis.dot(b.array)), Point(basis.dot(c.array))
+
     elif len(args) == 2:
         if isinstance(args[0], Plane):
             e, f = args
@@ -59,12 +64,41 @@ def angle(*args):
 
         l, m = args
         a = l.meet(m)
-        b = l.meet(infty)
-        c = m.meet(infty)
+
+        if a.dim == 3:
+            e = Plane(l, m)
+            basis = e.basis_matrix
+            a = Point(basis.dot(a.array))
+            b = Point(basis.dot(l.meet(infty_plane).array))
+            c = Point(basis.dot(m.meet(infty_plane).array))
+        else:
+            b = l.meet(infty)
+            c = m.meet(infty)
     else:
         raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
 
     return 1/2j*np.log(crossratio(b,c, I,J, a))
+
+
+def angle_bisectors(l, m):
+    o = l.meet(m)
+    if o.dim == 3:
+        e = Plane(l, m)
+        basis = e.basis_matrix
+        L = Point(basis.dot(l.meet(infty_plane).array))
+        M = Point(basis.dot(m.meet(infty_plane).array))
+    else:
+        L, M = l.meet(infty), m.meet(infty)
+    p = Point(0, 0)
+    li = np.linalg.det([p.array, L.array, I.array])
+    lj = np.linalg.det([p.array, L.array, J.array])
+    mi = np.linalg.det([p.array, M.array, I.array])
+    mj = np.linalg.det([p.array, M.array, J.array])
+    a, b = np.sqrt(lj*mj), np.sqrt(li*mi)
+    r, s = a*I+b*J, a*I-b*J
+    if o.dim == 3:
+        r, s = Point(basis.T.dot(r.array)), Point(basis.T.dot(s.array))
+    return Line(o, r), Line(o, s)
 
 
 def dist(p, q):
@@ -109,9 +143,15 @@ def is_cocircular(a,b,c,d):
 
 
 def is_perpendicular(l, m):
-    L = l.meet(infty)
-    M = m.meet(infty)
-    return np.isclose(crossratio(L,M, I,J, Point(1,1)), -1)
+    if l.dim == 3:
+        e = Plane(l, m)
+        basis = e.basis_matrix
+        L = Point(basis.dot(l.meet(infty_plane).array))
+        M = Point(basis.dot(m.meet(infty_plane).array))
+    else:
+        L = l.meet(infty)
+        M = m.meet(infty)
+    return np.isclose(crossratio(L,M, I,J, Point(1, 1)), -1)
 
 
 def is_collinear(a,b,c, *args):
