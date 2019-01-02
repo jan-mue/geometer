@@ -1,6 +1,6 @@
 from itertools import product
 import numpy as np
-from .point import Point, Line, Plane, I, J, infty, infty_plane
+from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
 from .exceptions import IncidenceError, NotCollinear, LinearDependenceError
 
@@ -40,6 +40,20 @@ def crossratio(a, b, c, d, from_point=None):
     bc = np.linalg.det(o + [b.array, c.array])
 
     return ac * bd / (ad * bc)
+
+
+def harmonic_set(a, b, c):
+    l = Line(a, b)
+    n = l.dim + 1
+    arr = np.zeros(n)
+    for i in range(n):
+        arr[-i-1] = 1
+        o = Point(arr)
+        if not l.contains(o):
+            break
+    m = Line(o, c)
+    p = o + 1/2*m.direction
+    return l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
 
 
 def angle(*args):

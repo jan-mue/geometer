@@ -116,3 +116,11 @@ def test_cp1():
     assert m*p == q
     c = crossratio(p, q, m*q, m*m*q)
     assert np.isclose(np.real(c), c)
+
+
+def test_harmonic_set():
+    a = Point(0, 0)
+    b = Point(1, 1)
+    c = Point(3, 3)
+    d = harmonic_set(a, b, c)
+    assert np.isclose(crossratio(a, b, c, d), -1)
