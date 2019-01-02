@@ -2,7 +2,7 @@ from collections import Iterable
 
 import numpy as np
 import sympy
-import scipy
+import scipy.linalg
 from .base import ProjectiveElement, GeometryObject, TensorDiagram, LeviCivitaTensor, Tensor
 from .exceptions import LinearDependenceError
 

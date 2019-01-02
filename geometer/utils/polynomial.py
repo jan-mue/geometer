@@ -14,6 +14,7 @@ def polyval(x, c):
 
 
 def poly_to_np_array(p, symbols):
+    p = sympy.Poly(p, symbols)
     c = np.zeros([p.total_degree() + 1] * len(symbols), dtype=object)
 
     indices = [range(p.total_degree() + 1)] * len(symbols)
@@ -27,6 +28,7 @@ def poly_to_np_array(p, symbols):
 
 
 def np_array_to_poly(c, symbols):
+    c = np.array(c)
     f = 0
     indices = [range(i) for i in c.shape]
     for index in itertools.product(*indices):

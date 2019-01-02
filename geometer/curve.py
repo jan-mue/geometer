@@ -71,45 +71,6 @@ class AlgebraicCurve(ProjectiveElement):
                 sol.remove((0,0,0))
 
             return [Point(p) for p in sol]
-
-
-class EllipticCurve(AlgebraicCurve):
-    """Representation of an Elliptic Curve.
-
-    f(x, y) = y**2 - x**3 - a*x* - b
-
-    """
-
-    o = Point([0,1,0])
-
-    def __init__(self, a, b):
-        x,y,z = sympy.symbols("x y z")
-        super(EllipticCurve, self).__init__(z*y**2 - x**3 - a*x*z**2 - b*z**3, symbols=(x,y,z))
-
-    def _join_and_intersect(self, a, b):
-        if a == b:
-            l = self.tangent(at=a)
-        else:
-            l = a.join(b)
-
-        intersections = self.intersect(l)
-        if len(intersections) == 1:
-            return intersections[0]
-        if len(intersections) == 2:
-            for point in intersections:
-                if self.tangent(at=point) == l:
-                    return point
-        if len(intersections) == 3:
-            intersections.remove(a)
-            intersections.remove(b)
-            return intersections[0]
-
-    def add(self, p:Point, q:Point):
-        r = self._join_and_intersect(p, q)
-        return self.invert(r)
-
-    def invert(self, pt: Point):
-        return self._join_and_intersect(self.o, pt)
     
     
 class Quadric(AlgebraicCurve):

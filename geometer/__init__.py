@@ -1,7 +1,6 @@
-from .point import Point, Line, Plane, join, meet,  I, J, infty
+from .point import Point, Line, Plane, join, meet,  I, J, infty, infty_plane
 from .shapes import Segment, Polygon, Triangle, Rectangle
-from .curve import EllipticCurve, Conic, Circle, Quadric
+from .curve import AlgebraicCurve, Conic, Circle, Quadric
 from .transformation import Transformation, rotation, translation
 from .operators import crossratio, is_cocircular, is_perpendicular, is_collinear, is_concurrent, dist, angle
-from .manifold import Path, residue
 from .__version__ import __version__
