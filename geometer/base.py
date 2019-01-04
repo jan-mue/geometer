@@ -4,6 +4,24 @@ from .exceptions import TensorComputationError
 
 
 class Tensor:
+    """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
+
+    Parameters
+    ----------
+    *args
+        Either a single iterable or multiple coordinate numbers.
+    contravariant_indices : :obj:`list(int)`, optional
+        The indices of the array that are contravariant indices. By default all indices are covariant.
+
+    Attributes
+    ----------
+    array : ndarray
+        The underlying numpy array.
+    tensor_shape : tuple(int)
+        The shape of the indices of the tensor, the first number is the number of covariant indices, the second the
+        number of contravariant indices.
+
+    """
 
     def __init__(self, *args, contravariant_indices=None):
         if len(args) == 1:
@@ -37,6 +55,16 @@ class Tensor:
 
 
 class LeviCivitaTensor(Tensor):
+    """This class can be used to construct a tensor representing the Levi-Civita symbol.
+
+    Parameters
+    ----------
+    size : int
+        The number of indices of the tensor.
+    covariant: :obj:`bool`, optional
+        If true, the tensor will only have covariant indices. Default: True
+
+    """
 
     _cache = {}
     
@@ -57,6 +85,14 @@ class LeviCivitaTensor(Tensor):
 
 
 class TensorDiagram:
+    """A class used to specify and calculate tensor diagrams (also called Penrose Graphical Notation).
+
+    Parameters
+    ----------
+    *edges
+        Variable number of tuples, that represent the edge from one tensor to another.
+
+    """
 
     def __init__(self, *edges):
         self._nodes = []
@@ -67,6 +103,16 @@ class TensorDiagram:
             self.add_edge(*e)
 
     def add_edge(self, source, target):
+        """Add an edge to the diagram.
+
+        Parameters
+        ----------
+        source : Tensor
+            The source tensor of the edge in the diagram.
+        target : Tensor
+            The target tensor of the edge in the diagram.
+
+        """
         source_index = None
         target_index = None
         index_count = 0
@@ -117,6 +163,14 @@ class TensorDiagram:
         self._indices[max(i, j)] = min(i, j)
 
     def calculate(self):
+        """Calculates the result of the diagram.
+
+        Returns
+        -------
+        Tensor
+            The tensor resulting from the specified tensor diagram.
+
+        """
         indices = np.split(self._indices, self._split_indices[1:])
         args = [x for i, node in enumerate(self._nodes) for x in (node.array, indices[i].tolist())]
         result_indices = {

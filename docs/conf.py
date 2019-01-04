@@ -22,7 +22,7 @@
 import geometer
 
 project = 'geometer'
-copyright = '2018, Jan Müller'
+copyright = '2019, Jan Müller'
 author = 'Jan Müller'
 
 # The short X.Y version
@@ -44,6 +44,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
+    'sphinx.ext.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
