@@ -227,8 +227,7 @@ class Line(ProjectiveElement, GeometryObject):
     @property
     def base_point(self):
         if self.dim > 2:
-            val, vec = scipy.linalg.eigh(self.array.T.dot(self.array))
-            return Point(vec[:, np.argmin(val)])
+            return Point(self.basis_matrix[0, :])
 
         if np.isclose(self.array[2], 0):
             return Point(0, 0)

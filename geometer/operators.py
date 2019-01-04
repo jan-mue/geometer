@@ -137,10 +137,12 @@ def dist(p, q):
         return dist(p.project(q), q)
     if isinstance(p, Point) and isinstance(q, (Plane, Line)):
         return dist(q.project(p), p)
-    if isinstance(p, (Plane, Line)) and isinstance(q, (Plane, Line)):
+    if isinstance(p, Plane) and isinstance(q, (Plane, Line)):
         return dist(p, Point(q.basis_matrix[0, :]))
+    if isinstance(q, Plane) and isinstance(p, Line):
+        return dist(q, p.base_point)
 
-    a, b = p.array, q.array
+    a, b = p.normalized().array, q.normalized().array
     if p.dim == 3:
         for i in range(4):
             try:

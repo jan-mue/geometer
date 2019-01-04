@@ -15,11 +15,18 @@ def test_dist():
     p = Point(0, 0)
     q = Point(1, 0)
 
+    assert dist(p, q) == 1
+
     p1 = Point(0, 0, 0)
     p2 = Point(1, 0, 0)
 
-    assert dist(p, q) == 1
     assert dist(p1, p2) == 1
+
+    e = Plane(1, 0, 0, 0)
+    assert dist(e, p2) == 1
+
+    l = Line(p2, Point(1, 1, 0))
+    assert dist(l, e) == 1
 
 
 def test_angle():
