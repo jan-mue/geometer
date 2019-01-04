@@ -27,6 +27,7 @@ def test_dist():
 
     l = Line(p2, Point(1, 1, 0))
     assert dist(l, e) == 1
+    assert dist(l, p1) == 1
 
 
 def test_angle():
