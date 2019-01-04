@@ -1,7 +1,7 @@
 import numpy as np
-from .point import Line, Point
+from .point import Line, Point, infty, infty_plane
 from .base import GeometryObject
-from .operators import angle
+from .operators import angle, harmonic_set
 
 
 class Segment(GeometryObject):
@@ -29,6 +29,10 @@ class Segment(GeometryObject):
         if isinstance(other, Segment):
             pt = other.intersect(self._line)
             return pt if pt is None or self.contains(pt) else None
+
+    def midpoint(self):
+        l = self._line.meet(infty if self._line.dim == 2 else infty_plane)
+        return harmonic_set(*self._points, l)
 
 
 class Polygon(GeometryObject):
@@ -77,9 +81,9 @@ class Polygon(GeometryObject):
 
     def contains(self, pt: Point):
         for s in self._segments:
-            if s.contains(pt):
-                return True
-        return False
+            if s._line.array.dot(pt.array) > 0:
+                return False
+        return True
 
     def intersect(self, other):
         if isinstance(other, (Line, Segment)):
