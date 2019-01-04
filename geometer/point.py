@@ -317,6 +317,31 @@ class Plane(ProjectiveElement, GeometryObject):
         l = self.meet(infty_plane)
         return join(l, through)
 
+    def mirror(self, pt: Point):
+        l = self.meet(infty_plane)
+        l = Line(np.cross(*l.basis_matrix[:, :-1]))
+        p = l.base_point
+        polar = Line(p.array)
+
+        from .curve import absolute_conic
+        tangent_points = absolute_conic.intersect(polar)
+        tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+
+        l1 = tangent_points[0].join(pt)
+        l2 = tangent_points[1].join(pt)
+        p1 = self.meet(l1)
+        p2 = self.meet(l2)
+        m1 = p1.join(tangent_points[1])
+        m2 = p2.join(tangent_points[0])
+        return m1.meet(m2)
+
+    def project(self, pt: Point):
+        l = self.mirror(pt).join(pt)
+        return self.meet(l)
+
+    def perpendicular(self, through: Point):
+        return self.mirror(through).join(through)
+
     def intersect(self, other):
         if isinstance(other, Line):
             if self.contains(other):

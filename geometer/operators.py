@@ -8,8 +8,9 @@ from .exceptions import IncidenceError, NotCollinear, LinearDependenceError
 
 def crossratio(a, b, c, d, from_point=None):
     if isinstance(a, Line):
-        if not is_concurrent(a,b,c,d):
-            raise IncidenceError("The lines are not concurrent: " + str([a,b,c,d]))
+        if not is_concurrent(a, b, c, d):
+            raise IncidenceError("The lines are not concurrent: " + str([a, b, c, d]))
+
         from_point = a.meet(b)
         a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point
 
@@ -132,7 +133,13 @@ def angle_bisectors(l, m):
 
 
 def dist(p, q):
-    # TODO: lines & planes
+    if isinstance(p, (Plane, Line)) and isinstance(q, Point):
+        return dist(p.project(q), q)
+    if isinstance(p, Point) and isinstance(q, (Plane, Line)):
+        return dist(q.project(p), p)
+    if isinstance(p, (Plane, Line)) and isinstance(q, (Plane, Line)):
+        return dist(p, Point(q.basis_matrix[0, :]))
+
     a, b = p.array, q.array
     if p.dim == 3:
         for i in range(4):

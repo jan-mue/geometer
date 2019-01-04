@@ -97,6 +97,9 @@ class Test3D:
         l = Line(p1, p2)
         assert l.project(Point(0, 0, 0)) == Point(0, 1, 0)
 
+        e = Plane(0, 0, 1, 0)
+        assert e.project(Point(1, 1, 5)) == p1
+
     def test_parallel(self):
         p = Point(0, 0, 1)
         q = Point(1, 0, 1)
