@@ -12,7 +12,7 @@ from setuptools import find_packages, setup, Command
 NAME = 'geometer'
 DESCRIPTION = 'Geometry for Python.'
 URL = 'https://github.com/jan-mue/geometer'
-EMAIL = 'me@example.com'
+EMAIL = ''
 AUTHOR = 'Jan Müller'
 REQUIRES_PYTHON = '>=3.5.0'
 VERSION = None
