@@ -10,7 +10,7 @@ from setuptools import find_packages, setup, Command
 
 # Package meta-data.
 NAME = 'geometer'
-DESCRIPTION = 'Geometry for Python.'
+DESCRIPTION = 'Python geometry package based on projective geometry and numpy.'
 URL = 'https://github.com/jan-mue/geometer'
 EMAIL = ''
 AUTHOR = 'Jan Müller'
@@ -76,7 +76,7 @@ class UploadCommand(Command):
             pass
 
         self.status('Building Source and Wheel (universal) distribution…')
-        os.system('{0} setup.py sdist bdist_wheel --universal'.format(sys.executable))
+        os.system('{0} setup.py sdist bdist_wheel'.format(sys.executable))
 
         self.status('Uploading the package to PyPI via Twine…')
         os.system('twine upload dist/*')
