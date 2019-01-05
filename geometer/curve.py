@@ -8,6 +8,21 @@ from numpy.lib.scimath import sqrt as csqrt
 
 
 class AlgebraicCurve(ProjectiveElement):
+    """A general algebraic curve, defined by the zero set of a homogeneous polynomial.
+
+    Parameters
+    ----------
+    poly : :obj:`sympy.Expr` or :obj:`numpy.ndarray`
+        The polynomial defining the curve.
+    symbols : :obj:`tuple` of :obj:`sympy.Symbol`, optional
+        The symbols that are used in the polynomial. By default the symbols (x1, ..., xn) will be used.
+
+    Attributes
+    ----------
+    symbols : :obj:`tuple` of :obj:`sympy.Symbol`
+        The symbols used in the polynomial defining the curve.
+
+    """
 
     def __init__(self, poly, symbols=None):
         if symbols is None:
@@ -34,6 +49,7 @@ class AlgebraicCurve(ProjectiveElement):
 
     @property
     def polynomial(self):
+        """sympy.Poly: The polynomial defining this curve."""
         return np_array_to_poly(self.array, self.symbols)
 
     def tangent(self, at):
@@ -44,18 +60,57 @@ class AlgebraicCurve(ProjectiveElement):
 
     @property
     def degree(self):
+        """int: The degree of the curve, i.e. the homogeneous order of the defining polynomial."""
         return self.polynomial.homogeneous_order()
 
     def is_tangent(self, line):
+        """Tests if a given line is tangent to the curve.
+
+        Parameters
+        ----------
+        line : Line
+            The line to test.
+
+        Returns
+        -------
+        bool
+            True if the given line is tangent to the algebraic curve.
+
+        """
         return len(self.intersect(line)) < self.degree
 
-    def contains(self, pt: Point):
+    def contains(self, pt):
+        """Tests if a given point lies on the algebraic curve.
+
+        Parameters
+        ----------
+        pt: Point
+            The point to test.
+
+        Returns
+        -------
+        bool
+            True if the curve contains the point.
+
+        """
         return np.isclose(float(polyval(pt.array, self.array)), 0)
 
     def intersect(self, other):
-        if isinstance(other, Line):
-            sol = set()
+        """Calculate the intersections of the algebraic curve with a line or another curve.
 
+        Parameters
+        ----------
+        other : :obj:`Line` or :obj:`AlgebraicCurve`
+
+        Returns
+        -------
+        :obj:`list` of :obj:`Point`
+            The points of intersection.
+
+        """
+        sol = set()
+
+        if isinstance(other, Line):
             for z in [0, 1]:
                 polys = [self.polynomial.subs(self.symbols[-1], z)]
                 for f in other.polynomials(self.symbols):
@@ -67,13 +122,34 @@ class AlgebraicCurve(ProjectiveElement):
                 except NotImplementedError:
                     continue
 
-            if (0,0,0) in sol:
-                sol.remove((0,0,0))
+        if isinstance(other, AlgebraicCurve):
+            for z in [0, 1]:
+                f = self.polynomial.subs(self.symbols[-1], z)
+                g = other.polynomial.subs(self.symbols[-1], z)
 
-            return [Point(p) for p in sol]
+                try:
+                    x = sympy.solve_poly_system([f, g], *self.symbols[:-1])
+                    sol.update(tuple(float(x) for x in cor) + (z,) for cor in x)
+                except NotImplementedError:
+                    continue
+
+        if (0, 0, 0) in sol:
+            sol.remove((0, 0, 0))
+
+        return [Point(p) for p in sol]
     
     
 class Quadric(AlgebraicCurve):
+    """Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
+
+    The quadric is defined by a matrix of size n+1 where n is the dimension of the space.
+
+    Parameters
+    ----------
+    matrix : array_like
+        The array defining a (n+1)x(n+1) matrix.
+
+    """
 
     def __init__(self, matrix):
         self.matrix = np.array(matrix)
@@ -82,10 +158,24 @@ class Quadric(AlgebraicCurve):
         super(Quadric, self).__init__(sum(a*b for a, b in zip(m.dot(symbols), symbols)), symbols=symbols)
 
     def tangent(self, at):
+        """Returns the hyperplane defining the tangent space at a given point.
+
+        Parameters
+        ----------
+        at : Point
+            The point at which the tangent space is calculated.
+
+        Returns
+        -------
+        Plane
+            The tangent plane at the given point.
+
+        """
         return Plane(self.matrix.dot(at.array))
 
     @property
     def is_degenerate(self):
+        """bool: True if the quadric is degenerate."""
         return np.isclose(float(np.linalg.det(self.matrix)), 0)
 
 
@@ -131,7 +221,7 @@ class Conic(Quadric):
 
     def intersect(self, other):
         if isinstance(other, Line):
-            x,y,z = tuple(other.array)
+            x, y, z = tuple(other.array)
             m = np.array([[0, z, -y],
                           [-z, 0, x],
                           [y, -x, 0]])

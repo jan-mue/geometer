@@ -162,15 +162,6 @@ def dist(p, q):
     return np.sqrt(pqi*pqj)
 
 
-def intersection(*args):
-    result = []
-    for x, y in product(args, args):
-        for i in x.intersect(y):
-            if i not in result:
-                result.append(i)
-    return result
-
-
 def is_cocircular(a,b,c,d):
     if np.any(np.iscomplex([a.array, b.array, c.array, d.array])) :
         cross = crossratio(a,b,c,d)

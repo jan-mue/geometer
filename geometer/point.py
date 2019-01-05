@@ -3,7 +3,7 @@ from collections import Iterable
 import numpy as np
 import sympy
 import scipy.linalg
-from .base import ProjectiveElement, GeometryObject, TensorDiagram, LeviCivitaTensor, Tensor
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 from .exceptions import LinearDependenceError
 
 
@@ -73,7 +73,7 @@ def meet(*args):
         return Point(diagram.calculate())
 
 
-class Point(ProjectiveElement, GeometryObject):
+class Point(ProjectiveElement):
 
     def __init__(self, *args):
         if len(args) == 1 and isinstance(args[0], (Iterable, Tensor)):
@@ -128,17 +128,12 @@ class Point(ProjectiveElement, GeometryObject):
     def join(self, *others):
         return join(self, *others)
 
-    def intersect(self, other):
-        if isinstance(other, Line):
-            if other.contains(self):
-                return [self]
-
 
 I = Point([-1j, 1, 0])
 J = Point([1j, 1, 0])
 
 
-class Line(ProjectiveElement, GeometryObject):
+class Line(ProjectiveElement):
 
     def __init__(self, *args):
         if len(args) == 2:
@@ -187,12 +182,6 @@ class Line(ProjectiveElement, GeometryObject):
         l = other.covariant_tensor
         d = TensorDiagram((l, self), (l, self))
         return d.calculate() == 0
-
-    def intersect(self, other):
-        if isinstance(other, Line):
-            if self.dim == 3 and not self.is_coplanar(other):
-                return []
-            return [self.meet(other)]
 
     def __add__(self, point):
         t = np.array([[1, 0, 0], [0, 1, 0], (-point.normalized()).array]).T
@@ -279,7 +268,7 @@ class Line(ProjectiveElement, GeometryObject):
 infty = Line(0, 0, 1)
 
 
-class Plane(ProjectiveElement, GeometryObject):
+class Plane(ProjectiveElement):
     
     def __init__(self, *args):
         if len(args) == 2 or len(args) == 3:
@@ -340,12 +329,6 @@ class Plane(ProjectiveElement, GeometryObject):
 
     def perpendicular(self, through: Point):
         return self.mirror(through).join(through)
-
-    def intersect(self, other):
-        if isinstance(other, Line):
-            if self.contains(other):
-                return [other]
-        return [self.meet(other)]
 
 
 infty_plane = Plane(0, 0, 0, 1)

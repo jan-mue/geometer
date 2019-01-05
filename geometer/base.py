@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 import numpy as np
 from .exceptions import TensorComputationError
 
@@ -10,16 +10,13 @@ class Tensor:
     ----------
     *args
         Either a single iterable or multiple coordinate numbers.
-    contravariant_indices : :obj:`list(int)`, optional
+    contravariant_indices : :obj:`list` of :obj:`int`, optional
         The indices of the array that are contravariant indices. By default all indices are covariant.
 
     Attributes
     ----------
-    array : ndarray
+    array : numpy.ndarray
         The underlying numpy array.
-    tensor_shape : tuple(int)
-        The shape of the indices of the tensor, the first number is the number of covariant indices, the second the
-        number of contravariant indices.
 
     """
 
@@ -38,6 +35,8 @@ class Tensor:
 
     @property
     def tensor_shape(self):
+        """:obj:`tuple` of :obj:`int`: The shape of the indices of the tensor, the first number is the number of covariant
+        indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
 
     def __mul__(self, other):
@@ -186,14 +185,10 @@ class TensorDiagram:
         return Tensor(x, contravariant_indices=range(cov_count, len(result_indices)))
 
 
-class GeometryObject(ABC):
-
-    @abstractmethod
-    def intersect(self, other):
-        pass
-
-
 class ProjectiveElement(Tensor, ABC):
+    """Base class for all projective tensors, i.e. all objects that identify scalar multiples.
+
+    """
 
     def __eq__(self, other):
         # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
@@ -206,4 +201,5 @@ class ProjectiveElement(Tensor, ABC):
 
     @property
     def dim(self):
+        """int: The dimension of the tensor."""
         return self.array.shape[0] - 1
