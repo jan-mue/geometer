@@ -28,9 +28,10 @@ and the documentation on [Read the Docs](https://geometer.readthedocs.io).
 
 ## Installation
 
-You can install the package directly from PyPi::
-
+You can install the package directly from PyPi:
+```bash
    pip install geometer
+```
    
 ## Usage
 
