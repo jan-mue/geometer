@@ -194,7 +194,7 @@ class ProjectiveElement(Tensor, ABC):
         # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
         a = self.array.ravel()
         b = other.array.ravel()
-        return np.isclose(float(np.abs(np.vdot(a, b)))**2, float(np.vdot(a, a)*np.vdot(b, b)))
+        return np.isclose(np.abs(np.vdot(a, b))**2, np.vdot(a, a)*np.vdot(b, b))
 
     def __len__(self):
         return np.product(self.array.shape)

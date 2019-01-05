@@ -153,9 +153,8 @@ class Quadric(AlgebraicCurve):
 
     def __init__(self, matrix):
         self.matrix = np.array(matrix)
-        m = sympy.Matrix(matrix)
-        symbols = sympy.symbols(["x" + str(i) for i in range(m.shape[1])])
-        super(Quadric, self).__init__(sum(a*b for a, b in zip(m.dot(symbols), symbols)), symbols=symbols)
+        symbols = sympy.symbols(["x" + str(i) for i in range(self.matrix.shape[1])])
+        super(Quadric, self).__init__(self.matrix.dot(symbols).dot(symbols), symbols=symbols)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -180,6 +179,9 @@ class Quadric(AlgebraicCurve):
 
 
 class Conic(Quadric):
+    """A two-dimensional conic.
+
+    """
 
     def __init__(self, matrix, is_dual=False):
         self.is_dual = is_dual
@@ -244,7 +246,7 @@ class Conic(Quadric):
                 return results
             x = sympy.symbols("x")
             m = sympy.Matrix(self.matrix + x * other.matrix)
-            f = sympy.Poly(m.det(), x)
+            f = sympy.poly(m.det(), x)
             roots = np.roots(f.coeffs())
             c = Conic(self.matrix + roots[0]*other.matrix)
             results = []

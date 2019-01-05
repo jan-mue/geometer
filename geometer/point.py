@@ -67,6 +67,8 @@ def meet(*args):
             l, p = args
         elif isinstance(args[1], Line) and isinstance(args[0], Plane):
             p, l = args
+        else:
+            raise ValueError("Operation not supported.")
 
         e = LeviCivitaTensor(4)
         diagram = TensorDiagram((e, l), (e, l), (e, p))
@@ -106,24 +108,12 @@ class Point(ProjectiveElement):
         return (-1)*self
 
     def __repr__(self):
-        if self.array[-1] == 0:
-            pt = self
-        else:
-            pt = self.normalized()
-        return "Point(" + ",".join(pt.array[:-1].astype(str)) + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
+        return "Point({})".format(",".join(self.normalized().array[:-1].astype(str))) + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
 
     def normalized(self):
         if np.isclose(self.array[-1], 0):
             return self
         return Point(self.array / self.array[-1])
-
-    @property
-    def x(self):
-        return self.normalized().array[0]
-
-    @property
-    def y(self):
-        return self.normalized().array[1]
 
     def join(self, *others):
         return join(self, *others)
@@ -147,7 +137,7 @@ class Line(ProjectiveElement):
 
         def p(row):
             f = sum(x*s for x, s in zip(row, symbols))
-            return sympy.Poly(f, symbols)
+            return sympy.poly(f, symbols)
 
         if self.dim == 2:
             return [p(self.array)]
@@ -191,7 +181,7 @@ class Line(ProjectiveElement):
         return self + other
 
     def __repr__(self):
-        return "Line(" + str(self.array.tolist())
+        return "Line({})".format(str(self.array.tolist()))
 
     def parallel(self, through):
         if self.dim == 2:
@@ -299,7 +289,10 @@ class Plane(ProjectiveElement):
     def polynomial(self):
         symbols = sympy.symbols("x1 x2 x3 x4")
         f = sum(x * s for x, s in zip(self.array, symbols))
-        return sympy.Poly(f, symbols)
+        return sympy.poly(f, symbols)
+
+    def __repr__(self):
+        return "Plane({})".format(",".join(self.array.astype(str)))
 
     def parallel(self, through):
         l = self.meet(infty_plane)

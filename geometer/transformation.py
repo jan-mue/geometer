@@ -43,6 +43,9 @@ class Transformation(ProjectiveElement):
             return Transformation(self.array.dot(other.array))
         raise NotImplementedError
 
+    def __pow__(self, power, modulo=None):
+        return Transformation(pow(self.array, power, modulo))
+
     def inverse(self):
         return Transformation(np.linalg.inv(self.array))
 

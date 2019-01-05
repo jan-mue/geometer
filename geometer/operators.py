@@ -1,4 +1,3 @@
-from itertools import product
 import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
@@ -82,29 +81,36 @@ def angle(*args):
             a, b, c = Point(basis.dot(a.array)), Point(basis.dot(b.array)), Point(basis.dot(c.array))
 
     elif len(args) == 2:
-        if isinstance(args[0], Plane):
-            e, f = args
-            l = e.meet(f)
+        x, y = args
+
+        if isinstance(x, Plane) and isinstance(y, Plane):
+            l = x.meet(y)
             p = l.meet(infty_plane)
             polar = Line(p.array[:-1])
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
-            return 1/2j*np.log(crossratio(e, f, i, j))
+            return 1/2j*np.log(crossratio(x, y, i, j))
 
-        l, m = args
-        a = l.meet(m)
+        if isinstance(x, Line) and isinstance(y, Line):
+            a = x.meet(y)
+        else:
+            a = Point(*(x.dim * [0]))
+            if isinstance(x, Point):
+                x = a.join(x)
+            if isinstance(y, Point):
+                y = a.join(y)
 
         if a.dim == 3:
-            e = Plane(l, m)
+            e = Plane(x, y)
             basis = e.basis_matrix
             a = Point(basis.dot(a.array))
-            b = Point(basis.dot(l.meet(infty_plane).array))
-            c = Point(basis.dot(m.meet(infty_plane).array))
+            b = Point(basis.dot(x.meet(infty_plane).array))
+            c = Point(basis.dot(y.meet(infty_plane).array))
         else:
-            b = l.meet(infty)
-            c = m.meet(infty)
+            b = x.meet(infty)
+            c = y.meet(infty)
     else:
         raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
 

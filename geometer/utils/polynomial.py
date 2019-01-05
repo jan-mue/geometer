@@ -14,8 +14,8 @@ def polyval(x, c):
 
 
 def poly_to_np_array(p, symbols):
-    p = sympy.Poly(p, symbols)
-    c = np.zeros([p.total_degree() + 1] * len(symbols), dtype=object)
+    p = sympy.poly(p, symbols)
+    c = np.zeros([p.total_degree() + 1] * len(symbols), dtype=complex)
 
     indices = [range(p.total_degree() + 1)] * len(symbols)
     for idx in itertools.product(*indices):
@@ -24,6 +24,8 @@ def poly_to_np_array(p, symbols):
             x *= symbols[i] ** a
         c[idx] = p.coeff_monomial(x)
 
+    if not np.any(np.iscomplex(c)):
+        return np.real(c)
     return c
 
 
@@ -37,4 +39,4 @@ def np_array_to_poly(c, symbols):
             x *= s ** index[i]
         a = c[index]
         f += a * x
-    return sympy.Poly(f, symbols)
+    return sympy.poly(f, symbols)
