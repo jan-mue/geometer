@@ -4,7 +4,7 @@ from .point import Point, Line
 from .curve import Conic
 
 
-def rotation(angle: float):
+def rotation(angle):
     return Transformation([[np.cos(angle), - np.sin(angle), 0],
                            [np.sin(angle), np.cos(angle), 0],
                            [0, 0, 1]])
@@ -12,7 +12,7 @@ def rotation(angle: float):
 
 def translation(*coordinates):
     m = np.eye(len(coordinates) + 1)
-    m[:-1, -1] = [*coordinates]
+    m[:-1, -1] = coordinates
     return Transformation(m)
 
 

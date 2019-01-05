@@ -110,7 +110,7 @@ class Point(ProjectiveElement, GeometryObject):
             pt = self
         else:
             pt = self.normalized()
-        return f"Point({','.join(pt.array[:-1].astype(str))})" + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
+        return "Point(" + ",".join(pt.array[:-1].astype(str)) + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
 
     def normalized(self):
         if np.isclose(self.array[-1], 0):
@@ -202,9 +202,9 @@ class Line(ProjectiveElement, GeometryObject):
         return self + other
 
     def __repr__(self):
-        return f"Line({str(self.array.tolist())})"
+        return "Line(" + str(self.array.tolist())
 
-    def parallel(self, through: Point):
+    def parallel(self, through):
         if self.dim == 2:
             p = self.meet(infty)
         elif self.dim == 3:
@@ -217,7 +217,7 @@ class Line(ProjectiveElement, GeometryObject):
         p = self.meet(other)
         return np.isclose(p.array[-1], 0)
 
-    def perpendicular(self, through: Point):
+    def perpendicular(self, through):
         return self.mirror(through).join(through)
 
     def project(self, pt: Point):
@@ -255,7 +255,7 @@ class Line(ProjectiveElement, GeometryObject):
             return result/np.linalg.norm(result)
         return scipy.linalg.null_space(self.array).T
 
-    def mirror(self, pt: Point):
+    def mirror(self, pt):
         l = self
         if self.dim == 3:
             e = Plane(self, pt)
@@ -312,11 +312,11 @@ class Plane(ProjectiveElement, GeometryObject):
         f = sum(x * s for x, s in zip(self.array, symbols))
         return sympy.Poly(f, symbols)
 
-    def parallel(self, through: Point):
+    def parallel(self, through):
         l = self.meet(infty_plane)
         return join(l, through)
 
-    def mirror(self, pt: Point):
+    def mirror(self, pt):
         l = self.meet(infty_plane)
         l = Line(np.cross(*l.basis_matrix[:, :-1]))
         p = l.base_point
@@ -334,7 +334,7 @@ class Plane(ProjectiveElement, GeometryObject):
         m2 = p2.join(tangent_points[0])
         return m1.meet(m2)
 
-    def project(self, pt: Point):
+    def project(self, pt):
         l = self.mirror(pt).join(pt)
         return self.meet(l)
 

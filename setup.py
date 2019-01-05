@@ -14,7 +14,7 @@ DESCRIPTION = 'Geometry for Python.'
 URL = 'https://github.com/jan-mue/geometer'
 EMAIL = 'me@example.com'
 AUTHOR = 'Jan Müller'
-REQUIRES_PYTHON = '>=3.6.0'
+REQUIRES_PYTHON = '>=3.5.0'
 VERSION = None
 
 # What packages are required for this module to be executed?

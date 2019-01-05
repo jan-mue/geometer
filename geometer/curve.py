@@ -36,7 +36,7 @@ class AlgebraicCurve(ProjectiveElement):
     def polynomial(self):
         return np_array_to_poly(self.array, self.symbols)
 
-    def tangent(self, at: Point):
+    def tangent(self, at):
         dx = polyval(at.array, pl.polyder(self.array, axis=0))
         dy = polyval(at.array, pl.polyder(self.array, axis=1))
         dz = polyval(at.array, pl.polyder(self.array, axis=2))
@@ -46,7 +46,7 @@ class AlgebraicCurve(ProjectiveElement):
     def degree(self):
         return self.polynomial.homogeneous_order()
 
-    def is_tangent(self, line: Line):
+    def is_tangent(self, line):
         return len(self.intersect(line)) < self.degree
 
     def contains(self, pt: Point):
@@ -81,7 +81,7 @@ class Quadric(AlgebraicCurve):
         symbols = sympy.symbols(["x" + str(i) for i in range(m.shape[1])])
         super(Quadric, self).__init__(sum(a*b for a, b in zip(m.dot(symbols), symbols)), symbols=symbols)
 
-    def tangent(self, at: Point):
+    def tangent(self, at):
         return Plane(self.matrix.dot(at.array))
 
     @property
@@ -164,7 +164,7 @@ class Conic(Quadric):
                         results.append(i)
             return results
 
-    def tangent(self, at: Point):
+    def tangent(self, at):
         return Line(self.matrix.dot(at.array))
 
     @property
@@ -177,7 +177,7 @@ absolute_conic = Conic(np.eye(3))
 
 class Circle(Conic):
 
-    def __init__(self, center: Point = Point(0,0), radius: float = 1):
+    def __init__(self, center=Point(0, 0), radius=1):
         super(Circle, self).__init__([[1, 0, -center.array[0]],
                                       [0, 1, -center.array[1]],
                                       [-center.array[0], -center.array[1], center.array[:-1].dot(center.array[:-1])-radius**2]])

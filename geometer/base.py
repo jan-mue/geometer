@@ -31,7 +31,7 @@ class Tensor:
             else:
                 self.array = np.atleast_1d(args[0])
         else:
-            self.array = np.array([*args])
+            self.array = np.array(args)
 
         self._contravariant_indices = set(contravariant_indices or [])
         self._covariant_indices = set(range(len(self.array.shape))) - self._contravariant_indices
