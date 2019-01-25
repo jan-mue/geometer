@@ -24,9 +24,7 @@ def poly_to_np_array(p, symbols):
             x *= symbols[i] ** a
         c[idx] = p.coeff_monomial(x)
 
-    if not np.any(np.iscomplex(c)):
-        return np.real(c)
-    return c
+    return np.real_if_close(c)
 
 
 def np_array_to_poly(c, symbols):

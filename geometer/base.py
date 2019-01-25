@@ -49,8 +49,8 @@ class Tensor:
 
     def __eq__(self, other):
         if other is 0:
-            return np.vectorize(lambda x: np.isclose(x, 0, atol=0.0))(self.array).all()
-        return self.array == other
+            return np.allclose(self.array, np.zeros(self.array.shape))
+        return np.allclose(self.array, other.array)
 
 
 class LeviCivitaTensor(Tensor):

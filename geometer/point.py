@@ -112,8 +112,8 @@ class Point(ProjectiveElement):
 
     def normalized(self):
         if np.isclose(self.array[-1], 0):
-            return self
-        return Point(self.array / self.array[-1])
+            return Point(np.real_if_close(self.array))
+        return Point(np.real_if_close(self.array / self.array[-1]))
 
     def join(self, *others):
         return join(self, *others)

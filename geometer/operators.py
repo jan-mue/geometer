@@ -2,7 +2,7 @@ import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
 from .base import LeviCivitaTensor, TensorDiagram
-from .exceptions import IncidenceError, NotCollinear, LinearDependenceError
+from .exceptions import IncidenceError, NotCollinear
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -150,31 +150,25 @@ def dist(p, q):
 
     a, b = p.normalized().array, q.normalized().array
     if p.dim == 3:
-        for i in range(4):
-            try:
-                r = np.zeros(4)
-                r[3-i] = 1
-                e = Plane(p, q, Point(r))
-            except LinearDependenceError:
-                continue
-            else:
+        l = Line(p, q)
+        for r in np.eye(4):
+            if not l.contains(Point(r)):
                 break
 
-        m = e.basis_matrix
-        a, b = m.dot(a), m.dot(b)
+        m, _ = np.linalg.qr(np.array([r, a, b]).T)
+        a, b = m.T.dot(a), m.T.dot(b)
 
     pqi = np.linalg.det([a, b, I.array])
     pqj = np.linalg.det([a, b, J.array])
     return np.sqrt(pqi*pqj)
 
 
-def is_cocircular(a,b,c,d):
-    if np.any(np.iscomplex([a.array, b.array, c.array, d.array])) :
-        cross = crossratio(a,b,c,d)
-        return np.isclose(np.real(cross), cross)
+def is_cocircular(a, b, c, d):
+    if a.dim == 1:
+        return np.isreal(crossratio(a, b, c, d))
     else:
-        i = crossratio(a,b,c,d, I)
-        j = crossratio(a,b,c,d, J)
+        i = crossratio(a, b, c, d, I)
+        j = crossratio(a, b, c, d, J)
         return np.isclose(i, j)
 
 
