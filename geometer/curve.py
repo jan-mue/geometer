@@ -181,6 +181,13 @@ class Quadric(AlgebraicCurve):
 class Conic(Quadric):
     """A two-dimensional conic.
 
+    Parameters
+    ----------
+    matrix : array_like
+        A two dimensional array that defines the 2x2 matrix of the conic.
+    is_dual : bool, optional
+        If true, the conic represents a dual conic, i.e. all lines tangent to the non-dual conic.
+
     """
 
     def __init__(self, matrix, is_dual=False):
@@ -189,6 +196,22 @@ class Conic(Quadric):
 
     @classmethod
     def from_points(cls, a, b, c, d, e):
+        """Construct a conic through five points.
+
+        Parameters
+        ----------
+        a : Point
+        b : Point
+        c : Point
+        d : Point
+        e : Point
+
+        Returns
+        -------
+        Conic
+            The resulting conic.
+
+        """
         ace = np.linalg.det([a.array, c.array, e.array])
         bde = np.linalg.det([b.array, d.array, e.array])
         ade = np.linalg.det([a.array, d.array, e.array])
