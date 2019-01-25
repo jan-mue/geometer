@@ -45,6 +45,25 @@ class Tensor:
         indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
 
+    def tensordot(self, other):
+        """Return a new tensor that is the tensor product of this and the other tensor.
+
+        Parameters
+        ----------
+        other : Tensor
+            The other tensor.
+
+        Returns
+        -------
+        Tensor
+            The tensor product.
+
+        """
+        ind = self._contravariant_indices
+        d = len(self.array.shape)
+        ind.update(d + i for i in other._contravariant_indices)
+        return Tensor(np.tensordot(self.array, other.array, 0), contravariant_indices=ind)
+
     def __mul__(self, other):
         d = TensorDiagram((other, self))
         return d.calculate()
