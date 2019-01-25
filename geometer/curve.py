@@ -53,10 +53,23 @@ class AlgebraicCurve(ProjectiveElement):
         return np_array_to_poly(self.array, self.symbols)
 
     def tangent(self, at):
-        dx = polyval(at.array, pl.polyder(self.array, axis=0))
-        dy = polyval(at.array, pl.polyder(self.array, axis=1))
-        dz = polyval(at.array, pl.polyder(self.array, axis=2))
-        return Line(dx, dy, dz)
+        """Calculates the tangent space of the curve at a given point.
+
+        Parameters
+        ----------
+        at : Point
+            The point to calculate the tangent space at.
+
+        Returns
+        -------
+        :obj:`Line` or :obj:`Plane`
+            The tangent space.
+
+        """
+        dx = [polyval(at.array, pl.polyder(self.array, axis=i)) for i in range(self.dim + 1)]
+        if self.dim == 2:
+            return Line(dx)
+        return Plane(dx)
 
     @property
     def degree(self):
@@ -96,11 +109,12 @@ class AlgebraicCurve(ProjectiveElement):
         return np.isclose(float(polyval(pt.array, self.array)), 0)
 
     def intersect(self, other):
-        """Calculate the intersections of the algebraic curve with a line or another curve.
+        """Calculates points of intersection with the algebraic curve.
 
         Parameters
         ----------
         other : :obj:`Line` or :obj:`AlgebraicCurve`
+            The object to intersect this curve with.
 
         Returns
         -------
@@ -221,12 +235,26 @@ class Conic(Quadric):
         return Conic(m+m.T)
 
     @classmethod
-    def from_lines(cls, g: Line, h: Line):
+    def from_lines(cls, g, h):
+        """Construct a degenerate conic from two lines.
+
+        Parameters
+        ----------
+        g: Line
+        h: Line
+
+        Returns
+        -------
+        Conic
+            The resulting conic.
+
+        """
         m = np.outer(g.array, h.array)
         return Conic(m + m.T)
 
     @property
     def components(self):
+        """:obj:`list` of :obj:`ProjectiveElement`: The components of a degenerate conic."""
         if not self.is_degenerate:
             return [self]
         a = csqrt(-np.linalg.det(self.matrix[np.array([1,2])[:, np.newaxis], np.array([1,2])]))
@@ -245,6 +273,17 @@ class Conic(Quadric):
         return result
 
     def intersect(self, other):
+        """Calculates points of intersection with the conic.
+
+        Parameters
+        ----------
+        other: :obj:`Line` or :obj:`Conic`
+            The object to intersect this curve with.
+
+        Returns
+        -------
+
+        """
         if isinstance(other, Line):
             x, y, z = tuple(other.array)
             m = np.array([[0, z, -y],
@@ -278,12 +317,29 @@ class Conic(Quadric):
                     if i not in results:
                         results.append(i)
             return results
+        return super(Conic, self).intersect(other)
 
     def tangent(self, at):
+        """Calculates the tangent line of the conic at a given point.
+
+        If the given point doesn't lie on the conic, the resulting line will be the polar line.
+
+        Parameters
+        ----------
+        at : Point
+            The point to calculate the tangent at.
+
+        Returns
+        -------
+        Line
+            The tangent line (or polar if the point doesn't lie on the conic).
+
+        """
         return Line(self.matrix.dot(at.array))
 
     @property
     def dual(self):
+        """Conic: The dual conic."""
         return Conic(np.linalg.inv(self.matrix), is_dual=not self.is_dual)
 
 
@@ -291,6 +347,16 @@ absolute_conic = Conic(np.eye(3))
 
 
 class Circle(Conic):
+    """A circle in 2D.
+
+    Parameters
+    ----------
+    center : Point
+        The center point of the circle.
+    radius : float
+        The radius of the circle.
+
+    """
 
     def __init__(self, center=Point(0, 0), radius=1):
         super(Circle, self).__init__([[1, 0, -center.array[0]],
@@ -299,6 +365,7 @@ class Circle(Conic):
 
     @property
     def center(self):
+        """Point: the center point of the circle."""
         l = self.tangent(at=I)
         m = self.tangent(at=J)
         return l.meet(m)
