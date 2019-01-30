@@ -10,8 +10,9 @@ class Tensor:
     ----------
     *args
         Either a single iterable or multiple coordinate numbers.
-    contravariant_indices : :obj:`list` of :obj:`int`, optional
-        The indices of the array that are contravariant indices. By default all indices are covariant.
+    covariant : :obj:`bool` or :obj:`list` of :obj:`int`, optional
+        If False, all indices are contravariant. If a list of indices indices is supplied, the specified indices of the
+        array will be covariant indices and all others contravariant indices. By default all indices are covariant.
 
     Attributes
     ----------
@@ -20,18 +21,23 @@ class Tensor:
 
     """
 
-    def __init__(self, *args, contravariant_indices=None):
+    def __init__(self, *args, covariant=True):
         if len(args) == 1:
             if isinstance(args[0], Tensor):
                 self.array = args[0].array
-                contravariant_indices = args[0]._contravariant_indices
+                covariant = args[0]._covariant_indices
             else:
                 self.array = np.atleast_1d(args[0])
         else:
             self.array = np.array(args)
 
-        self._contravariant_indices = set(contravariant_indices or [])
-        self._covariant_indices = set(range(len(self.array.shape))) - self._contravariant_indices
+        if covariant is True:
+            covariant = range(len(self.array.shape))
+        elif not covariant:
+            covariant = []
+
+        self._covariant_indices = set(covariant)
+        self._contravariant_indices = set(range(len(self.array.shape))) - self._covariant_indices
 
     @property
     def tensor_shape(self):
@@ -68,14 +74,13 @@ class LeviCivitaTensor(Tensor):
     _cache = {}
     
     def __init__(self, size, covariant=True):
-        contravariant_indices = range(size) if not covariant else None
         if size in self._cache:
             array = self._cache[size]
         else:
             f = np.vectorize(self._calc)
             array = np.fromfunction(f, tuple(size*[size]), dtype=int)
             self._cache[size] = array
-        super(LeviCivitaTensor, self).__init__(array, contravariant_indices=contravariant_indices)
+        super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
 
     @staticmethod
     def _calc(*args):
@@ -181,8 +186,8 @@ class TensorDiagram:
             result_indices["contravariant"].extend(offset + x for x in ind["contravariant"])
         cov_count = len(result_indices["covariant"])
         result_indices = result_indices["covariant"] + result_indices["contravariant"]
-        x = np.einsum(*args, result_indices, optimize="optimal")
-        return Tensor(x, contravariant_indices=range(cov_count, len(result_indices)))
+        x = np.einsum(*args, result_indices)
+        return Tensor(x, covariant=range(cov_count))
 
 
 class ProjectiveElement(Tensor, ABC):

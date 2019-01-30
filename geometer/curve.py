@@ -13,7 +13,7 @@ class AlgebraicCurve(ProjectiveElement):
     Parameters
     ----------
     poly : :obj:`sympy.Expr` or :obj:`numpy.ndarray`
-        The polynomial defining the curve.
+        The polynomial defining the curve. It is automatically homogenized.
     symbols : :obj:`tuple` of :obj:`sympy.Symbol`, optional
         The symbols that are used in the polynomial. By default the symbols (x1, ..., xn) will be used.
 
@@ -45,7 +45,7 @@ class AlgebraicCurve(ProjectiveElement):
 
         poly = poly.homogenize(symbols[-1])
 
-        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols), contravariant_indices=[0, 1])
+        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols), covariant=False)
 
     @property
     def polynomial(self):

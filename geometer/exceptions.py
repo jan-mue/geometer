@@ -1,24 +1,24 @@
 
 
 class GeometryException(Exception):
-    """A general geometric error occurred"""
+    """A general geometric error occurred."""
 
 
 class TensorComputationError(GeometryException):
-    """A tensor computation could not be executed"""
+    """An error during a tensor computation occurred."""
 
 
 class NotCollinear(GeometryException, ValueError):
-    """The given values are not collinear"""
+    """The given values are not collinear."""
 
 
 class NotCoplanar(GeometryException, ValueError):
-    """The given values are not coplanar"""
+    """The given values are not coplanar."""
 
 
 class IncidenceError(GeometryException, ValueError):
-    """The given values were not incident to each other"""
+    """The given objects were not incident to each other."""
 
 
 class LinearDependenceError(GeometryException, ValueError):
-    """The given values were linearly dependent, making the computation impossible"""
+    """The given values were linearly dependent, making the computation impossible,"""

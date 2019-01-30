@@ -19,7 +19,7 @@ def translation(*coordinates):
 class Transformation(ProjectiveElement):
     
     def __init__(self, *args):
-        super(Transformation, self).__init__(*args, contravariant_indices=[0])
+        super(Transformation, self).__init__(*args, covariant=[1])
 
     @classmethod
     def from_points(cls, a, b, c, d):

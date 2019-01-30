@@ -148,7 +148,7 @@ def dist(p, q):
     if isinstance(q, Plane) and isinstance(p, Line):
         return dist(q, p.base_point)
 
-    a, b = p.normalized().array, q.normalized().array
+    a, b = p.normalized_array, q.normalized_array
     if p.dim == 3:
         l = Line(p, q)
         for r in np.eye(4):

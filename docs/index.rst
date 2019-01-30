@@ -6,23 +6,21 @@
 Welcome to geometer's documentation!
 ====================================
 
-Geometer is a geometry library for Python 3 based on the concepts of projective
-geometry. This means that every point in two dimensions is represented by a
-three-dimensional vector and every point in three dimensions is represented by
-a four-dimensional vector. This representation has the following advantages:
+Geometer is a geometry library for Python 3 that uses projective geometry and numpy for fast geometric computation.
+In projective geometry every point in 2D is represented by a three-dimensional vector and every point in 3D
+is represented by a four-dimensional vector. This has the following advantages:
 
 - There are points at infinity that can be treated just like normal points.
 - Projective transformations are described by matrices but they can also
   represent affine transformations i.e. also translations.
 - Every two lines have a unique point of intersection if they lie in the same
   plane. Parallel lines have a point of intersection at infinity.
-- Points of intersection, planes or lines through certain given points can be
+- Points of intersection, planes or lines through given points can be
   calculated using simple cross products or tensor diagrams.
 - Special complex points at infinity and cross ratios can be used to calculate
-  angles or to construct perpendicular geometric structures.
+  angles and to construct perpendicular geometric structures.
 
-Most of the computation in the library is based on numpy. In three dimensional
-projective space, numpy.einsum is used to compute tensor diagrams.
+Most of the computation in the library done via tensor diagrams (using numpy.einsum).
 
 The source code of the package can be found on GitHub_ and the documentation on
 `Read the Docs`_.
