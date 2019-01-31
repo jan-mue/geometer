@@ -225,6 +225,7 @@ class Line(ProjectiveElement):
         """Line: The contravariant version of a line in 3D."""
         if self.tensor_shape[1] > 0:
             return self
+        # TODO: fix for dim != 3
         e = LeviCivitaTensor(4, False)
         diagram = TensorDiagram((self, e), (self, e))
         return Line(diagram.calculate())
@@ -314,22 +315,75 @@ class Line(ProjectiveElement):
         return "Line({})".format(str(self.array.tolist()))
 
     def parallel(self, through):
+        """Returns the line through a given point that is parallel to this line.
+
+        Parameters
+        ----------
+        through : Point
+            The point through which the parallel line is to be constructed.
+
+        Returns
+        -------
+        Line
+            The parallel line.
+
+        """
         p = self.meet(infty_hyperplane(self.dim))
         return p.join(through)
 
     def is_parallel(self, other):
+        """Tests whether a given line is parallel to this line.
+
+        Parameters
+        ----------
+        other : Line
+            The other line to test.
+
+        Returns
+        -------
+        bool
+            True, if the two lines are parallel.
+
+        """
         p = self.meet(other)
         return np.isclose(p.array[-1], 0)
 
     def perpendicular(self, through):
+        """Construct the perpendicular line though a point.
+
+        Parameters
+        ----------
+        through : Point
+            The point through which the perpendicular is constructed.
+
+        Returns
+        -------
+        Line
+            The perpendicular line.
+
+        """
         return self.mirror(through).join(through)
 
     def project(self, pt: Point):
+        """The orthogonal projection of a point onto the line.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to project.
+
+        Returns
+        -------
+        Point
+            The projected point.
+
+        """
         l = self.mirror(pt).join(pt)
         return self.meet(l)
 
     @property
     def base_point(self):
+        """Point: A base point for the line, arbitrarily chosen."""
         if self.dim > 2:
             return Point(self.basis_matrix[0, :])
 
@@ -343,6 +397,7 @@ class Line(ProjectiveElement):
 
     @property
     def direction(self):
+        """Point: The direction of the line (not normalized)."""
         if self.dim > 2:
             base = self.basis_matrix
             return Point(base[0, :] - base[1, :])
@@ -352,14 +407,31 @@ class Line(ProjectiveElement):
 
     @property
     def basis_matrix(self):
+        """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         if self.dim == 2:
             a = self.base_point.array
             b = np.cross(self.array, a)
             result = np.array([a, b])
             return result / np.linalg.norm(result)
+        # TODO: fix for dim > 3
         return scipy.linalg.null_space(self.array).T
 
     def mirror(self, pt):
+        """Construct the reflection of a point at this line.
+
+        Currently only works in 2D and 3D.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to reflect.
+
+        Returns
+        -------
+        Point
+            The mirror point.
+
+        """
         l = self
         if self.dim == 3:
             e = Plane(self, pt)
@@ -419,6 +491,7 @@ class Plane(ProjectiveElement):
 
     @property
     def basis_matrix(self):
+        """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         n = self.dim + 1
         i = np.where(self.array != 0)[0][0]
         result = np.zeros((n, n - 1), dtype=self.array.dtype)
@@ -438,10 +511,55 @@ class Plane(ProjectiveElement):
         return "Plane({})".format(",".join(self.array.astype(str)))
 
     def parallel(self, through):
+        """Returns the plane through a given point that is parallel to this plane.
+
+        Parameters
+        ----------
+        through : Point
+            The point through which the parallel plane is to be constructed.
+
+        Returns
+        -------
+        Plane
+            The parallel plane.
+
+        """
         l = self.meet(infty_hyperplane(self.dim))
         return join(l, through)
 
+    def is_parallel(self, other):
+        """Tests whether a given plane or line is parallel to this plane.
+
+        Parameters
+        ----------
+        other : :obj:`Plane` or :obj:`Line`
+            The other object to test.
+
+        Returns
+        -------
+        bool
+            True, if the two objects are parallel.
+
+        """
+        p = self.meet(other)
+        return infty_hyperplane(self.dim).contains(p)
+
     def mirror(self, pt):
+        """Construct the reflection of a point at this plane.
+
+        Currently only works in 2D and 3D.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to reflect.
+
+        Returns
+        -------
+        Point
+            The mirror point.
+
+        """
         l = self.meet(infty_plane)
         l = Line(np.cross(*l.basis_matrix[:, :-1]))
         p = l.base_point
@@ -464,6 +582,19 @@ class Plane(ProjectiveElement):
         return self.meet(l)
 
     def perpendicular(self, through: Point):
+        """Construct the perpendicular line though a point.
+
+        Parameters
+        ----------
+        through : Point
+            The point through which the perpendicular is constructed.
+
+        Returns
+        -------
+        Line
+            The perpendicular line.
+
+        """
         return self.mirror(through).join(through)
 
 

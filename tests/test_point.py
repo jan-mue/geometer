@@ -29,6 +29,7 @@ class Test2D:
         l = Line(p, q)
         m = l.parallel(through=r)
         assert m == Line(0,1,0)
+        assert l.is_parallel(m)
 
     def test_perpendicular(self):
         p = Point(1,1)
@@ -107,6 +108,7 @@ class Test3D:
         e = Plane(p, q, r)
         f = e.parallel(through=Point(0, 0, 0))
         assert f == Plane(0, 0, 1, 0)
+        assert e.is_parallel(f)
 
 
 class Test4D:
