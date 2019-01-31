@@ -464,6 +464,19 @@ class Plane(ProjectiveElement):
             super(Plane, self).__init__(*args, covariant=False)
 
     def contains(self, other):
+        """Tests whether a given point or line lies in the plane.
+
+        Parameters
+        ----------
+        other : :obj:`Point` or :obj:`Line`
+            The object to test.
+
+        Returns
+        -------
+        bool
+            True, if the given point/line is contained in the plane.
+
+        """
         if isinstance(other, Point):
             return np.isclose(np.vdot(self.array, other.array), 0)
         elif isinstance(other, Line):
@@ -503,6 +516,7 @@ class Plane(ProjectiveElement):
 
     @property
     def polynomial(self):
+        """sympy.Poly: The polynomial defining this hyperplane."""
         symbols = sympy.symbols(["x" + str(i) for i in range(self.dim + 1)])
         f = sum(x * s for x, s in zip(self.array, symbols))
         return sympy.poly(f, symbols)
@@ -578,6 +592,19 @@ class Plane(ProjectiveElement):
         return m1.meet(m2)
 
     def project(self, pt):
+        """The orthogonal projection of a point onto the plane.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to project.
+
+        Returns
+        -------
+        Point
+            The projected point.
+
+        """
         l = self.mirror(pt).join(pt)
         return self.meet(l)
 
