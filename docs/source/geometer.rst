@@ -9,8 +9,8 @@ geometer.utils package
     :undoc-members:
     :show-inheritance:
 
-Submodules
-----------
+Modules
+-------
 
 geometer.base module
 --------------------
@@ -56,15 +56,6 @@ geometer.transformation module
 ------------------------------
 
 .. automodule:: geometer.transformation
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: geometer
     :members:
     :undoc-members:
     :show-inheritance:
