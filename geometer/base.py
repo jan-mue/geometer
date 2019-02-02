@@ -59,10 +59,10 @@ class Tensor:
             The tensor product.
 
         """
-        ind = self._contravariant_indices
+        ind = self._covariant_indices
         d = len(self.array.shape)
-        ind.update(d + i for i in other._contravariant_indices)
-        return Tensor(np.tensordot(self.array, other.array, 0), contravariant_indices=ind)
+        ind.update(d + i for i in other._covariant_indices)
+        return Tensor(np.tensordot(self.array, other.array, 0), covariant=ind)
 
     def __mul__(self, other):
         d = TensorDiagram((other, self))

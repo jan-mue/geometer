@@ -110,7 +110,7 @@ class Triangle(Polygon):
         super(Triangle, self).__init__(a, b, c)
 
     def area(self):
-        return 1/2 * np.linalg.det([v.normalized().array for v in self.vertices])
+        return 1/2 * np.linalg.det([v.normalized_array for v in self.vertices])
 
 
 class Rectangle(Polygon):
