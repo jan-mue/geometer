@@ -26,3 +26,7 @@ def test_rotation():
     p = Point(0, 1)
     t = rotation(-np.pi)
     assert t*p == Point(0, -1)
+
+    p = Point(1, 0, 0)
+    t = rotation(-np.pi/2, axis=Point(0, 0, 1))
+    assert t * p == Point(0, 1, 0)
