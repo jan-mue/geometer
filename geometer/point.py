@@ -16,15 +16,13 @@ def _join_meet_duality(*args, intersect_lines=True):
     if all(o.tensor_shape == args[0].tensor_shape for o in args[1:]) and sum(args[0].tensor_shape) == 1:
         covariant = args[0].tensor_shape[0] > 0
         e = LeviCivitaTensor(n, not covariant)
-        diagram = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args])
-        result = diagram.calculate()
+        result = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args])
 
     elif len(args) == 2:
         a, b = args
         if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
             e = LeviCivitaTensor(n)
-            d = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1])
-            result = d.calculate()
+            result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1])
         elif isinstance(a, Line) and isinstance(b, Point):
             result = a * b
         elif isinstance(a, Point) and isinstance(b, Line):
@@ -33,8 +31,7 @@ def _join_meet_duality(*args, intersect_lines=True):
             if n > 4:
                 # TODO: find algorithm for intersecting lines (as in case n <= 3 below)
                 e = LeviCivitaTensor(n)
-                d = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1]))
-                result = d.calculate()
+                result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1]))
             else:
                 l, m = args
                 a = (m * l.covariant_tensor).array
@@ -343,8 +340,8 @@ class Line(Subspace):
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
-        diagram = TensorDiagram((e, self), (e, self))
-        return Line(diagram.calculate())
+        result = TensorDiagram((e, self), (e, self))
+        return Line(result)
 
     @property
     def contravariant_tensor(self):
@@ -353,8 +350,8 @@ class Line(Subspace):
             return self
         # TODO: fix for dim != 3
         e = LeviCivitaTensor(4, False)
-        diagram = TensorDiagram((self, e), (self, e))
-        return Line(diagram.calculate())
+        result = TensorDiagram((self, e), (self, e))
+        return Line(result)
 
     def is_coplanar(self, other):
         """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect in 3D.
@@ -370,13 +367,12 @@ class Line(Subspace):
             True if the two lines intersect (i.e. they lie in the same plane).
 
         """
-        l = other.covariant_tensor
-        d = TensorDiagram((l, self), (l, self))
-        return d.calculate() == 0
+        e = LeviCivitaTensor(self.dim + 1)
+        return TensorDiagram((e, self), (e, self), (e, other), (e, other)) == 0
 
     def __add__(self, point):
-        t = np.array([[1, 0, 0], [0, 1, 0], (-point.normalized_array)]).T
-        return Line(self.array.dot(t))
+        from .transformation import translation
+        return translation(*point.normalized_array[:-1])*self
 
     def __radd__(self, other):
         return self + other

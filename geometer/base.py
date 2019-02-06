@@ -1,4 +1,5 @@
 from abc import ABC
+import warnings
 import numpy as np
 from .exceptions import TensorComputationError
 
@@ -64,13 +65,17 @@ class Tensor:
         ind.update(d + i for i in other._covariant_indices)
         return Tensor(np.tensordot(self.array, other.array, 0), covariant=ind)
 
+    def copy(self):
+        return type(self)(self)
+
+    def __copy__(self):
+        return self.copy()
+
     def __mul__(self, other):
-        d = TensorDiagram((other, self))
-        return d.calculate()
+        return TensorDiagram((other, self))
 
     def __rmul__(self, other):
-        d = TensorDiagram((self, other))
-        return d.calculate()
+        return TensorDiagram((self, other))
 
     def __eq__(self, other):
         if other is 0:
@@ -91,13 +96,14 @@ class LeviCivitaTensor(Tensor):
     """
 
     _cache = {}
-    
+
     def __init__(self, size, covariant=True):
         if size in self._cache:
             array = self._cache[size]
         else:
             i, j = np.triu_indices(size, 1)
-            indices = np.indices(size*[size], dtype=int)
+            # TODO: fix MemoryError for size > 8
+            indices = np.indices(size * [size], dtype=int)
             diff = indices[j] - indices[i]
 
             # append empty product
@@ -111,7 +117,7 @@ class LeviCivitaTensor(Tensor):
         super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
 
 
-class TensorDiagram:
+class TensorDiagram(Tensor):
     """A class used to specify and calculate tensor diagrams (also called Penrose Graphical Notation).
 
     Parameters
@@ -128,6 +134,20 @@ class TensorDiagram:
         self._split_indices = []
         for e in edges or []:
             self.add_edge(*e)
+
+        indices = np.split(self._indices, self._split_indices[1:])
+        args = [x for i, node in enumerate(self._nodes) for x in (node.array, indices[i].tolist())]
+        result_indices = {
+            "covariant": [],
+            "contravariant": []
+        }
+        for offset, ind in zip(self._split_indices, self._free_indices):
+            result_indices["covariant"].extend(offset + x for x in ind["covariant"])
+            result_indices["contravariant"].extend(offset + x for x in ind["contravariant"])
+        cov_count = len(result_indices["covariant"])
+        result_indices = result_indices["covariant"] + result_indices["contravariant"]
+        x = np.einsum(*args, result_indices)
+        super(TensorDiagram, self).__init__(x, covariant=range(cov_count))
 
     def add_edge(self, source, target):
         """Add an edge to the diagram.
@@ -189,8 +209,12 @@ class TensorDiagram:
         j = target_index + free_target["contravariant"].pop()
         self._indices[max(i, j)] = min(i, j)
 
+        # TODO: contraction
+
     def calculate(self):
         """Calculates the result of the diagram.
+
+        Deprecated as of version v0.2.
 
         Returns
         -------
@@ -198,19 +222,8 @@ class TensorDiagram:
             The tensor resulting from the specified tensor diagram.
 
         """
-        indices = np.split(self._indices, self._split_indices[1:])
-        args = [x for i, node in enumerate(self._nodes) for x in (node.array, indices[i].tolist())]
-        result_indices = {
-            "covariant": [],
-            "contravariant": []
-        }
-        for offset, ind in zip(self._split_indices, self._free_indices):
-            result_indices["covariant"].extend(offset + x for x in ind["covariant"])
-            result_indices["contravariant"].extend(offset + x for x in ind["contravariant"])
-        cov_count = len(result_indices["covariant"])
-        result_indices = result_indices["covariant"] + result_indices["contravariant"]
-        x = np.einsum(*args, result_indices)
-        return Tensor(x, covariant=range(cov_count))
+        warnings.warn("deprecated", DeprecationWarning)
+        return self
 
 
 class ProjectiveElement(Tensor, ABC):
@@ -222,7 +235,7 @@ class ProjectiveElement(Tensor, ABC):
         # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
         a = self.array.ravel()
         b = other.array.ravel()
-        return np.isclose(np.abs(np.vdot(a, b))**2, np.vdot(a, a)*np.vdot(b, b))
+        return np.isclose(np.abs(np.vdot(a, b)) ** 2, np.vdot(a, a) * np.vdot(b, b))
 
     def __len__(self):
         return np.product(self.array.shape)

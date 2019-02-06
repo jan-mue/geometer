@@ -1,7 +1,7 @@
 import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
-from .point import Point, Line
-from .curve import Conic
+from .point import Point, Line, Plane
+from .curve import Quadric
 
 
 def rotation(angle, axis=None):
@@ -29,7 +29,7 @@ def rotation(angle, axis=None):
     e = LeviCivitaTensor(dimension, False)
     a = axis.normalized_array[:-1]
     d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
-    u = d.calculate().array
+    u = d.array
     v = np.outer(a, a)
     result = np.eye(dimension+1)
     result[:dimension, :dimension] = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v
@@ -69,7 +69,7 @@ class Transformation(ProjectiveElement):
     """
     
     def __init__(self, *args):
-        super(Transformation, self).__init__(*args, covariant=[1])
+        super(Transformation, self).__init__(*args, covariant=[0])
 
     @classmethod
     def from_points(cls, *args):
@@ -96,15 +96,13 @@ class Transformation(ProjectiveElement):
         return Transformation(m1.dot(np.linalg.inv(m2)))
 
     def __mul__(self, other):
-        if isinstance(other, Point):
-            return Point(self.array.dot(other.array))
-        if isinstance(other, Line):
-            return Line(np.linalg.solve(self.array.T, other.array))
-        if isinstance(other, Conic):
-            m = np.linalg.inv(self.array)
-            return Conic(m.T.dot(other.array).dot(m))
-        if isinstance(other, Transformation):
-            return Transformation(self.array.dot(other.array))
+        if isinstance(other, (Point, Transformation)):
+            return type(other)(super(Transformation, self).__mul__(other))
+        if isinstance(other, (Line, Plane)):
+            return type(other)(other*self.inverse())
+        if isinstance(other, Quadric):
+            inv = self.inverse()
+            return type(other)(TensorDiagram((inv, other), (other, inv)))
         raise NotImplementedError
 
     def __pow__(self, power, modulo=None):

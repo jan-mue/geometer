@@ -1,7 +1,7 @@
 import numpy as np
 import sympy
 from .point import Point, Line, Plane, I, J
-from .base import ProjectiveElement
+from .base import ProjectiveElement, Tensor
 from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
@@ -160,13 +160,13 @@ class Quadric(AlgebraicCurve):
 
     Parameters
     ----------
-    matrix : array_like
+    matrix : array_like or Tensor
         The array defining a (n+1)x(n+1) matrix.
 
     """
 
     def __init__(self, matrix):
-        self.matrix = np.array(matrix)
+        self.matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
         symbols = sympy.symbols(["x" + str(i) for i in range(self.matrix.shape[1])])
         super(Quadric, self).__init__(self.matrix.dot(symbols).dot(symbols), symbols=symbols)
 
@@ -197,7 +197,7 @@ class Conic(Quadric):
 
     Parameters
     ----------
-    matrix : array_like
+    matrix : array_like or Tensor
         A two dimensional array that defines the 2x2 matrix of the conic.
     is_dual : bool, optional
         If true, the conic represents a dual conic, i.e. all lines tangent to the non-dual conic.
