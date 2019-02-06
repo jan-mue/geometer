@@ -96,15 +96,19 @@ class LeviCivitaTensor(Tensor):
         if size in self._cache:
             array = self._cache[size]
         else:
-            f = np.vectorize(self._calc)
-            array = np.fromfunction(f, tuple(size*[size]), dtype=int)
+            i, j = np.triu_indices(size, 1)
+            indices = np.indices(size*[size], dtype=int)
+            diff = indices[j] - indices[i]
+
+            # append empty product
+            diff = np.append(diff, [np.ones(diff.shape[1:])], axis=0)
+            i = np.append(i, [size - 1])
+
+            fact = np.fromiter((np.math.factorial(x) for x in i), dtype=int)
+            array = np.prod((diff.T / fact).T, axis=0)
+
             self._cache[size] = array
         super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
-
-    @staticmethod
-    def _calc(*args):
-        n = len(args)
-        return np.prod([np.prod([args[j] - args[i] for j in range(i + 1, n)]) / np.math.factorial(i) for i in range(n)])
 
 
 class TensorDiagram:
