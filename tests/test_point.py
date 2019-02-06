@@ -160,3 +160,10 @@ class Test4D:
         # two lines
         m = Line(Point(0, 0, 0, 0), Point(1, 2, 5, 6))
         assert l.meet(m) == Point(0, 0, 0, 0)
+
+    def test_project(self):
+        p1 = Point(1, 0, 0, 0)
+        p2 = Point(0, 1, 0, 0)
+
+        l = Line(p1, p2)
+        assert l.project(Point(0, 0, 0, 0)) == Point(0.5, 0.5, 0, 0)

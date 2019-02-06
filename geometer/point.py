@@ -409,7 +409,7 @@ class Line(Subspace):
             The projected point.
 
         """
-        l = self.mirror(pt).join(pt)
+        l = self.perpendicular(pt)
         return self.meet(l)
 
     @property
@@ -449,8 +449,6 @@ class Line(Subspace):
     def mirror(self, pt):
         """Construct the reflection of a point at this line.
 
-        Currently only works in 2D and 3D.
-
         Parameters
         ----------
         pt : Point
@@ -463,12 +461,12 @@ class Line(Subspace):
 
         """
         l = self
-        if self.dim == 3:
-            e = Plane(self, pt)
+        if self.dim >= 3:
+            e = join(self, pt)
             m = e.basis_matrix
+            m = m[np.argsort(np.abs(m.dot(pt.array)))]
             pt = Point(m.dot(pt.array))
-            basis = scipy.linalg.null_space(self.array)
-            a, b = m.dot(basis).T
+            a, b = m.dot(self.basis_matrix.T).T
             l = Line(Point(a), Point(b))
         l1 = I.join(pt)
         l2 = J.join(pt)
@@ -477,7 +475,7 @@ class Line(Subspace):
         m1 = p1.join(J)
         m2 = p2.join(I)
         result = m1.meet(m2)
-        if self.dim == 3:
+        if self.dim >= 3:
             return Point(m.T.dot(result.array))
         return result
 
@@ -516,7 +514,7 @@ class Plane(Subspace):
     def mirror(self, pt):
         """Construct the reflection of a point at this plane.
 
-        Currently only works in 2D and 3D.
+        Currently only works in 3D.
 
         Parameters
         ----------
@@ -560,7 +558,7 @@ class Plane(Subspace):
             The projected point.
 
         """
-        l = self.mirror(pt).join(pt)
+        l = self.perpendicular(pt)
         return self.meet(l)
 
     def perpendicular(self, through: Point):
