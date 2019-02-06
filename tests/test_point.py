@@ -131,6 +131,11 @@ class Test4D:
         m = Line(p3, p4)
         assert join(l, m) == Plane(p1, p2, p3, p4)
 
+        # coplanar lines
+        l = Line(p1, p2)
+        m = Line(p1, p3)
+        assert join(l, m).contains(p3)
+
         # point and line
         p = join(l, p3)
         assert p == join(p1, p2, p3)
@@ -151,3 +156,7 @@ class Test4D:
         # hyperplane and line
         l = Line(Point(0, 0, 0, 0), Point(0, 0, 1, 0))
         assert p3.meet(l) == Point(0, 0, 0, 0)
+
+        # two lines
+        m = Line(Point(0, 0, 0, 0), Point(1, 2, 5, 6))
+        assert l.meet(m) == Point(0, 0, 0, 0)

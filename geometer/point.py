@@ -28,18 +28,20 @@ def _join_meet_duality(*args, intersect_lines=True):
         elif isinstance(a, Point) and isinstance(b, Line):
             result = b * a
         elif isinstance(a, Line) and isinstance(b, Line):
-            if n > 4:
-                # TODO: find algorithm for intersecting lines (as in case n <= 3 below)
-                e = LeviCivitaTensor(n)
+            coplanar = n <= 3 or (n == 4 and a.is_coplanar(b))
+            e = LeviCivitaTensor(n)
+
+            if not coplanar:
                 result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1]))
-            else:
-                l, m = args
-                a = (m * l.covariant_tensor).array
-                i = np.unravel_index(np.abs(a).argmax(), a.shape)
+                coplanar = result == 0
+
+            if coplanar:
+                array = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b)).array
+                i = np.unravel_index(np.abs(array).argmax(), array.shape)
                 if not intersect_lines:
-                    result = Tensor(a[i[0], :], covariant=False)
+                    result = Tensor(array[i[0], ...], covariant=False)
                 else:
-                    result = Tensor(a[:, i[1]])
+                    result = Tensor(array[(slice(None),) + i[1:]])
         else:
             raise ValueError("Operation not supported.")
 
