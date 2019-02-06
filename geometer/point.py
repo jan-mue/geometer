@@ -30,13 +30,19 @@ def _join_meet_duality(*args, intersect_lines=True):
         elif isinstance(a, Point) and isinstance(b, Line):
             result = b * a
         elif isinstance(a, Line) and isinstance(b, Line):
-            l, m = args
-            a = (m * l.covariant_tensor).array
-            i = np.unravel_index(np.abs(a).argmax(), a.shape)
-            if not intersect_lines:
-                result = Tensor(a[i[0], :], covariant=False)
+            if n > 4:
+                # TODO: find algorithm for intersecting lines (as in case n <= 3 below)
+                e = LeviCivitaTensor(n)
+                d = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1]))
+                result = d.calculate()
             else:
-                result = Tensor(a[:, i[1]])
+                l, m = args
+                a = (m * l.covariant_tensor).array
+                i = np.unravel_index(np.abs(a).argmax(), a.shape)
+                if not intersect_lines:
+                    result = Tensor(a[i[0], :], covariant=False)
+                else:
+                    result = Tensor(a[:, i[1]])
         else:
             raise ValueError("Operation not supported.")
 
@@ -52,10 +58,10 @@ def _join_meet_duality(*args, intersect_lines=True):
         return Point(result)
     if result.tensor_shape == (2, 0):
         return Line(result).contravariant_tensor
-    if result.tensor_shape[0] == 0:
+    if result.tensor_shape == (0, n-2):
         return Line(result)
 
-    raise ValueError("Unexpected tensor shape: " + str(result.tensor_shape))
+    return Subspace(result)
 
 
 def join(*args):
@@ -171,7 +177,149 @@ I = Point([-1j, 1, 0])
 J = Point([1j, 1, 0])
 
 
-class Line(ProjectiveElement):
+class Subspace(ProjectiveElement):
+    """Represents a general subspace of a projective space. Line and Plane are subclasses.
+
+    Parameters
+    ----------
+    *args
+        The coordinates of the subspace. Instead of all coordinates separately, a single iterable can also be supplied.
+
+    """
+
+    def __init__(self, *args):
+        super(Subspace, self).__init__(*args, covariant=False)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
+
+    def polynomials(self, symbols=None):
+        """Returns a list of polynomials, to use for symbolic calculations.
+
+        Parameters
+        ----------
+        symbols : :obj:`list` of :obj:`sympy.Symbol`, optional
+            The symbols used in the resulting polynomial. By default "x1", ..., "xn" will be used.
+
+        Returns
+        -------
+        :obj:`list` of :obj:`sympy.Poly`
+            The polynomials describing the subspace.
+
+        """
+        symbols = symbols or sympy.symbols(["x" + str(i) for i in range(self.array.shape[0])])
+
+        def p(row):
+            f = sum(x * s for x, s in zip(row, symbols))
+            return sympy.poly(f, symbols)
+
+        if self.dim == 2:
+            return [p(self.array)]
+        return np.apply_along_axis(p, axis=1, arr=self.array[np.any(self.array, axis=1)])
+
+    @property
+    def basis_matrix(self):
+        """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
+        x = self.array
+        if len(x.shape) > 2:
+            x = self.array.reshape((x.shape[0]**(len(x.shape)-1), x.shape[-1]))
+        return scipy.linalg.null_space(x).T
+
+    def contains(self, other):
+        """Tests whether a given point or line lies in the subspace.
+
+        Parameters
+        ----------
+        other : :obj:`Point` or :obj:`Line`
+            The object to test.
+
+        Returns
+        -------
+        bool
+            True, if the given point/line lies in the subspace.
+
+        """
+        if isinstance(other, Point):
+            return self * other == 0
+        elif isinstance(other, Line):
+            return self * other.covariant_tensor == 0
+
+    def meet(self, *others):
+        """Intersect the subspace with other objects.
+
+        Parameters
+        ----------
+        *others
+            The objects to intersect the subspace with.
+
+        Returns
+        -------
+        Point
+            The result of the meet operation.
+
+        See Also
+        --------
+        meet
+
+        """
+        return meet(self, *others)
+
+    def join(self, *others):
+        """Execute the join of the subspace with other objects.
+
+        Parameters
+        ----------
+        *others
+            The objects to join the subspace with.
+
+        Returns
+        -------
+        Plane
+            The result of the join operation.
+
+        See Also
+        --------
+        join
+
+        """
+        return join(self, *others)
+
+    def parallel(self, through):
+        """Returns the subspace through a given point that is parallel to this subspace.
+
+        Parameters
+        ----------
+        through : Point
+            The point through which the parallel subspace is to be constructed.
+
+        Returns
+        -------
+        Subspace
+            The parallel subspace.
+
+        """
+        x = self.meet(infty_hyperplane(self.dim))
+        return join(x, through)
+
+    def is_parallel(self, other):
+        """Tests whether a given subspace is parallel to this subspace.
+
+        Parameters
+        ----------
+        other : Subspace
+            The other space to test.
+
+        Returns
+        -------
+        bool
+            True, if the two spaces are parallel.
+
+        """
+        x = self.meet(other)
+        return infty_hyperplane(self.dim).contains(x)
+
+
+class Line(Subspace):
     """Represents a line in a projective space of arbitrary dimension.
 
     Parameters
@@ -187,29 +335,7 @@ class Line(ProjectiveElement):
             pt1, pt2 = args
             super(Line, self).__init__(pt1.join(pt2))
         else:
-            super(Line, self).__init__(*args, covariant=False)
-
-    def polynomials(self, symbols=None):
-        """Returns a list of polynomials, to use for symbolic calculations.
-
-        Parameters
-        ----------
-        symbols : :obj:`list` of :obj:`sympy.Symbol`, optional
-            The symbols used in the resulting polynomial. By default "x1", ..., "xn" will be used.
-
-        Returns
-        -------
-
-        """
-        symbols = symbols or sympy.symbols(["x" + str(i) for i in range(self.array.shape[0])])
-
-        def p(row):
-            f = sum(x * s for x, s in zip(row, symbols))
-            return sympy.poly(f, symbols)
-
-        if self.dim == 2:
-            return [p(self.array)]
-        return np.apply_along_axis(p, axis=1, arr=self.array[np.any(self.array, axis=1)])
+            super(Line, self).__init__(*args)
 
     @property
     def covariant_tensor(self):
@@ -229,62 +355,6 @@ class Line(ProjectiveElement):
         e = LeviCivitaTensor(4, False)
         diagram = TensorDiagram((self, e), (self, e))
         return Line(diagram.calculate())
-
-    def contains(self, pt: Point):
-        """Tests if a given point lies on the line.
-
-        Parameters
-        ----------
-        pt: Point
-            The point to test.
-
-        Returns
-        -------
-        bool
-            True if the line contains the point.
-
-        """
-        return self * pt == 0
-
-    def meet(self, *others):
-        """Intersect the line with other objects.
-
-        Parameters
-        ----------
-        *others
-            The objects to intersect the line with.
-
-        Returns
-        -------
-        Point
-            The result of the meet operation.
-
-        See Also
-        --------
-        meet
-
-        """
-        return meet(self, *others)
-
-    def join(self, *others):
-        """Execute the join of line point with other objects.
-
-        Parameters
-        ----------
-        *others
-            The objects to join the line with.
-
-        Returns
-        -------
-        Plane
-            The result of the join operation.
-
-        See Also
-        --------
-        join
-
-        """
-        return join(self, *others)
 
     def is_coplanar(self, other):
         """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect in 3D.
@@ -310,43 +380,6 @@ class Line(ProjectiveElement):
 
     def __radd__(self, other):
         return self + other
-
-    def __repr__(self):
-        return "Line({})".format(str(self.array.tolist()))
-
-    def parallel(self, through):
-        """Returns the line through a given point that is parallel to this line.
-
-        Parameters
-        ----------
-        through : Point
-            The point through which the parallel line is to be constructed.
-
-        Returns
-        -------
-        Line
-            The parallel line.
-
-        """
-        p = self.meet(infty_hyperplane(self.dim))
-        return p.join(through)
-
-    def is_parallel(self, other):
-        """Tests whether a given line is parallel to this line.
-
-        Parameters
-        ----------
-        other : Line
-            The other line to test.
-
-        Returns
-        -------
-        bool
-            True, if the two lines are parallel.
-
-        """
-        p = self.meet(other)
-        return np.isclose(p.array[-1], 0)
 
     def perpendicular(self, through):
         """Construct the perpendicular line though a point.
@@ -400,7 +433,7 @@ class Line(ProjectiveElement):
         """Point: The direction of the line (not normalized)."""
         if self.dim > 2:
             base = self.basis_matrix
-            return Point(base[0, :] - base[1, :])
+            return Point(base[0, :]) - Point(base[1, :])
         if np.isclose(self.array[0], 0) and np.isclose(self.array[1], 0):
             return Point([0, 1, 0])
         return Point(self.array[1], -self.array[0])
@@ -413,8 +446,7 @@ class Line(ProjectiveElement):
             b = np.cross(self.array, a)
             result = np.array([a, b])
             return result / np.linalg.norm(result)
-        # TODO: fix for dim > 3
-        return scipy.linalg.null_space(self.array).T
+        return super(Line, self).basis_matrix
 
     def mirror(self, pt):
         """Construct the reflection of a point at this line.
@@ -455,52 +487,13 @@ class Line(ProjectiveElement):
 infty = Line(0, 0, 1)
 
 
-class Plane(ProjectiveElement):
+class Plane(Subspace):
 
     def __init__(self, *args):
         if all(isinstance(o, (Line, Point)) for o in args):
             super(Plane, self).__init__(join(*args))
         else:
-            super(Plane, self).__init__(*args, covariant=False)
-
-    def contains(self, other):
-        """Tests whether a given point or line lies in the plane.
-
-        Parameters
-        ----------
-        other : :obj:`Point` or :obj:`Line`
-            The object to test.
-
-        Returns
-        -------
-        bool
-            True, if the given point/line is contained in the plane.
-
-        """
-        if isinstance(other, Point):
-            return np.isclose(np.vdot(self.array, other.array), 0)
-        elif isinstance(other, Line):
-            return self * other.covariant_tensor == 0
-
-    def meet(self, *others):
-        """Intersect the line with other objects.
-
-        Parameters
-        ----------
-        *others
-            The objects to intersect the plane with.
-
-        Returns
-        -------
-        :obj:`Line` or :obj:`Point`
-            The result of the meet operation.
-
-        See Also
-        --------
-        meet
-
-        """
-        return meet(self, *others)
+            super(Plane, self).__init__(*args)
 
     @property
     def basis_matrix(self):
@@ -517,46 +510,10 @@ class Plane(ProjectiveElement):
     @property
     def polynomial(self):
         """sympy.Poly: The polynomial defining this hyperplane."""
-        symbols = sympy.symbols(["x" + str(i) for i in range(self.dim + 1)])
-        f = sum(x * s for x, s in zip(self.array, symbols))
-        return sympy.poly(f, symbols)
+        return super(Plane, self).polynomials()[0]
 
     def __repr__(self):
         return "Plane({})".format(",".join(self.array.astype(str)))
-
-    def parallel(self, through):
-        """Returns the plane through a given point that is parallel to this plane.
-
-        Parameters
-        ----------
-        through : Point
-            The point through which the parallel plane is to be constructed.
-
-        Returns
-        -------
-        Plane
-            The parallel plane.
-
-        """
-        l = self.meet(infty_hyperplane(self.dim))
-        return join(l, through)
-
-    def is_parallel(self, other):
-        """Tests whether a given plane or line is parallel to this plane.
-
-        Parameters
-        ----------
-        other : :obj:`Plane` or :obj:`Line`
-            The other object to test.
-
-        Returns
-        -------
-        bool
-            True, if the two objects are parallel.
-
-        """
-        p = self.meet(other)
-        return infty_hyperplane(self.dim).contains(p)
 
     def mirror(self, pt):
         """Construct the reflection of a point at this plane.

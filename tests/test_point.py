@@ -123,6 +123,18 @@ class Test4D:
         # 4 points
         assert join(p1, p2, p3, p4).contains(p5)
 
+        # 3 points
+        assert join(p1, p2, p3).contains(p3)
+
+        # two lines
+        l = Line(p1, p2)
+        m = Line(p3, p4)
+        assert join(l, m) == Plane(p1, p2, p3, p4)
+
+        # point and line
+        p = join(l, p3)
+        assert p == join(p1, p2, p3)
+
         # 2 points
         l = p1.join(p2)
         assert l.contains(Point(3, 1, 6, 0))
