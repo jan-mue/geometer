@@ -1,5 +1,7 @@
 from abc import ABC
 import warnings
+from itertools import permutations
+
 import numpy as np
 from .exceptions import TensorComputationError
 
@@ -102,16 +104,11 @@ class LeviCivitaTensor(Tensor):
             array = self._cache[size]
         else:
             i, j = np.triu_indices(size, 1)
-            # TODO: fix MemoryError for size > 8
-            indices = np.indices(size * [size], dtype=int)
+            indices = np.array(list(permutations(range(size))), dtype=int).T
             diff = indices[j] - indices[i]
-
-            # append empty product
-            diff = np.append(diff, [np.ones(diff.shape[1:])], axis=0)
-            i = np.append(i, [size - 1])
-
-            fact = np.fromiter((np.math.factorial(x) for x in i), dtype=int)
-            array = np.prod((diff.T / fact).T, axis=0)
+            diff = np.sign(diff, dtype=np.int8)
+            array = np.zeros(size * [size], dtype=np.int8)
+            array[tuple(indices)] = np.prod(diff, axis=0)
 
             self._cache[size] = array
         super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
