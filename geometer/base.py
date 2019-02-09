@@ -28,18 +28,19 @@ class Tensor:
         if len(args) == 1:
             if isinstance(args[0], Tensor):
                 self.array = args[0].array
-                covariant = args[0]._covariant_indices
+                self._covariant_indices = args[0]._covariant_indices
+                self._contravariant_indices = args[0]._contravariant_indices
+                return
             else:
-                self.array = np.atleast_1d(args[0])
+                self.array = np.array(args[0])
         else:
             self.array = np.array(args)
 
         if covariant is True:
-            covariant = range(len(self.array.shape))
-        elif not covariant:
-            covariant = []
+            self._covariant_indices = set(range(len(self.array.shape)))
+        else:
+            self._covariant_indices = set(covariant) if covariant else set()
 
-        self._covariant_indices = set(covariant)
         self._contravariant_indices = set(range(len(self.array.shape))) - self._covariant_indices
 
     @property
@@ -128,67 +129,69 @@ class TensorDiagram(Tensor):
         self._nodes = []
         self._index_mapping = []
 
-        indices = []
         free_indices = []
         split = []
+        contract_indices = []
 
-        def add(a, b):
-            result = [None, None]
+        def add(node):
+            nonlocal index_count
+            split.append(index_count)
+            self._nodes.append(node)
+            ind = (node._covariant_indices.copy(), node._contravariant_indices.copy())
+            free_indices.append(ind)
+            index_count += len(node.array.shape)
+            return ind
+
+        for source, target in edges:
+            source_index, target_index = None, None
             index_count = 0
-            not_found = [(0, a), (1, b)]
 
             for i, tensor in enumerate(self._nodes):
-                for j, node in not_found:
-                    if tensor is node:
-                        not_found.remove((j, node))
-                        result[j] = (free_indices[i], index_count)
+                if tensor is source:
+                    source_index = index_count
+                    free_source = free_indices[i][0]
+                if tensor is target:
+                    target_index = index_count
+                    free_target = free_indices[i][1]
 
                 index_count += len(tensor.array.shape)
 
-                if len(not_found) == 0:
+                if source_index is not None and target_index is not None:
                     break
 
             else:
-                for j, node in not_found:
-                    split.append(index_count)
-                    self._nodes.append(node)
-                    ind = {
-                        "covariant": node._covariant_indices.copy(),
-                        "contravariant": node._contravariant_indices.copy()
-                    }
-                    free_indices.append(ind)
-                    result[j] = (ind, index_count)
-                    index_count += len(node.array.shape)
+                if source_index is None:
+                    source_index = index_count
+                    free_source = add(source)[0]
+                if target_index is None:
+                    target_index = index_count
+                    free_target = add(target)[1]
 
-                indices.extend(range(len(indices), index_count))
-
-            return result
-
-        for edge in edges:
-            (free_source, source_index), (free_target, target_index) = add(*edge)
-
-            if len(free_source["covariant"]) == 0 or len(free_target["contravariant"]) == 0:
+            if len(free_source) == 0 or len(free_target) == 0:
                 raise TensorComputationError("Could not add the edge because no free indices are left.")
 
-            i = source_index + free_source["covariant"].pop()
-            j = target_index + free_target["contravariant"].pop()
-            indices[max(i, j)] = min(i, j)
+            i = source_index + free_source.pop()
+            j = target_index + free_target.pop()
+            contract_indices.append((min(i, j), max(i, j)))
 
-        indices = np.split(indices, split[1:])
-        args = [x for i, node in enumerate(self._nodes) for x in (node.array, indices[i].tolist())]
+        indices = list(range(index_count))
+        for i, j in contract_indices:
+            indices[j] = i
 
-        result_indices = {
-            "covariant": [],
-            "contravariant": []
-        }
-        index_mapping = [[], []]
-        for i, (offset, ind) in enumerate(zip(split, free_indices)):
-            index_mapping[0].extend([i]*len(ind["covariant"]))
-            index_mapping[1].extend([i]*len(ind["contravariant"]))
-            result_indices["covariant"].extend(offset + x for x in ind["covariant"])
-            result_indices["contravariant"].extend(offset + x for x in ind["contravariant"])
-        cov_count = len(result_indices["covariant"])
-        result_indices = result_indices["covariant"] + result_indices["contravariant"]
+        args = []
+        result_indices = ([], [])
+        index_mapping = ([], [])
+        for i, (node, ind, offset) in enumerate(zip(self._nodes, free_indices, split)):
+            index_mapping[0].extend([i] * len(ind[0]))
+            index_mapping[1].extend([i] * len(ind[1]))
+            result_indices[0].extend(offset + x for x in ind[0])
+            result_indices[1].extend(offset + x for x in ind[1])
+            args.append(node.array)
+            s = slice(offset, split[i+1] if i+1 < len(split) else None)
+            args.append(indices[s])
+
+        cov_count = len(result_indices[0])
+        result_indices = result_indices[0] + result_indices[1]
 
         x = np.einsum(*args, result_indices)
 
@@ -219,7 +222,7 @@ class TensorDiagram(Tensor):
         for i, node in enumerate(self._nodes):
             if node is source:
                 source_index = i
-            elif node is target:
+            if node is target:
                 target_index = i
 
             if source_index is not None and target_index is not None:
