@@ -1,9 +1,31 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import warnings
 from itertools import permutations
 
 import numpy as np
 from .exceptions import TensorComputationError
+
+
+class Shape(ABC):
+    """Base class for geometric shapes, i.e. line segments, polytopes and polygons.
+
+    """
+
+    @property
+    def dim(self):
+        return self.vertices[0].dim
+
+    @property
+    @abstractmethod
+    def vertices(self):
+        pass
+
+    @abstractmethod
+    def intersect(self, other):
+        pass
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
 
 
 class Tensor:
@@ -70,6 +92,9 @@ class Tensor:
 
     def copy(self):
         return type(self)(self)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
 
     def __copy__(self):
         return self.copy()
@@ -143,6 +168,10 @@ class TensorDiagram(Tensor):
             return ind
 
         for source, target in edges:
+
+            if source.array.shape[0] != target.array.shape[0]:
+                raise TensorComputationError("Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(str(source.array.shape[0]), str(target.array.shape[0])))
+
             source_index, target_index = None, None
             index_count = 0
 
@@ -168,7 +197,7 @@ class TensorDiagram(Tensor):
                     free_target = add(target)[1]
 
             if len(free_source) == 0 or len(free_target) == 0:
-                raise TensorComputationError("Could not add the edge because no free indices are left.")
+                raise TensorComputationError("Could not add the edge because no free indices are left in the following tensors: " + str((source, target)))
 
             i = source_index + free_source.pop()
             j = target_index + free_target.pop()
@@ -187,7 +216,7 @@ class TensorDiagram(Tensor):
             result_indices[0].extend(offset + x for x in ind[0])
             result_indices[1].extend(offset + x for x in ind[1])
             args.append(node.array)
-            s = slice(offset, split[i+1] if i+1 < len(split) else None)
+            s = slice(offset, split[i + 1] if i + 1 < len(split) else None)
             args.append(indices[s])
 
         cov_count = len(result_indices[0])
@@ -281,9 +310,6 @@ class ProjectiveElement(Tensor, ABC):
         a = self.array.ravel()
         b = other.array.ravel()
         return np.isclose(np.abs(np.vdot(a, b)) ** 2, np.vdot(a, a) * np.vdot(b, b))
-
-    def __len__(self):
-        return np.product(self.array.shape)
 
     @property
     def dim(self):

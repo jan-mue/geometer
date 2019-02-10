@@ -3,7 +3,7 @@ from collections import Iterable
 import numpy as np
 import sympy
 import scipy.linalg
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape
 from .exceptions import LinearDependenceError
 
 
@@ -189,9 +189,6 @@ class Subspace(ProjectiveElement):
     def __init__(self, *args):
         super(Subspace, self).__init__(*args, covariant=False)
 
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
-
     def polynomials(self, symbols=None):
         """Returns a list of polynomials, to use for symbolic calculations.
 
@@ -242,6 +239,8 @@ class Subspace(ProjectiveElement):
             return self * other == 0
         elif isinstance(other, Line):
             return self * other.covariant_tensor == 0
+        elif isinstance(other, Shape):
+            return all(self.contains(v) for v in other.vertices)
 
     def meet(self, *others):
         """Intersect the subspace with other objects.
