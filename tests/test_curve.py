@@ -33,11 +33,11 @@ class TestAlgebraicCurve:
 class TestConic:
 
     def test_from_points(self):
-        a = Point(-1, 0)
-        b = Point(0, 3)
-        c = Point(1, 2)
-        d = Point(2, 1)
-        e = Point(0, -1)
+        a = Point(0, 1)
+        b = Point(0, -1)
+        c = Point(1.5, 0.5)
+        d = Point(1.5, -0.5)
+        e = Point(-1.5, 0.5)
 
         conic = Conic.from_points(a, b, c, d, e)
 
@@ -47,6 +47,21 @@ class TestConic:
         assert conic.contains(d)
         assert conic.contains(e)
 
+    def test_from_points_and_tangent(self):
+        a = Point(-1.5, 0.5)
+        b = Point(0, -1)
+        c = Point(1.5, 0.5)
+        d = Point(1.5, -0.5)
+        l = Line(0, 1, -1)
+
+        conic = Conic.from_points_and_tangent(a, b, c, d, l)
+
+        assert conic.contains(a)
+        assert conic.contains(b)
+        assert conic.contains(c)
+        assert conic.contains(d)
+        assert conic.is_tangent(l)
+
     def test_intersections(self):
         c = Circle(Point(0, 0), 1)
         i = c.intersect(Line(0, 1, 0))
@@ -55,7 +70,7 @@ class TestConic:
         assert Point(-1, 0) in i
 
         c2 = Circle(Point(0, 2), 1)
-        assert c.intersect(c2) == [Point(0, 1)]
+        assert Point(0, 1) in c.intersect(c2)
 
     def test_contains(self):
         c = Conic([[1, 0, 0],
@@ -63,6 +78,18 @@ class TestConic:
                    [0, 0, -1]])
 
         assert c.contains(Point(1, 0))
+
+    def test_foci(self):
+        f1 = Point(0, np.sqrt(5))
+        f2 = Point(0, -np.sqrt(5))
+        b = Point(0, 3)
+
+        conic = Conic.from_foci(f1, f2, b)
+        f = conic.foci
+
+        assert conic.contains(b)
+        assert len(f) == 2
+        assert f1 in f and f2 in f
 
     def test_circle(self):
         c = Circle(Point(0, 1), 1)

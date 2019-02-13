@@ -186,10 +186,29 @@ class Quadric(AlgebraicCurve):
         """
         return Plane(self.matrix.dot(at.array))
 
+    def contains(self, pt):
+        """Tests if a given point lies on the quadric.
+
+        Parameters
+        ----------
+        pt: Point
+            The point to test.
+
+        Returns
+        -------
+        bool
+            True if the quadric contains the point.
+
+        """
+        return np.isclose(pt.array.dot(self.matrix.dot(pt.array)), 0)
+
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
         return np.isclose(float(np.linalg.det(self.matrix)), 0)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, str(self.matrix.tolist()))
 
 
 class Conic(Quadric):
@@ -226,13 +245,13 @@ class Conic(Quadric):
             The resulting conic.
 
         """
-        ace = np.linalg.det([a.array, c.array, e.array])
-        bde = np.linalg.det([b.array, d.array, e.array])
-        ade = np.linalg.det([a.array, d.array, e.array])
-        bce = np.linalg.det([b.array, c.array, e.array])
-        m = ace*bde*np.outer(np.cross(a.array, d.array), np.cross(b.array, c.array))\
-            - ade*bce*np.outer(np.cross(a.array, c.array), np.cross(b.array, d.array))
-        return Conic(m+m.T)
+        a, b, c, d, e = a.normalized_array, b.normalized_array, c.normalized_array, d.normalized_array, e.normalized_array
+        ace = np.linalg.det([a, c, e])
+        bde = np.linalg.det([b, d, e])
+        ade = np.linalg.det([a, d, e])
+        bce = np.linalg.det([b, c, e])
+        m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
+        return Conic(np.real_if_close(m+m.T))
 
     @classmethod
     def from_lines(cls, g, h):
@@ -252,6 +271,75 @@ class Conic(Quadric):
         m = np.outer(g.array, h.array)
         return Conic(m + m.T)
 
+    @classmethod
+    def from_points_and_tangent(cls, a, b, c, d, tangent):
+        """Construct a conic through four points and tangent to a line.
+
+        Parameters
+        ----------
+        a : Point
+        b : Point
+        c : Point
+        d : Point
+        tangent : Line
+
+        Returns
+        -------
+        Conic
+            The resulting conic.
+
+        """
+        if any(tangent.contains(p) for p in [a, b, c, d]):
+            raise ValueError("The supplied points cannot lie on the supplied tangent!")
+
+        a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
+        b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array
+
+        o = [1, 0, 1]
+        i = 0
+        while tangent.contains(Point(o)):
+            o[2-i] = 1
+            i += 1
+
+        a2b1 = np.linalg.det([o, a2, b1])
+        a2b2 = np.linalg.det([o, a2, b2])
+        a1b1 = np.linalg.det([o, a1, b1])
+        a1b2 = np.linalg.det([o, a1, b2])
+
+        c1 = csqrt(a2b1*a2b2)
+        c2 = csqrt(a1b1*a1b2)
+
+        x = Point(c1 * a1 + c2 * a2)
+        y = Point(c1 * a1 - c2 * a2)
+
+        conic = cls.from_points(a, b, c, d, x)
+        if np.all(np.isreal(conic.matrix)):
+            return conic
+        return cls.from_points(a, b, c, d, y)
+
+    @classmethod
+    def from_foci(cls, f1, f2, bound):
+        """Construct a conic with the given focal points that passes through the boundary point.
+
+        Parameters
+        ----------
+        f1 : Point
+            A focal point.
+        f2 : Point
+            A focal point.
+        bound : Point
+            A boundary point that lies on the conic.
+
+        Returns
+        -------
+        Conic
+            The resulting conic.
+
+        """
+        t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
+        c = cls.from_points_and_tangent(Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array), Line(bound.array))
+        return c.dual
+
     @property
     def components(self):
         """:obj:`list` of :obj:`ProjectiveElement`: The components of a degenerate conic."""
@@ -264,13 +352,10 @@ class Conic(Quadric):
                       [-c, 0, a],
                       [b, -a, 0]])
         t = self.matrix + m
-        x, y = np.nonzero(t)
-        result = []
-        for a in np.concatenate((t[x,:], t[:,y].T)):
-            l = Point(a) if self.is_dual else Line(a)
-            if l not in result:
-                result.append(l)
-        return result
+        i = np.unravel_index(np.abs(t).argmax(), t.shape)
+        if self.is_dual:
+            return [Point(t[i[0]]), Point(t[:, i[1]])]
+        return [Line(t[i[0]]), Line(t[:, i[1]])]
 
     def intersect(self, other):
         """Calculates points of intersection with the conic.
@@ -290,7 +375,11 @@ class Conic(Quadric):
                           [-z, 0, x],
                           [y, -x, 0]])
             b = m.T.dot(self.matrix).dot(m)
-            return Conic(b, is_dual=True).components
+            result = []
+            for p in Conic(b, is_dual=True).components:
+                if p not in result:
+                    result.append(p)
+            return result
         if isinstance(other, Conic):
             if other.is_degenerate:
                 if self.is_degenerate:
@@ -320,9 +409,7 @@ class Conic(Quadric):
         return super(Conic, self).intersect(other)
 
     def tangent(self, at):
-        """Calculates the tangent line of the conic at a given point.
-
-        If the given point doesn't lie on the conic, the resulting line will be the polar line.
+        """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
 
         Parameters
         ----------
@@ -331,11 +418,40 @@ class Conic(Quadric):
 
         Returns
         -------
-        Line
-            The tangent line (or polar if the point doesn't lie on the conic).
+        Line or tuple of Line
+            The tangent line(s).
 
         """
-        return Line(self.matrix.dot(at.array))
+        if self.contains(at):
+            return self.polar(at)
+        p, q = self.intersect(self.polar(at))
+        return at.join(p), at.join(q)
+
+    def polar(self, pt):
+        """Calculates the polar line of the conic at a given point.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to calculate the polar at.
+
+        Returns
+        -------
+        Line
+            The polar line.
+
+        """
+        return Line(self.matrix.dot(pt.array))
+
+    @property
+    def foci(self):
+        """tuple of Point: The foci of the conic."""
+        i = self.tangent(at=I)
+        j = self.tangent(at=J)
+        if isinstance(i, Line) and isinstance(j, Line):
+            return i.meet(j),
+        intersections = [i[0].meet(j[0]), i[1].meet(j[1]), i[0].meet(j[1]), i[1].meet(j[0])]
+        return tuple(p for p in intersections if np.all(np.isreal(p.normalized_array)))
 
     @property
     def dual(self):
@@ -366,6 +482,4 @@ class Circle(Conic):
     @property
     def center(self):
         """Point: the center point of the circle."""
-        l = self.tangent(at=I)
-        m = self.tangent(at=J)
-        return l.meet(m)
+        return self.foci[0]
