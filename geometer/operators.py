@@ -1,8 +1,15 @@
 import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
-from .curve import absolute_conic
+from .curve import Conic, Circle, absolute_conic
 from .base import LeviCivitaTensor, TensorDiagram
 from .exceptions import IncidenceError, NotCollinear
+
+
+geometries = {
+    "euclidean": (1, 1/2j, Conic([[0, 0, 0], [0, 0, 0], [0, 0, 1]]), Conic([[1, 0, 0], [0, 1, 0], [0, 0, 0]], True)),
+    "hyperbolic": (-1/2, 1/2j, Circle(), Circle().dual),
+    "elliptic": (1/2j, 1/2j, absolute_conic, absolute_conic.dual)
+}
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -27,6 +34,10 @@ def crossratio(a, b, c, d, from_point=None):
         The cross ration of the given objects.
 
     """
+
+    if a == b:
+        return 1
+
     if isinstance(a, Line):
         if not is_concurrent(a, b, c, d):
             raise IncidenceError("The lines are not concurrent: " + str([a, b, c, d]))
@@ -110,7 +121,7 @@ def harmonic_set(a, b, c):
     return result
 
 
-def angle(*args):
+def angle(*args, geometry="euclidean"):
     """Calculates the (oriented) angle between given points, lines or planes.
 
     The function uses the Laguerre formula to calculate angles in two or three dimensional projective space
@@ -121,6 +132,9 @@ def angle(*args):
     ----------
     *args
         The objects between which the function calculates the angle. This can be 2 or 3 points, 2 lines or 2 planes.
+    geometry : str or tuple, optional
+        The geometry to use for the calculation, default is euclidean. Can be a tuple of two constants and two primal
+        dual conics, i.e. (c_dist, c_ang, A, B) with A*B being a multiple of the identity.
 
     Returns
     -------
@@ -128,6 +142,12 @@ def angle(*args):
         The oriented angle between the given objects.
 
     """
+
+    if isinstance(geometry, str):
+        geometry = geometries[geometry]
+
+    c1, c2, A, B = geometry
+
     if len(args) == 3:
         a, b, c = args
         if a.dim == 3:
@@ -169,7 +189,11 @@ def angle(*args):
     else:
         raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
 
-    return 1/2j*np.log(crossratio(b,c, I,J, a))
+    i = B.intersect(a)
+    x, y = 2*i if len(i) == 1 else i
+    x, y = infty.meet(x), infty.meet(y)
+
+    return c2*np.log(crossratio(b, c, x, y, a))
 
 
 def angle_bisectors(l, m):
@@ -208,8 +232,8 @@ def angle_bisectors(l, m):
     return Line(o, r), Line(o, s)
 
 
-def dist(p, q):
-    """Calculates the euclidean distance between two objects.
+def dist(p, q, geometry="euclidean"):
+    """Calculates the distance between two objects.
 
     Parameters
     ----------
@@ -217,6 +241,9 @@ def dist(p, q):
         A point, line or plane to calculate the distance to.
     q : :obj:`Point`, :obj:`Line` or :obj:`Plane`
         A point, line or plane to calculate the distance to.
+    geometry : str or tuple, optional
+        The geometry to use for the calculation, default is euclidean. Can be a tuple of two constants and two primal
+        dual conics, i.e. (c_dist, c_ang, A, B) with A*B being a multiple of the identity.
 
     Returns
     -------
@@ -233,19 +260,37 @@ def dist(p, q):
     if isinstance(q, Plane) and isinstance(p, Line):
         return dist(q, p.base_point)
 
-    a, b = p.normalized_array, q.normalized_array
+    if isinstance(geometry, str):
+        geometry = geometries[geometry]
+
+    c1, c2, A, B = geometry
+
     if p.dim == 3:
         l = Line(p, q)
+        a, b = p.normalized_array, q.normalized_array
+
         for r in np.eye(4):
             if not l.contains(Point(r)):
                 break
 
         m, _ = np.linalg.qr(np.array([r, a, b]).T)
-        a, b = m.T.dot(a), m.T.dot(b)
+        m = m.T[np.argsort(np.abs(m.T.dot(a)))]
+        p, q = Point(m.dot(a)), Point(m.dot(b))
 
-    pqi = np.linalg.det([a, b, I.array])
-    pqj = np.linalg.det([a, b, J.array])
-    return np.sqrt(pqi*pqj)
+    l = Line(p, q)
+    i = A.intersect(l)
+
+    if len(i) == 1:
+        # parabolic measurement -> use euclidean distance
+        a, b = p.normalized_array, q.normalized_array
+
+        pqi = np.linalg.det([a, b, I.array])
+        pqj = np.linalg.det([a, b, J.array])
+        return np.sqrt(pqi * pqj)
+    else:
+        x, y = i
+
+    return c1*np.log(crossratio(p, q, x, y))
 
 
 def is_cocircular(a, b, c, d):

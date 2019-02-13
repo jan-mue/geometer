@@ -28,7 +28,7 @@ class AlgebraicCurve(ProjectiveElement):
 
         if isinstance(poly, np.ndarray):
             self.symbols = symbols or _symbols(poly.shape[0])
-            super(AlgebraicCurve, self).__init__(poly)
+            super(AlgebraicCurve, self).__init__(poly, covariant=False)
             return
 
         if not isinstance(poly, sympy.Expr):
@@ -156,7 +156,7 @@ class Quadric(AlgebraicCurve):
 
     The quadric is defined by a matrix of size n+1 where n is the dimension of the space.
 
-    The supplied array will be saved as array + array.T to ensure it is symmetric.
+    The supplied matrix will be saved as matrix + matrix.T to ensure it is symmetric.
 
     Parameters
     ----------
@@ -339,7 +339,7 @@ class Conic(Quadric):
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
         c = cls.from_points_and_tangent(Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array), Line(bound.array))
-        return c.dual
+        return Conic(np.linalg.inv(c.array))
 
     @property
     def components(self):
@@ -361,44 +361,48 @@ class Conic(Quadric):
 
         Parameters
         ----------
-        other: :obj:`Line` or :obj:`Conic`
+        other: Line or Conic
             The object to intersect this curve with.
 
         Returns
         -------
+        list of Point
+            The points of intersection
 
         """
-        if isinstance(other, Line):
-            x, y, z = other.array
-            m = np.array([[0, z, -y],
-                          [-z, 0, x],
-                          [y, -x, 0]])
-            b = m.T.dot(self.array).dot(m)
-            result = []
-            for p in Conic(b, is_dual=True).components:
-                if p not in result:
-                    result.append(p)
-            return result
+        if isinstance(other, (Line, Point)):
+            if self.is_degenerate:
+                g, h = self.components
+                if self.is_dual:
+                    p, q = g.join(other), h.join(other)
+                else:
+                    p, q = g.meet(other), h.meet(other)
+            else:
+                x, y, z = other.array
+                m = np.array([[0, z, -y],
+                              [-z, 0, x],
+                              [y, -x, 0]])
+                b = m.T.dot(self.array).dot(m)
+                p, q = Conic(b, is_dual=not self.is_dual).components
+
+            if p == q:
+                return [p]
+            return [p, q]
+
         if isinstance(other, Conic):
             if other.is_degenerate:
-                if self.is_degenerate:
-                    results = []
-                    for g in self.components:
-                        for h in other.components:
-                            if g != h:
-                                results.append(g.meet(h))
-                    return results
                 results = []
                 for l in other.components:
                     for i in self.intersect(l):
                         if i not in results:
                             results.append(i)
                 return results
+
             x = _symbols(1)
             m = sympy.Matrix(self.array + x * other.array)
             f = sympy.poly(m.det(), x)
             roots = np.roots(f.coeffs())
-            c = Conic(self.array + roots[0]*other.array)
+            c = Conic(self.array + roots[0]*other.array, is_dual=self.is_dual)
             results = []
             for l in c.components:
                 for i in self.intersect(l):
