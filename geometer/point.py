@@ -3,7 +3,8 @@ from collections import Iterable
 import numpy as np
 import sympy
 import scipy.linalg
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape
+
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape, _symbols
 from .exceptions import LinearDependenceError
 
 
@@ -203,7 +204,7 @@ class Subspace(ProjectiveElement):
             The polynomials describing the subspace.
 
         """
-        symbols = symbols or sympy.symbols(["x" + str(i) for i in range(self.array.shape[0])])
+        symbols = symbols or _symbols(self.array.shape[0])
 
         def p(row):
             f = sum(x * s for x, s in zip(row, symbols))
@@ -392,6 +393,7 @@ class Line(Subspace):
             The perpendicular line.
 
         """
+        # TODO: fix when self.contains(through)
         return self.mirror(through).join(through)
 
     def project(self, pt: Point):

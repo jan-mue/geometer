@@ -1,7 +1,7 @@
 import numpy as np
 import sympy
 from .point import Point, Line, Plane, I, J
-from .base import ProjectiveElement, Tensor
+from .base import ProjectiveElement, Tensor, _symbols
 from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
@@ -25,21 +25,19 @@ class AlgebraicCurve(ProjectiveElement):
     """
 
     def __init__(self, poly, symbols=None):
-        if symbols is None:
-            symbols = sympy.symbols(["x" + str(i) for i in range(len(poly.shape))])
 
         if isinstance(poly, np.ndarray):
-            self.symbols = symbols
+            self.symbols = symbols or _symbols(poly.shape[0])
             super(AlgebraicCurve, self).__init__(poly)
             return
 
         if not isinstance(poly, sympy.Expr):
             raise ValueError("poly must be ndarray or sympy expression")
 
-        if isinstance(poly, sympy.Poly):
+        if symbols is None:
             symbols = poly.free_symbols
-        else:
-            poly = sympy.poly(poly, *symbols)
+
+        poly = sympy.poly(poly, *symbols)
 
         self.symbols = symbols
 
@@ -158,6 +156,8 @@ class Quadric(AlgebraicCurve):
 
     The quadric is defined by a matrix of size n+1 where n is the dimension of the space.
 
+    The supplied array will be saved as array + array.T to ensure it is symmetric.
+
     Parameters
     ----------
     matrix : array_like or Tensor
@@ -166,9 +166,8 @@ class Quadric(AlgebraicCurve):
     """
 
     def __init__(self, matrix):
-        self.matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        symbols = sympy.symbols(["x" + str(i) for i in range(self.matrix.shape[1])])
-        super(Quadric, self).__init__(self.matrix.dot(symbols).dot(symbols), symbols=symbols)
+        matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
+        super(Quadric, self).__init__(matrix + matrix.T)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -184,7 +183,7 @@ class Quadric(AlgebraicCurve):
             The tangent plane at the given point.
 
         """
-        return Plane(self.matrix.dot(at.array))
+        return Plane(self.array.dot(at.array))
 
     def contains(self, pt):
         """Tests if a given point lies on the quadric.
@@ -200,15 +199,17 @@ class Quadric(AlgebraicCurve):
             True if the quadric contains the point.
 
         """
-        return np.isclose(pt.array.dot(self.matrix.dot(pt.array)), 0)
+        return np.isclose(pt.array.dot(self.array.dot(pt.array)), 0)
+
+    @property
+    def polynomial(self):
+        """sympy.Poly: The polynomial defining this quadric."""
+        return sympy.poly(self.array.dot(self.symbols).dot(self.symbols), self.symbols)
 
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return np.isclose(float(np.linalg.det(self.matrix)), 0)
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, str(self.matrix.tolist()))
+        return np.isclose(float(np.linalg.det(self.array)), 0)
 
 
 class Conic(Quadric):
@@ -313,7 +314,7 @@ class Conic(Quadric):
         y = Point(c1 * a1 - c2 * a2)
 
         conic = cls.from_points(a, b, c, d, x)
-        if np.all(np.isreal(conic.matrix)):
+        if np.all(np.isreal(conic.array)):
             return conic
         return cls.from_points(a, b, c, d, y)
 
@@ -343,15 +344,13 @@ class Conic(Quadric):
     @property
     def components(self):
         """:obj:`list` of :obj:`ProjectiveElement`: The components of a degenerate conic."""
-        if not self.is_degenerate:
-            return [self]
-        a = csqrt(-np.linalg.det(self.matrix[np.array([1,2])[:, np.newaxis], np.array([1,2])]))
-        b = csqrt(-np.linalg.det(self.matrix[np.array([0,2])[:, np.newaxis], np.array([0,2])]))
-        c = csqrt(-np.linalg.det(self.matrix[np.array([0,1])[:, np.newaxis], np.array([0,1])]))
+        a = csqrt(-np.linalg.det(self.array[[[1], [2]], [1, 2]]))
+        b = csqrt(-np.linalg.det(self.array[[[0], [2]], [0, 2]]))
+        c = csqrt(-np.linalg.det(self.array[[[0], [1]], [0, 1]]))
         m = np.array([[0, c, -b],
                       [-c, 0, a],
                       [b, -a, 0]])
-        t = self.matrix + m
+        t = self.array + m
         i = np.unravel_index(np.abs(t).argmax(), t.shape)
         if self.is_dual:
             return [Point(t[i[0]]), Point(t[:, i[1]])]
@@ -370,11 +369,11 @@ class Conic(Quadric):
 
         """
         if isinstance(other, Line):
-            x, y, z = tuple(other.array)
+            x, y, z = other.array
             m = np.array([[0, z, -y],
                           [-z, 0, x],
                           [y, -x, 0]])
-            b = m.T.dot(self.matrix).dot(m)
+            b = m.T.dot(self.array).dot(m)
             result = []
             for p in Conic(b, is_dual=True).components:
                 if p not in result:
@@ -395,11 +394,11 @@ class Conic(Quadric):
                         if i not in results:
                             results.append(i)
                 return results
-            x = sympy.symbols("x")
-            m = sympy.Matrix(self.matrix + x * other.matrix)
+            x = _symbols(1)
+            m = sympy.Matrix(self.array + x * other.array)
             f = sympy.poly(m.det(), x)
             roots = np.roots(f.coeffs())
-            c = Conic(self.matrix + roots[0]*other.matrix)
+            c = Conic(self.array + roots[0]*other.array)
             results = []
             for l in c.components:
                 for i in self.intersect(l):
@@ -441,7 +440,7 @@ class Conic(Quadric):
             The polar line.
 
         """
-        return Line(self.matrix.dot(pt.array))
+        return Line(self.array.dot(pt.array))
 
     @property
     def foci(self):
@@ -456,7 +455,7 @@ class Conic(Quadric):
     @property
     def dual(self):
         """Conic: The dual conic."""
-        return Conic(np.linalg.inv(self.matrix), is_dual=not self.is_dual)
+        return Conic(np.linalg.inv(self.array), is_dual=not self.is_dual)
 
 
 absolute_conic = Conic(np.eye(3))

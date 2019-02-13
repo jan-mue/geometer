@@ -3,7 +3,18 @@ import warnings
 from itertools import permutations
 
 import numpy as np
+import sympy
+
 from .exceptions import TensorComputationError
+
+
+_symbol_cache = []
+
+
+def _symbols(n):
+    if len(_symbol_cache) <= n:
+        _symbol_cache.extend(sympy.symbols(["x" + str(i) for i in range(len(_symbol_cache), n)]))
+    return _symbol_cache[0] if n == 1 else _symbol_cache[:n]
 
 
 class Shape(ABC):
