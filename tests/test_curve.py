@@ -21,7 +21,7 @@ class TestAlgebraicCurve:
         assert curve.tangent(at=Point(1, 0)) == Line(1, 0, 0) + Point(1, 0)
         assert curve.is_tangent(Line(1, 0, 0) + Point(1, 0))
 
-    def test_intersections(self):
+    def test_intersect(self):
         c1 = AlgebraicCurve(x ** 2 + y ** 2 - 1, symbols=[x, y, z])
         c2 = AlgebraicCurve(y, symbols=[x, y, z])
         i = c1.intersect(c2)

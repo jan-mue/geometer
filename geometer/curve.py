@@ -104,7 +104,7 @@ class AlgebraicCurve(ProjectiveElement):
             True if the curve contains the point.
 
         """
-        return np.isclose(float(polyval(pt.array, self.array)), 0)
+        return np.isclose(polyval(pt.array, self.array), 0)
 
     def intersect(self, other):
         """Calculates points of intersection with the algebraic curve.
@@ -123,32 +123,27 @@ class AlgebraicCurve(ProjectiveElement):
         sol = set()
 
         if isinstance(other, Line):
-            for z in [0, 1]:
-                polys = [self.polynomial.subs(self.symbols[-1], z)]
-                for f in other.polynomials(self.symbols):
-                    polys.append(f.subs(self.symbols[-1], z))
+            polys = [self.polynomial] + other.polynomials(self.symbols)
 
-                try:
-                    x = sympy.solve_poly_system(polys, *self.symbols[:-1])
-                    sol.update(tuple(float(x) for x in cor) + (z,) for cor in x)
-                except NotImplementedError:
-                    continue
+        elif isinstance(other, AlgebraicCurve):
+            polys = [self.polynomial, other.polynomial]
 
-        if isinstance(other, AlgebraicCurve):
-            for z in [0, 1]:
-                f = self.polynomial.subs(self.symbols[-1], z)
-                g = other.polynomial.subs(self.symbols[-1], z)
+        else:
+            raise NotImplementedError("Intersection for objects of type %s not supported." % str(type(other)))
 
-                try:
-                    x = sympy.solve_poly_system([f, g], *self.symbols[:-1])
-                    sol.update(tuple(float(x) for x in cor) + (z,) for cor in x)
-                except NotImplementedError:
-                    continue
+        for z in [0, 1]:
+            p = [f.subs(self.symbols[-1], z) for f in polys]
+
+            try:
+                x = sympy.solve_poly_system(p, *self.symbols[:-1])
+                sol.update(tuple(complex(x) for x in cor) + (z,) for cor in x)
+            except NotImplementedError:
+                continue
 
         if (0, 0, 0) in sol:
             sol.remove((0, 0, 0))
 
-        return [Point(p) for p in sol]
+        return [Point(np.real_if_close(p)) for p in sol]
     
     
 class Quadric(AlgebraicCurve):
@@ -209,7 +204,7 @@ class Quadric(AlgebraicCurve):
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return np.isclose(float(np.linalg.det(self.array)), 0)
+        return np.isclose(np.linalg.det(self.array), 0)
 
 
 class Conic(Quadric):
