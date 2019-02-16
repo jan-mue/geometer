@@ -1,4 +1,4 @@
-from geometer import Point, Segment, Rectangle, Triangle, Polytope, Cube, Line
+from geometer import Point, Segment, Rectangle, Triangle, Polytope, Cube, Line, RegularPolygon, dist
 import numpy as np
 
 
@@ -68,6 +68,16 @@ class TestPolygon:
         r = Rectangle(a, b, c, d)
         t = r.triangulate()
         assert t == [Triangle(b, d, c), Triangle(d, b, a)]
+
+    def test_regular_polygon(self):
+        a = Point(0, 0, 0)
+        p = RegularPolygon(a, 1, 6, axis=Point(0, 0, 1))
+
+        d = p.sides[0].length()
+
+        assert len(p.vertices) == 6
+        assert np.isclose(dist(a, p.vertices[0]), 1)
+        assert all(np.isclose(s.length(), d) for s in p.sides[1:])
         
         
 class TestPolytope:
