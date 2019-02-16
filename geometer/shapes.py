@@ -23,10 +23,9 @@ class Segment(Shape):
 
     """
 
-    def __init__(self, p, q, geometry="euclidean"):
+    def __init__(self, p, q):
         self._points = (p, q)
         self._line = Line(p, q)
-        super(Segment, self).__init__(geometry)
 
     @property
     def vertices(self):
@@ -38,33 +37,27 @@ class Segment(Shape):
 
         p, q = self._points
 
-        if self._geometry == "euclidean":
+        pinf = np.isclose(p.array[-1], 0)
+        qinf = np.isclose(q.array[-1], 0)
 
-            pinf = np.isclose(p.array[-1], 0)
-            qinf = np.isclose(q.array[-1], 0)
+        if pinf and not qinf:
+            direction = - p.array[:-1]
+            d2 = np.inf
 
-            if pinf and not qinf:
-                direction = - p.array[:-1]
-                d2 = np.inf
-
-            elif qinf and not pinf:
-                direction = q.array[:-1]
-                d2 = np.inf
-
-            else:
-                direction = (q - p).array[:-1]
-                d2 = direction.dot(direction)
-
-            if np.isclose(pt.array[-1], 0) and not (pinf and qinf):
-                return pt == p or pt == q
-
-            d1 = (pt - p).array[:-1].dot(direction)
+        elif qinf and not pinf:
+            direction = q.array[:-1]
+            d2 = np.inf
 
         else:
-            d1 = dist(p, pt, geometry=self._geometry)
-            d2 = dist(p, q, geometry=self._geometry)
+            direction = (q - p).array[:-1]
+            d2 = direction.dot(direction)
 
-        return min(0, d2) <= d1 <= max(0, d2)
+        if np.isclose(pt.array[-1], 0) and not (pinf and qinf):
+            return pt == p or pt == q
+
+        d1 = (pt - p).array[:-1].dot(direction)
+
+        return 0 <= d1 <= d2
 
     def intersect(self, other):
         if isinstance(other, (Line, Plane)):
@@ -94,7 +87,7 @@ class Segment(Shape):
         return NotImplemented
 
     def __add__(self, other):
-        return Segment(*[p + other for p in self._points], geometry=self._geometry)
+        return Segment(*[p + other for p in self._points])
 
 
 class Polytope(Shape):
@@ -109,15 +102,13 @@ class Polytope(Shape):
 
     """
 
-    def __init__(self, *args, geometry="euclidean"):
+    def __init__(self, *args):
 
         if len(args) < 3:
             raise ValueError("Expected at least 3 arguments, got {}.".format(str(len(args))))
 
-        super(Polytope, self).__init__(geometry)
-
         if all(isinstance(x, Point) for x in args):
-            self._sides = self._convex_hull_from_vertices(args, geometry)
+            self._sides = self._convex_hull_from_vertices(args)
         else:
             self._sides = list(args)
 
@@ -149,9 +140,9 @@ class Polytope(Shape):
         return self._sum_lists(s.intersect(other) for s in self.sides if s != other)
 
     @staticmethod
-    def _convex_hull_from_vertices(vertices, geometry):
+    def _convex_hull_from_vertices(vertices):
         hull = scipy.spatial.ConvexHull([p.normalized_array[:-1] for p in vertices])
-        return [_simplex(*[vertices[i] for i in a], geometry=geometry) for a in hull.simplices]
+        return [_simplex(*[vertices[i] for i in a]) for a in hull.simplices]
 
     def convex_hull(self):
         """Calculates the convex hull of the vertices of the polytope.
@@ -167,14 +158,14 @@ class Polytope(Shape):
             The convex hull of the vertices.
 
         """
-        sides = self._convex_hull_from_vertices(self.vertices, self._geometry)
+        sides = self._convex_hull_from_vertices(self.vertices)
         return Polytope(*sides)
 
     def triangulate(self):
         points = self.vertices
         a = np.concatenate([p.array.reshape((p.array.shape[0], 1)) for p in points], axis=1)
         tri = scipy.spatial.Delaunay((a[:-1] / a[-1]).T)
-        return [_simplex(*[points[i] for i in a], geometry=self._geometry) for a in tri.simplices]
+        return [_simplex(*[points[i] for i in a]) for a in tri.simplices]
 
     def is_convex(self):
         # TODO: implement this
@@ -192,13 +183,13 @@ class Polytope(Shape):
         return NotImplemented
 
     def __add__(self, other):
-        return type(self)(*[s + other for s in self.sides], geometry=self._geometry)
+        return type(self)(*[s + other for s in self.sides])
 
 
 class Simplex(Polytope):
 
-    def __init__(self, *args, geometry="euclidean"):
-        super(Simplex, self).__init__(*args, geometry=geometry)
+    def __init__(self, *args):
+        super(Simplex, self).__init__(*args)
         if len(self.vertices) != self.dim + 1:
             raise ValueError("Expected {} vertices, got {}.".format(str(self.dim + 1), str(len(self.vertices))))
 
@@ -207,23 +198,23 @@ class Simplex(Polytope):
         return 1 / np.math.factorial(self.dim) * abs(np.linalg.det(points / points[-1]))
 
 
-def _simplex(*args, geometry="euclidean"):
+def _simplex(*args):
     if len(args) == 2:
-        return Segment(*args, geometry=geometry)
+        return Segment(*args)
     if len(args) == 3:
-        return Triangle(*args, geometry=geometry)
+        return Triangle(*args)
     return Simplex(*args)
 
 
 class Polygon(Polytope):
 
-    def __init__(self, *args, geometry="euclidean"):
+    def __init__(self, *args):
         segments = []
         if all(isinstance(x, Point) for x in args):
             for i in range(len(args)):
-                segments.append(Segment(args[i], args[(i+1) % len(args)], geometry=geometry))
+                segments.append(Segment(args[i], args[(i+1) % len(args)]))
             args = segments
-        super(Polygon, self).__init__(*args, geometry=geometry)
+        super(Polygon, self).__init__(*args)
         self._plane = None
         if self.dim > 2:
             self._plane = join(*self.vertices[:self.dim])
@@ -261,7 +252,7 @@ class Polygon(Polytope):
         points = m.dot(points)
         points = points / points[-1]
         tri = scipy.spatial.Delaunay(points.T[:, :-1])
-        return [Triangle(*[vertices[i] for i in a], geometry=self._geometry) for a in tri.simplices]
+        return [Triangle(*[vertices[i] for i in a]) for a in tri.simplices]
 
     def area(self):
         return sum(t.area() for t in self.triangulate())
@@ -279,7 +270,7 @@ class Polygon(Polytope):
 
 class RegularPolygon(Polygon):
 
-    def __init__(self, center, radius, n, axis=None, geometry="euclidean"):
+    def __init__(self, center, radius, n, axis=None):
         # TODO: non-euclidean polygons
         self.center = center
         if axis is None:
@@ -293,8 +284,8 @@ class RegularPolygon(Polygon):
 
 class Triangle(Polygon):
 
-    def __init__(self, a, b, c, geometry="euclidean"):
-        super(Triangle, self).__init__(a, b, c, geometry=geometry)
+    def __init__(self, a, b, c):
+        super(Triangle, self).__init__(a, b, c)
 
     def area(self):
         points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
@@ -312,15 +303,15 @@ class Triangle(Polygon):
 
 class Rectangle(Polygon):
 
-    def __init__(self, a, b, c, d, geometry="euclidean"):
-        super(Rectangle, self).__init__(a, b, c, d, geometry=geometry)
+    def __init__(self, a, b, c, d):
+        super(Rectangle, self).__init__(a, b, c, d)
 
 
 class Cube(Polytope):
 
-    def __init__(self, a, b, c, d, geometry="euclidean"):
+    def __init__(self, a, b, c, d):
         x, y, z = b-a, c-a, d-a
-        yz = Rectangle(a, a + z, a + y + z, a + y, geometry=geometry)
-        xz = Rectangle(a, a + x, a + x + z, a + z, geometry=geometry)
-        xy = Rectangle(a, a + x, a + x + y, a + y, geometry=geometry)
-        super(Cube, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z, geometry=geometry)
+        yz = Rectangle(a, a + z, a + y + z, a + y)
+        xz = Rectangle(a, a + x, a + x + z, a + z)
+        xy = Rectangle(a, a + x, a + x + y, a + y)
+        super(Cube, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z)

@@ -22,9 +22,6 @@ class Shape(ABC):
 
     """
 
-    def __init__(self, geometry):
-        self._geometry = geometry
-
     @property
     def dim(self):
         return self.vertices[0].dim
