@@ -1,4 +1,4 @@
-from geometer import Point, Segment, Rectangle, Triangle, Polytope, Cube, Line, RegularPolygon, dist
+from geometer import Point, Segment, Rectangle, Triangle, Polytope, Cube, Line, RegularPolygon, dist, rotation
 import numpy as np
 
 
@@ -68,6 +68,17 @@ class TestPolygon:
         r = Rectangle(a, b, c, d)
         t = r.triangulate()
         assert t == [Triangle(b, d, c), Triangle(d, b, a)]
+
+    def test_transformation(self):
+        a = Point(0, 0)
+        b = Point(0, 1)
+        c = Point(2, 1)
+        d = Point(2, 0)
+        r = Rectangle(a, b, c, d)
+        r2 = rotation(np.pi/2)*r
+
+        assert r.area() == r2.area()
+        assert r2.contains(Point(-0.5, 1.5))
 
     def test_regular_polygon(self):
         a = Point(0, 0, 0)

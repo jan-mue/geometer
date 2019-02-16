@@ -1,5 +1,5 @@
 import numpy as np
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape
 from .point import Point, Line, Plane
 from .curve import Quadric
 
@@ -25,6 +25,7 @@ def rotation(angle, axis=None):
                                [np.sin(angle), np.cos(angle), 0],
                                [0, 0, 1]])
 
+    # TODO: fix for arbitrary axes (e.g. (1,1,2) doesn't work)
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)
     a = axis.normalized_array[:-1]
@@ -103,6 +104,8 @@ class Transformation(ProjectiveElement):
         if isinstance(other, Quadric):
             inv = self.inverse()
             return type(other)(TensorDiagram((inv, other), (other, inv)))
+        if isinstance(other, Shape):
+            return type(other)(*[self*v for v in other.vertices])
         raise NotImplementedError
 
     def __pow__(self, power, modulo=None):
