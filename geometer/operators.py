@@ -99,7 +99,7 @@ def harmonic_set(a, b, c):
         if not l.contains(o):
             break
     if n > 3:
-        e = Plane(l, o)
+        e = join(l, o)
         basis = e.basis_matrix
         a = Point(basis.dot(a.array))
         b = Point(basis.dot(b.array))
@@ -110,6 +110,7 @@ def harmonic_set(a, b, c):
     m = Line(o, c)
     p = o + 1/2*m.direction
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
+
     if n > 3:
         return Point(basis.T.dot(result.array))
     return result
@@ -126,9 +127,6 @@ def angle(*args):
     ----------
     *args
         The objects between which the function calculates the angle. This can be 2 or 3 points, 2 lines or 2 planes.
-    geometry : str or tuple, optional
-        The geometry to use for the calculation, default is euclidean. Can be a tuple of two constants and two primal
-        dual conics, i.e. (c_dist, c_ang, A, B) with A*B being a multiple of the identity.
 
     Returns
     -------
@@ -138,8 +136,8 @@ def angle(*args):
     """
     if len(args) == 3:
         a, b, c = args
-        if a.dim == 3:
-            e = Plane(*args)
+        if a.dim > 2:
+            e = join(*args)
             basis = e.basis_matrix
             a, b, c = Point(basis.dot(a.array)), Point(basis.dot(b.array)), Point(basis.dot(c.array))
 
@@ -165,8 +163,8 @@ def angle(*args):
             if isinstance(y, Point):
                 y = a.join(y)
 
-        if a.dim == 3:
-            e = Plane(x, y)
+        if a.dim > 2:
+            e = join(x, y)
             basis = e.basis_matrix
             a = Point(basis.dot(a.array))
             b = Point(basis.dot(x.meet(infty_plane).array))
@@ -197,13 +195,16 @@ def angle_bisectors(l, m):
 
     """
     o = l.meet(m)
-    if o.dim == 3:
-        e = Plane(l, m)
+
+    if o.dim > 2:
+        e = join(l, m)
         basis = e.basis_matrix
         L = Point(basis.dot(l.meet(infty_plane).array))
         M = Point(basis.dot(m.meet(infty_plane).array))
+
     else:
         L, M = l.meet(infty), m.meet(infty)
+
     p = Point(0, 0)
     li = np.linalg.det([p.array, L.array, I.array])
     lj = np.linalg.det([p.array, L.array, J.array])
@@ -211,13 +212,15 @@ def angle_bisectors(l, m):
     mj = np.linalg.det([p.array, M.array, J.array])
     a, b = np.sqrt(lj*mj), np.sqrt(li*mi)
     r, s = a*I+b*J, a*I-b*J
-    if o.dim == 3:
+
+    if o.dim > 2:
         r, s = Point(basis.T.dot(r.array)), Point(basis.T.dot(s.array))
+
     return Line(o, r), Line(o, s)
 
 
 def dist(p, q):
-    """Calculates the distance between two objects.
+    """Calculates the (euclidean) distance between two objects.
 
     Parameters
     ----------
@@ -225,12 +228,6 @@ def dist(p, q):
         A point, line or plane to calculate the distance to.
     q : :obj:`Point`, :obj:`Line` or :obj:`Plane`
         A point, line or plane to calculate the distance to.
-    geometry : str or tuple, optional
-        The geometry to use for the calculation, default is euclidean. Can be a tuple of two constants and two primal
-        dual conics, i.e. (c_dist, c_ang, A, B) with A*B being a multiple of the identity.
-    reference_points : tuple of points, optional
-        The reference points in the case of a parabolic measurement. By default points with euclidean distance one
-        will be used.
 
     Returns
     -------

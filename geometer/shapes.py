@@ -271,7 +271,6 @@ class Polygon(Polytope):
 class RegularPolygon(Polygon):
 
     def __init__(self, center, radius, n, axis=None):
-        # TODO: non-euclidean polygons
         self.center = center
         if axis is None:
             p = Point(1, 0)
