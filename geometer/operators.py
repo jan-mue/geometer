@@ -287,10 +287,18 @@ def is_cocircular(a, b, c, d):
     """
     if a.dim == 1:
         return np.isreal(crossratio(a, b, c, d))
-    else:
-        i = crossratio(a, b, c, d, I)
-        j = crossratio(a, b, c, d, J)
-        return np.isclose(i, j)
+
+    elif a.dim > 2:
+        e = join(a, b, c)
+        basis = e.basis_matrix
+        a = Point(basis.dot(a.array))
+        b = Point(basis.dot(b.array))
+        c = Point(basis.dot(c.array))
+        d = Point(basis.dot(d.array))
+
+    i = crossratio(a, b, c, d, I)
+    j = crossratio(a, b, c, d, J)
+    return np.isclose(i, j)
 
 
 def is_perpendicular(l, m):
@@ -309,8 +317,8 @@ def is_perpendicular(l, m):
         True if the two lines are perpendicular.
 
     """
-    if l.dim == 3:
-        e = Plane(l, m)
+    if l.dim > 2:
+        e = join(l, m)
         basis = e.basis_matrix
         L = Point(basis.dot(l.meet(infty_plane).array))
         M = Point(basis.dot(m.meet(infty_plane).array))
