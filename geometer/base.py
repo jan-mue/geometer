@@ -22,6 +22,9 @@ class Shape(ABC):
 
     """
 
+    def __init__(self, geometry):
+        self._geometry = geometry
+
     @property
     def dim(self):
         return self.vertices[0].dim
@@ -317,10 +320,16 @@ class ProjectiveElement(Tensor, ABC):
     """
 
     def __eq__(self, other):
-        # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
-        a = self.array.ravel()
-        b = other.array.ravel()
-        return np.isclose(np.abs(np.vdot(a, b)) ** 2, np.vdot(a, a) * np.vdot(b, b))
+        if isinstance(other, Tensor):
+
+            if self.array.shape != other.array.shape:
+                return False
+
+            # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
+            a = self.array.ravel()
+            b = other.array.ravel()
+            return np.isclose(np.abs(np.vdot(a, b)) ** 2, np.vdot(a, a) * np.vdot(b, b))
+        return NotImplemented
 
     @property
     def dim(self):

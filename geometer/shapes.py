@@ -3,7 +3,7 @@ import scipy.spatial
 from .base import Shape
 from .point import Line, Plane, Point, join, infty_hyperplane
 from .operators import dist, angle, harmonic_set
-from .exceptions import NotCoplanar
+from .exceptions import NotCoplanar, LinearDependenceError
 
 
 class Segment(Shape):
@@ -21,33 +21,61 @@ class Segment(Shape):
 
     """
 
-    def __init__(self, p: Point, q: Point):
+    def __init__(self, p, q, geometry="euclidean"):
         self._points = (p, q)
         self._line = Line(p, q)
+        super(Segment, self).__init__(geometry)
 
     @property
     def vertices(self):
         return list(self._points)
 
-    def contains(self, pt: Point):
+    def contains(self, pt):
         if not self._line.contains(pt):
             return False
 
         p, q = self._points
-        d = (pt - p).array[:-1].dot((q - p).array[:-1])
 
-        if d < 0 or d > (q - p).array[:-1].dot((q - p).array[:-1]):
-            return False
+        if self._geometry == "euclidean":
 
-        return True
+            pinf = np.isclose(p.array[-1], 0)
+            qinf = np.isclose(q.array[-1], 0)
+
+            if pinf and not qinf:
+                direction = - p.array[:-1]
+                d2 = np.inf
+
+            elif qinf and not pinf:
+                direction = q.array[:-1]
+                d2 = np.inf
+
+            else:
+                direction = (q - p).array[:-1]
+                d2 = direction.dot(direction)
+
+            if np.isclose(pt.array[-1], 0) and not (pinf and qinf):
+                return pt == p or pt == q
+
+            d1 = (pt - p).array[:-1].dot(direction)
+
+        else:
+            d1 = dist(p, pt, geometry=self._geometry)
+            d2 = dist(p, q, geometry=self._geometry)
+
+        return min(0, d2) <= d1 <= max(0, d2)
 
     def intersect(self, other):
         if isinstance(other, (Line, Plane)):
-            pt = other.meet(self._line)
-            return [pt] if self.contains(pt) else []
+            try:
+                pt = other.meet(self._line)
+            except (LinearDependenceError, NotCoplanar):
+                return []
+            o = self.contains(pt)
+            return [pt] if o else []
         if isinstance(other, Segment):
             i = other.intersect(self._line)
-            return i if i and self.contains(i[0]) else []
+            o = i and self.contains(i[0])
+            return i if o else []
         return []
 
     def complement(self):
@@ -61,7 +89,9 @@ class Segment(Shape):
         return dist(*self._points)
 
     def __eq__(self, other):
-        return self.vertices == other.vertices
+        if isinstance(other, Segment):
+            return self.vertices == other.vertices
+        return NotImplemented
 
     def __add__(self, other):
         return Segment(*[p + other for p in self._points])
@@ -79,10 +109,12 @@ class Polytope(Shape):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, geometry="euclidean"):
 
         if len(args) < 3:
             raise ValueError("Expected at least 3 arguments, got {}.".format(str(len(args))))
+
+        super(Polytope, self).__init__(geometry)
 
         if all(isinstance(x, Point) for x in args):
             self._sides = self._convex_hull_from_vertices(args)
@@ -113,8 +145,8 @@ class Polytope(Shape):
 
     def intersect(self, other):
         if isinstance(other, Polytope):
-            return self._sum_lists(self.intersect(s) for s in other.sides)
-        return self._sum_lists(s.intersect(other) for s in self.sides)
+            return self._sum_lists(self.intersect(s) for s in other.sides if s != other)
+        return self._sum_lists(s.intersect(other) for s in self.sides if s != other)
 
     @staticmethod
     def _convex_hull_from_vertices(vertices):
@@ -155,7 +187,9 @@ class Polytope(Shape):
         return sum(s.area() for s in self.sides)
 
     def __eq__(self, other):
-        return self.sides == other.sides
+        if isinstance(other, Polytope):
+            return self.sides == other.sides
+        return NotImplemented
 
     def __add__(self, other):
         return type(self)(*[s + other for s in self.sides])
@@ -163,8 +197,8 @@ class Polytope(Shape):
 
 class Simplex(Polytope):
 
-    def __init__(self, *args):
-        super(Simplex, self).__init__(*args)
+    def __init__(self, *args, geometry="euclidean"):
+        super(Simplex, self).__init__(*args, geometry=geometry)
         if len(self.vertices) != self.dim + 1:
             raise ValueError("Expected {} vertices, got {}.".format(str(self.dim + 1), str(len(self.vertices))))
 
@@ -183,8 +217,8 @@ def _simplex(*args):
 
 class Polygon(Polytope):
 
-    def __init__(self, *args):
-        super(Polygon, self).__init__(*args)
+    def __init__(self, *args, geometry="euclidean"):
+        super(Polygon, self).__init__(*args, geometry=geometry)
         self._plane = None
         if self.dim > 2:
             self._plane = join(*self.vertices[:self.dim])
@@ -192,15 +226,19 @@ class Polygon(Polytope):
                 if not self._plane.contains(s):
                     raise NotCoplanar("The vertices of a polygon must be coplanar!")
 
-    def contains(self, pt: Point):
-        # TODO: fix for dim > 2
-        for s in self.sides:
-            if np.any(s._line.array.dot(pt.array) > 0):
-                return False
-        return True
+    def contains(self, pt):
+        e = infty_hyperplane(self.dim)
+        if e.contains(pt):
+            p = Point([0]*self.dim + [1])
+        elif self.dim == 2:
+            p = Point([1, 0, 0])
+        else:
+            p = self._plane.meet(e).base_point
+        s = Segment(pt, p)
+        return len(super(Polygon, self).intersect(s)) % 2 == 1
 
     def intersect(self, other):
-        if self.dim > 2:
+        if self.dim > 2 and not self._plane.contains(other):
             if isinstance(other, Line):
                 p = self._plane.meet(other)
                 return [p] if self.contains(p) else []

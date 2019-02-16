@@ -82,6 +82,15 @@ class TestPolytope:
         assert len(cube.vertices) == 8
         assert cube.area() == 6
         assert np.isclose(cube.volume(), 1)
+
+    def test_intersect(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cube(a, b, c, d)
+        l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
+        assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
     
     def test_convex_hull(self):
         pts = [

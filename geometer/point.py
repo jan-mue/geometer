@@ -5,7 +5,7 @@ import sympy
 import scipy.linalg
 
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape, _symbols
-from .exceptions import LinearDependenceError
+from .exceptions import LinearDependenceError, NotCoplanar
 
 
 def _join_meet_duality(*args, intersect_lines=True):
@@ -29,12 +29,16 @@ def _join_meet_duality(*args, intersect_lines=True):
         elif isinstance(a, Point) and isinstance(b, Line):
             result = b * a
         elif isinstance(a, Line) and isinstance(b, Line):
-            coplanar = n <= 3 or (n == 4 and a.is_coplanar(b))
             e = LeviCivitaTensor(n)
 
-            if not coplanar:
+            if n > 4:
                 result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1]))
                 coplanar = result == 0
+            else:
+                coplanar = n < 4 or a.is_coplanar(b)
+
+            if not coplanar and intersect_lines:
+                raise NotCoplanar("The given lines are not coplanar.")
 
             if coplanar:
                 array = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b)).array
@@ -200,7 +204,7 @@ class Subspace(ProjectiveElement):
 
         Returns
         -------
-        :obj:`list` of :obj:`sympy.Poly`
+        list of sympy.Poly
             The polynomials describing the subspace.
 
         """
@@ -356,7 +360,7 @@ class Line(Subspace):
         return Line(result)
 
     def is_coplanar(self, other):
-        """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect in 3D.
+        """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect.
 
         Parameters
         ----------
@@ -369,8 +373,11 @@ class Line(Subspace):
             True if the two lines intersect (i.e. they lie in the same plane).
 
         """
+        if self.dim == 2:
+            return True
+
         e = LeviCivitaTensor(self.dim + 1)
-        return TensorDiagram((e, self), (e, self), (e, other), (e, other)) == 0
+        return TensorDiagram(*[(e, self)]*(self.dim - 1), *[(e, other)]*(self.dim - 1)) == 0
 
     def __add__(self, point):
         from .transformation import translation

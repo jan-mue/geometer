@@ -75,7 +75,8 @@ def crossratio(a, b, c, d, from_point=None):
     ad = np.linalg.det(o + [a.array, d.array])
     bc = np.linalg.det(o + [b.array, c.array])
 
-    return ac * bd / (ad * bc)
+    with np.errstate(divide="ignore"):
+        return ac * bd / (ad * bc)
 
 
 def harmonic_set(a, b, c):
@@ -232,7 +233,7 @@ def angle_bisectors(l, m):
     return Line(o, r), Line(o, s)
 
 
-def dist(p, q, geometry="euclidean"):
+def dist(p, q, geometry="euclidean", reference_points=None):
     """Calculates the distance between two objects.
 
     Parameters
@@ -244,6 +245,9 @@ def dist(p, q, geometry="euclidean"):
     geometry : str or tuple, optional
         The geometry to use for the calculation, default is euclidean. Can be a tuple of two constants and two primal
         dual conics, i.e. (c_dist, c_ang, A, B) with A*B being a multiple of the identity.
+    reference_points : tuple of points, optional
+        The reference points in the case of a parabolic measurement. By default points with euclidean distance one
+        will be used.
 
     Returns
     -------
@@ -251,6 +255,9 @@ def dist(p, q, geometry="euclidean"):
         The distance between the given objects.
 
     """
+    if p == q:
+        return 0
+
     if isinstance(p, (Plane, Line)) and isinstance(q, Point):
         return dist(p.project(q), q)
     if isinstance(p, Point) and isinstance(q, (Plane, Line)):
@@ -265,28 +272,38 @@ def dist(p, q, geometry="euclidean"):
 
     c1, c2, A, B = geometry
 
-    if p.dim == 3:
-        l = Line(p, q)
-        a, b = p.normalized_array, q.normalized_array
+    if p.dim > 2:
+        x = np.array([p.normalized_array, q.normalized_array])
+        z = x[:, -1]
 
-        for r in np.eye(4):
-            if not l.contains(Point(r)):
-                break
-
-        m, _ = np.linalg.qr(np.array([r, a, b]).T)
-        m = m.T[np.argsort(np.abs(m.T.dot(a)))]
-        p, q = Point(m.dot(a)), Point(m.dot(b))
+        m, _ = np.linalg.qr(x.T)
+        x = m.T.dot(x.T)
+        x = np.append(x, [z], axis=0).T
+        p, q = Point(x[0]), Point(x[1])
 
     l = Line(p, q)
     i = A.intersect(l)
 
     if len(i) == 1:
         # parabolic measurement -> use euclidean distance
-        a, b = p.normalized_array, q.normalized_array
+        pqi = np.linalg.det([p.array, q.array, I.array])
+        pqj = np.linalg.det([p.array, q.array, J.array])
+        pij = np.linalg.det([p.array, I.array, J.array])
+        qij = np.linalg.det([q.array, I.array, J.array])
 
-        pqi = np.linalg.det([a, b, I.array])
-        pqj = np.linalg.det([a, b, J.array])
-        return np.sqrt(pqi * pqj)
+        if reference_points is None:
+            dab = -4
+        else:
+            a, b = reference_points
+            abi = np.linalg.det([a.array, b.array, I.array])
+            abj = np.linalg.det([a.array, b.array, J.array])
+            aij = np.linalg.det([a.array, I.array, J.array])
+            bij = np.linalg.det([b.array, I.array, J.array])
+
+            dab = aij*bij/np.sqrt(abi*abj)
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return abs(np.sqrt(pqi * pqj)*dab/(pij*qij))
     else:
         x, y = i
 
