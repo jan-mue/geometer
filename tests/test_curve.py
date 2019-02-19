@@ -47,6 +47,14 @@ class TestConic:
         assert conic.contains(d)
         assert conic.contains(e)
 
+    def test_from_center(self):
+        conic = Conic.from_center(Point(0, 0), 2, 3)
+
+        assert conic.contains(Point(-2, 0))
+        assert conic.contains(Point(2, 0))
+        assert conic.contains(Point(0, 3))
+        assert conic.contains(Point(0, -3))
+
     def test_from_points_and_tangent(self):
         a = Point(-1.5, 0.5)
         b = Point(0, -1)

@@ -149,20 +149,18 @@ class AlgebraicCurve(ProjectiveElement):
 class Quadric(AlgebraicCurve):
     """Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
-    The quadric is defined by a matrix of size n+1 where n is the dimension of the space.
-
-    The supplied matrix will be saved as matrix + matrix.T to ensure it is symmetric.
+    The quadric is defined by a symmetric matrix of size n+1 where n is the dimension of the space.
 
     Parameters
     ----------
     matrix : array_like or Tensor
-        The array defining a (n+1)x(n+1) matrix.
+        The array defining a (n+1)x(n+1) symmetric matrix.
 
     """
 
     def __init__(self, matrix):
         matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        super(Quadric, self).__init__(matrix + matrix.T)
+        super(Quadric, self).__init__(matrix)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -213,7 +211,7 @@ class Conic(Quadric):
     Parameters
     ----------
     matrix : array_like or Tensor
-        A two dimensional array that defines the 2x2 matrix of the conic.
+        A two dimensional array that defines the symmetric 3x3 matrix of the conic.
     is_dual : bool, optional
         If true, the conic represents a dual conic, i.e. all lines tangent to the non-dual conic.
 
@@ -266,6 +264,33 @@ class Conic(Quadric):
         """
         m = np.outer(g.array, h.array)
         return Conic(m + m.T)
+
+    @classmethod
+    def from_center(cls, center, hradius, vradius):
+        """Construct an ellipse from center and radius.
+
+        Parameters
+        ----------
+        center : Point
+            The center of the ellipse.
+        hradius : float
+            The horizontal radius (along the x-axis).
+        vradius : float
+             The vertical radius (along the y-axis).
+
+        Returns
+        -------
+        Conic
+            The resulting conic.
+
+        """
+        r = np.array([vradius**2, hradius**2, 1])
+        c = -center.normalized_array
+        m = np.diag(r)
+        m[2, :] = c*r
+        m[:, 2] = c*r
+        m[2, 2] = r.dot(c**2) - (r[0]*r[1] + 1)
+        return Conic(m)
 
     @classmethod
     def from_points_and_tangent(cls, a, b, c, d, tangent):
