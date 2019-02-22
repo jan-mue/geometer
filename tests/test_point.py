@@ -168,25 +168,3 @@ class Test4D:
 
         l = Line(p1, p2)
         assert l.project(Point(0, 0, 0, 0)) == Point(0.5, 0.5, 0, 0)
-
-
-class Test8D:
-
-    def test_join(self):
-        points = [Point(*a) for a in np.random.randint(100, size=(8, 8))]
-        assert join(*points).contains(points[3])
-
-    def test_meet(self):
-        planes = [Plane(a) for a in np.random.randint(100, size=(8, 9))]
-
-        # 8 hyperplanes
-        p = meet(*planes)
-        assert isinstance(p, Point)
-        assert all(e.contains(p) for e in planes)
-
-        # hyperplane and line
-        l = Line(Point(0, 0, 0, 0, 0, 0, 0, 0), Point(0, 0, 1, 0, 0, 0, 0, 0))
-        p = planes[0].meet(l)
-        assert isinstance(p, Point)
-        assert l.contains(p)
-        assert planes[0].contains(p)
