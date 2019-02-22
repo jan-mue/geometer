@@ -33,10 +33,21 @@ class Test2D:
         assert l.is_parallel(m)
 
     def test_perpendicular(self):
-        p = Point(1,1)
-        l = Line(1,1,0)
+        p = Point(1, 1)
+        l = Line(1, 1, 0)
         m = l.perpendicular(p)
-        assert m == Line(-1,1,0)
+
+        assert m == Line(-1, 1, 0)
+
+        m = l.perpendicular(Point(0, 0))
+        assert m == Line(-1, 1, 0)
+
+        p = Point(1, 1, 0)
+        q = Point(0, 0, 1)
+        l = Line(p, q)
+        m = l.perpendicular(p)
+
+        assert is_perpendicular(l, m)
 
 
 class Test3D:

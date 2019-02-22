@@ -400,7 +400,33 @@ class Line(Subspace):
             The perpendicular line.
 
         """
-        # TODO: fix when self.contains(through)
+        if self.contains(through):
+            n = self.dim + 1
+
+            l = self
+
+            if n > 3:
+                # additional point is required to determine the exact line
+                arr = np.zeros(n)
+                for i in range(n):
+                    arr[-i - 1] = 1
+                    o = Point(arr)
+                    if not self.contains(o):
+                        break
+                e = join(self, o)
+                basis = e.basis_matrix
+                line_pts = basis.dot(self.basis_matrix.T)
+                l = Line(np.cross(*line_pts.T))
+
+            from .operators import harmonic_set
+            p = l.meet(infty)
+            q = harmonic_set(I, J, p)
+
+            if n > 3:
+                q = Point(basis.T.dot(q.array))
+
+            return Line(through, q)
+
         return self.mirror(through).join(through)
 
     def project(self, pt: Point):

@@ -75,6 +75,8 @@ def crossratio(a, b, c, d, from_point=None):
 def harmonic_set(a, b, c):
     """Constructs a fourth point that forms a harmonic set with the given points.
 
+    If the returned point is d, the points {{a, b}, {c, d}} will be in harmonic position.
+
     Parameters
     ----------
     a : Point
