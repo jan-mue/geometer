@@ -266,33 +266,6 @@ class Conic(Quadric):
         return Conic(m + m.T)
 
     @classmethod
-    def from_center(cls, center, hradius, vradius):
-        """Construct an ellipse from center and radius.
-
-        Parameters
-        ----------
-        center : Point
-            The center of the ellipse.
-        hradius : float
-            The horizontal radius (along the x-axis).
-        vradius : float
-             The vertical radius (along the y-axis).
-
-        Returns
-        -------
-        Conic
-            The resulting conic.
-
-        """
-        r = np.array([vradius**2, hradius**2, 1])
-        c = -center.normalized_array
-        m = np.diag(r)
-        m[2, :] = c*r
-        m[:, 2] = c*r
-        m[2, 2] = r.dot(c**2) - (r[0]*r[1] + 1)
-        return Conic(m)
-
-    @classmethod
     def from_points_and_tangent(cls, a, b, c, d, tangent):
         """Construct a conic through four points and tangent to a line.
 
@@ -407,28 +380,25 @@ class Conic(Quadric):
 
             if p == q:
                 return [p]
+
             return [p, q]
 
         if isinstance(other, Conic):
             if other.is_degenerate:
-                results = []
-                for l in other.components:
-                    for i in self.intersect(l):
-                        if i not in results:
-                            results.append(i)
-                return results
+                g, h = other.components
 
-            x = _symbols(1)
-            m = sympy.Matrix(self.array + x * other.array)
-            f = sympy.poly(m.det(), x)
-            roots = np.roots(f.coeffs())
-            c = Conic(self.array + roots[0]*other.array, is_dual=self.is_dual)
-            results = []
-            for l in c.components:
-                for i in self.intersect(l):
-                    if i not in results:
-                        results.append(i)
-            return results
+            else:
+                x = _symbols(1)
+                m = sympy.Matrix(self.array + x * other.array)
+                f = sympy.poly(m.det(), x)
+                roots = np.roots(f.coeffs())
+                c = Conic(self.array + roots[0]*other.array, is_dual=self.is_dual)
+                g, h = c.components
+
+            result = self.intersect(g)
+            result += [x for x in self.intersect(h) if x not in result]
+            return result
+
         return super(Conic, self).intersect(other)
 
     def tangent(self, at):
@@ -485,7 +455,31 @@ class Conic(Quadric):
 absolute_conic = Conic(np.eye(3))
 
 
-class Circle(Conic):
+class Ellipse(Conic):
+    """Represents an ellipse in 2D.
+
+    Parameters
+    ----------
+    center : Point
+        The center of the ellipse.
+    hradius : float
+        The horizontal radius (along the x-axis).
+    vradius : float
+         The vertical radius (along the y-axis).
+
+    """
+
+    def __init__(self, center=Point(0, 0), hradius=1, vradius=1):
+        r = np.array([vradius ** 2, hradius ** 2, 1])
+        c = -center.normalized_array
+        m = np.diag(r)
+        m[2, :] = c * r
+        m[:, 2] = c * r
+        m[2, 2] = r.dot(c ** 2) - (r[0] * r[1] + 1)
+        super(Ellipse, self).__init__(m)
+
+
+class Circle(Ellipse):
     """A circle in 2D.
 
     Parameters
@@ -498,9 +492,7 @@ class Circle(Conic):
     """
 
     def __init__(self, center=Point(0, 0), radius=1):
-        super(Circle, self).__init__([[1, 0, -center.array[0]],
-                                      [0, 1, -center.array[1]],
-                                      [-center.array[0], -center.array[1], center.array[:-1].dot(center.array[:-1])-radius**2]])
+        super(Circle, self).__init__(center, radius, radius)
 
     @property
     def center(self):

@@ -1,6 +1,6 @@
 import numpy as np
 from sympy.abc import x, y, z
-from geometer import Point, Line, Conic, Circle, Quadric, Plane
+from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse
 from geometer.curve import AlgebraicCurve
 
 
@@ -47,13 +47,13 @@ class TestConic:
         assert conic.contains(d)
         assert conic.contains(e)
 
-    def test_from_center(self):
-        conic = Conic.from_center(Point(0, 0), 2, 3)
+    def test_ellipse(self):
+        el = Ellipse(Point(1, 2), 2, 3)
 
-        assert conic.contains(Point(-2, 0))
-        assert conic.contains(Point(2, 0))
-        assert conic.contains(Point(0, 3))
-        assert conic.contains(Point(0, -3))
+        assert el.contains(Point(-1, 2))
+        assert el.contains(Point(3, 2))
+        assert el.contains(Point(1, 5))
+        assert el.contains(Point(1, -1))
 
     def test_from_points_and_tangent(self):
         a = Point(-1.5, 0.5)
