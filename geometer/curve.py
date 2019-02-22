@@ -460,12 +460,12 @@ class Ellipse(Conic):
 
     Parameters
     ----------
-    center : Point
-        The center of the ellipse.
-    hradius : float
-        The horizontal radius (along the x-axis).
-    vradius : float
-         The vertical radius (along the y-axis).
+    center : Point, optional
+        The center of the ellipse, default is Point(0, 0).
+    hradius : float, optional
+        The horizontal radius (along the x-axis), default is 1.
+    vradius : float, optional
+         The vertical radius (along the y-axis), default is 1.
 
     """
 
@@ -484,10 +484,10 @@ class Circle(Ellipse):
 
     Parameters
     ----------
-    center : Point
-        The center point of the circle.
-    radius : float
-        The radius of the circle.
+    center : Point, optional
+        The center point of the circle, default is Point(0, 0).
+    radius : float, optional
+        The radius of the circle, default is 1.
 
     """
 
