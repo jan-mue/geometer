@@ -21,7 +21,7 @@ class TestAlgebraicCurve:
         assert curve.tangent(at=Point(1, 0)) == Line(1, 0, 0) + Point(1, 0)
         assert curve.is_tangent(Line(1, 0, 0) + Point(1, 0))
 
-    def test_intersections(self):
+    def test_intersect(self):
         c1 = AlgebraicCurve(x ** 2 + y ** 2 - 1, symbols=[x, y, z])
         c2 = AlgebraicCurve(y, symbols=[x, y, z])
         i = c1.intersect(c2)
@@ -33,11 +33,11 @@ class TestAlgebraicCurve:
 class TestConic:
 
     def test_from_points(self):
-        a = Point(-1, 0)
-        b = Point(0, 3)
-        c = Point(1, 2)
-        d = Point(2, 1)
-        e = Point(0, -1)
+        a = Point(0, 1)
+        b = Point(0, -1)
+        c = Point(1.5, 0.5)
+        d = Point(1.5, -0.5)
+        e = Point(-1.5, 0.5)
 
         conic = Conic.from_points(a, b, c, d, e)
 
@@ -55,7 +55,7 @@ class TestConic:
         assert Point(-1, 0) in i
 
         c2 = Circle(Point(0, 2), 1)
-        assert c.intersect(c2) == [Point(0, 1)]
+        assert Point(0, 1) in c.intersect(c2)
 
     def test_contains(self):
         c = Conic([[1, 0, 0],

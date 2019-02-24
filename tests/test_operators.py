@@ -17,6 +17,16 @@ def test_dist():
 
     assert np.isclose(dist(p, q), 1)
 
+    p1 = Point(1j, 0, 0, 2j)
+    p2 = Point(0, 2j, 0, 0)
+
+    assert np.isclose(dist(p1, p2), 3)
+
+    p1 = Point(1, 0, 0)
+    p2 = Point([1, 0, 0, 0])
+
+    assert dist(p1, p2) == dist(p2, p1) == np.inf
+
     p1 = Point(0, 0, 0)
     p2 = Point(1, 0, 0)
 

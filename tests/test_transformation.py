@@ -18,8 +18,14 @@ def test_from_points():
 
 def test_translation():
     p = Point(0, 1)
-    t = translation(0,-1)
-    assert t*p == Point(0,0)
+    t = translation(0, -1)
+    assert t*p == Point(0, 0)
+
+
+def test_inverse():
+    E = Transformation(np.eye(4))
+    M = rotation(np.pi, axis=Point(0, 1, 0))
+    assert M.inverse()*M == E
 
 
 def test_rotation():

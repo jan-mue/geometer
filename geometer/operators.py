@@ -27,6 +27,10 @@ def crossratio(a, b, c, d, from_point=None):
         The cross ration of the given objects.
 
     """
+
+    if a == b:
+        return 1
+
     if isinstance(a, Line):
         if not is_concurrent(a, b, c, d):
             raise IncidenceError("The lines are not concurrent: " + str([a, b, c, d]))
@@ -64,11 +68,14 @@ def crossratio(a, b, c, d, from_point=None):
     ad = np.linalg.det(o + [a.array, d.array])
     bc = np.linalg.det(o + [b.array, c.array])
 
-    return ac * bd / (ad * bc)
+    with np.errstate(divide="ignore"):
+        return ac * bd / (ad * bc)
 
 
 def harmonic_set(a, b, c):
     """Constructs a fourth point that forms a harmonic set with the given points.
+
+    If the returned point is d, the points {{a, b}, {c, d}} will be in harmonic position.
 
     Parameters
     ----------
@@ -94,7 +101,7 @@ def harmonic_set(a, b, c):
         if not l.contains(o):
             break
     if n > 3:
-        e = Plane(l, o)
+        e = join(l, o)
         basis = e.basis_matrix
         a = Point(basis.dot(a.array))
         b = Point(basis.dot(b.array))
@@ -105,6 +112,7 @@ def harmonic_set(a, b, c):
     m = Line(o, c)
     p = o + 1/2*m.direction
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
+
     if n > 3:
         return Point(basis.T.dot(result.array))
     return result
@@ -130,8 +138,8 @@ def angle(*args):
     """
     if len(args) == 3:
         a, b, c = args
-        if a.dim == 3:
-            e = Plane(*args)
+        if a.dim > 2:
+            e = join(*args)
             basis = e.basis_matrix
             a, b, c = Point(basis.dot(a.array)), Point(basis.dot(b.array)), Point(basis.dot(c.array))
 
@@ -157,8 +165,8 @@ def angle(*args):
             if isinstance(y, Point):
                 y = a.join(y)
 
-        if a.dim == 3:
-            e = Plane(x, y)
+        if a.dim > 2:
+            e = join(x, y)
             basis = e.basis_matrix
             a = Point(basis.dot(a.array))
             b = Point(basis.dot(x.meet(infty_plane).array))
@@ -169,7 +177,7 @@ def angle(*args):
     else:
         raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
 
-    return 1/2j*np.log(crossratio(b,c, I,J, a))
+    return 1/2j*np.log(crossratio(b, c, I, J, a))
 
 
 def angle_bisectors(l, m):
@@ -189,13 +197,16 @@ def angle_bisectors(l, m):
 
     """
     o = l.meet(m)
-    if o.dim == 3:
-        e = Plane(l, m)
+
+    if o.dim > 2:
+        e = join(l, m)
         basis = e.basis_matrix
         L = Point(basis.dot(l.meet(infty_plane).array))
         M = Point(basis.dot(m.meet(infty_plane).array))
+
     else:
         L, M = l.meet(infty), m.meet(infty)
+
     p = Point(0, 0)
     li = np.linalg.det([p.array, L.array, I.array])
     lj = np.linalg.det([p.array, L.array, J.array])
@@ -203,13 +214,15 @@ def angle_bisectors(l, m):
     mj = np.linalg.det([p.array, M.array, J.array])
     a, b = np.sqrt(lj*mj), np.sqrt(li*mi)
     r, s = a*I+b*J, a*I-b*J
-    if o.dim == 3:
+
+    if o.dim > 2:
         r, s = Point(basis.T.dot(r.array)), Point(basis.T.dot(s.array))
+
     return Line(o, r), Line(o, s)
 
 
 def dist(p, q):
-    """Calculates the euclidean distance between two objects.
+    """Calculates the (euclidean) distance between two objects.
 
     Parameters
     ----------
@@ -224,6 +237,9 @@ def dist(p, q):
         The distance between the given objects.
 
     """
+    if p == q:
+        return 0
+
     if isinstance(p, (Plane, Line)) and isinstance(q, Point):
         return dist(p.project(q), q)
     if isinstance(p, Point) and isinstance(q, (Plane, Line)):
@@ -233,19 +249,22 @@ def dist(p, q):
     if isinstance(q, Plane) and isinstance(p, Line):
         return dist(q, p.base_point)
 
-    a, b = p.normalized_array, q.normalized_array
-    if p.dim == 3:
-        l = Line(p, q)
-        for r in np.eye(4):
-            if not l.contains(Point(r)):
-                break
+    if p.dim > 2:
+        x = np.array([p.normalized_array, q.normalized_array])
+        z = x[:, -1]
 
-        m, _ = np.linalg.qr(np.array([r, a, b]).T)
-        a, b = m.T.dot(a), m.T.dot(b)
+        m, _ = np.linalg.qr(x.T)
+        x = m.T.dot(x.T)
+        x = np.append(x, [z], axis=0).T
+        p, q = Point(x[0]), Point(x[1])
 
-    pqi = np.linalg.det([a, b, I.array])
-    pqj = np.linalg.det([a, b, J.array])
-    return np.sqrt(pqi*pqj)
+    pqi = np.linalg.det([p.array, q.array, I.array])
+    pqj = np.linalg.det([p.array, q.array, J.array])
+    pij = np.linalg.det([p.array, I.array, J.array])
+    qij = np.linalg.det([q.array, I.array, J.array])
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return 4*abs(np.sqrt(pqi * pqj)/(pij*qij))
 
 
 def is_cocircular(a, b, c, d):
@@ -270,10 +289,18 @@ def is_cocircular(a, b, c, d):
     """
     if a.dim == 1:
         return np.isreal(crossratio(a, b, c, d))
-    else:
-        i = crossratio(a, b, c, d, I)
-        j = crossratio(a, b, c, d, J)
-        return np.isclose(i, j)
+
+    elif a.dim > 2:
+        e = join(a, b, c)
+        basis = e.basis_matrix
+        a = Point(basis.dot(a.array))
+        b = Point(basis.dot(b.array))
+        c = Point(basis.dot(c.array))
+        d = Point(basis.dot(d.array))
+
+    i = crossratio(a, b, c, d, I)
+    j = crossratio(a, b, c, d, J)
+    return np.isclose(i, j)
 
 
 def is_perpendicular(l, m):
@@ -292,8 +319,8 @@ def is_perpendicular(l, m):
         True if the two lines are perpendicular.
 
     """
-    if l.dim == 3:
-        e = Plane(l, m)
+    if l.dim > 2:
+        e = join(l, m)
         basis = e.basis_matrix
         L = Point(basis.dot(l.meet(infty_plane).array))
         M = Point(basis.dot(m.meet(infty_plane).array))

@@ -27,9 +27,9 @@ and the documentation on [Read the Docs](https://geometer.readthedocs.io).
 
 ## Installation
 
-You can install the package directly from PyPi:
+You can install the package directly from PyPI:
 ```bash
-   pip install geometer
+pip install geometer
 ```
    
 ## Usage
@@ -86,7 +86,7 @@ l = Line(Point(1, 2, 3), Point(3, 4, 5))
 A.meet(l)
 # Point(-2, -1, 0)
 
-# Crossratios
+# Cross ratios
 t = rotation(np.pi/16)
 crossratio(q, t*q, t**2 * q, t**3 * q, p)
 # 2.093706208978352

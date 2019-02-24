@@ -32,10 +32,21 @@ class Test2D:
         assert l.is_parallel(m)
 
     def test_perpendicular(self):
-        p = Point(1,1)
-        l = Line(1,1,0)
+        p = Point(1, 1)
+        l = Line(1, 1, 0)
         m = l.perpendicular(p)
-        assert m == Line(-1,1,0)
+
+        assert m == Line(-1, 1, 0)
+
+        m = l.perpendicular(Point(0, 0))
+        assert m == Line(-1, 1, 0)
+
+        p = Point(1, 1, 0)
+        q = Point(0, 0, 1)
+        l = Line(p, q)
+        m = l.perpendicular(p)
+
+        assert is_perpendicular(l, m)
 
 
 class Test3D:
@@ -123,6 +134,23 @@ class Test4D:
         # 4 points
         assert join(p1, p2, p3, p4).contains(p5)
 
+        # 3 points
+        assert join(p1, p2, p3).contains(p3)
+
+        # two lines
+        l = Line(p1, p2)
+        m = Line(p3, p4)
+        assert join(l, m) == Plane(p1, p2, p3, p4)
+
+        # coplanar lines
+        l = Line(p1, p2)
+        m = Line(p1, p3)
+        assert join(l, m).contains(p3)
+
+        # point and line
+        p = join(l, p3)
+        assert p == join(p1, p2, p3)
+
         # 2 points
         l = p1.join(p2)
         assert l.contains(Point(3, 1, 6, 0))
@@ -139,3 +167,14 @@ class Test4D:
         # hyperplane and line
         l = Line(Point(0, 0, 0, 0), Point(0, 0, 1, 0))
         assert p3.meet(l) == Point(0, 0, 0, 0)
+
+        # two lines
+        m = Line(Point(0, 0, 0, 0), Point(1, 2, 5, 6))
+        assert l.meet(m) == Point(0, 0, 0, 0)
+
+    def test_project(self):
+        p1 = Point(1, 0, 0, 0)
+        p2 = Point(0, 1, 0, 0)
+
+        l = Line(p1, p2)
+        assert l.project(Point(0, 0, 0, 0)) == Point(0.5, 0.5, 0, 0)
