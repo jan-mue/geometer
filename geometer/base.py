@@ -105,8 +105,8 @@ class Tensor:
 
     @property
     def tensor_shape(self):
-        """:obj:`tuple` of :obj:`int`: The shape of the indices of the tensor, the first number is the number of covariant
-        indices, the second the number of contravariant indices."""
+        """:obj:`tuple` of :obj:`int`: The shape of the indices of the tensor, the first number is the number of
+        covariant indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
 
     def tensordot(self, other):

@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Line, Transformation, translation, rotation
+from geometer import Point, Line, Transformation, translation, rotation, angle
 
 
 def test_from_points():
@@ -36,3 +36,8 @@ def test_rotation():
     p = Point(1, 0, 0)
     t = rotation(-np.pi/2, axis=Point(0, 0, 1))
     assert t * p == Point(0, 1, 0)
+
+    p = Point(-1, 1, 0)
+    a = np.pi / 7
+    t = rotation(a, axis=Point(1, 1, 2))
+    assert np.isclose(angle(p, t * p), a)

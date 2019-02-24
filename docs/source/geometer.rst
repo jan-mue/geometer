@@ -4,6 +4,11 @@ geometer package
 geometer.utils package
 ----------------------
 
+.. automodule:: geometer.utils.math
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 .. automodule:: geometer.utils.polynomial
     :members:
     :undoc-members:

@@ -19,7 +19,7 @@ VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'numpy', 'sympy', 'scipy'
+    'numpy>=1.15,<1.17', 'sympy==1.3'
 ]
 
 # What packages are optional?
@@ -46,7 +46,7 @@ except FileNotFoundError:
 about = {}
 if not VERSION:
     with open(os.path.join(here, NAME, '__version__.py')) as f:
-        exec (f.read(), about)
+        exec(f.read(), about)
 else:
     about['__version__'] = VERSION
 
