@@ -19,7 +19,7 @@ VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'numpy', 'sympy'
+    'numpy>=1.15,<1.17', 'sympy==1.3'
 ]
 
 # What packages are optional?
