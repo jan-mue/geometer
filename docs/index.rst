@@ -31,7 +31,7 @@ The source code of the package can be found on GitHub_ and the documentation on
 Installation
 ------------
 
-You can install the package directly from PyPi::
+You can install the package directly from PyPI::
 
    pip install geometer
 
@@ -42,6 +42,7 @@ You can install the package directly from PyPi::
 
    quickstart
    source/modules
+   changelog
 
 
 Indices and tables
