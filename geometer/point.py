@@ -2,9 +2,9 @@ from collections import Iterable
 
 import numpy as np
 import sympy
-import scipy.linalg
 
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, _symbols
+from .utils import null_space
 from .exceptions import LinearDependenceError, NotCoplanar
 
 
@@ -228,7 +228,7 @@ class Subspace(ProjectiveElement):
         x = self.array
         if len(x.shape) > 2:
             x = self.array.reshape((x.shape[0]**(len(x.shape)-1), x.shape[-1]))
-        return scipy.linalg.null_space(x).T
+        return null_space(x).T
 
     def contains(self, other):
         """Tests whether a given point or line lies in the subspace.
