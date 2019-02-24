@@ -2,9 +2,6 @@
 Change Log
 ==========
 
-geometer
-========
-
 0.1.2 - unreleased
 ------------------
 
