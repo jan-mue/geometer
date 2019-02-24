@@ -431,7 +431,7 @@ class Line(Subspace):
 
         return self.mirror(through).join(through)
 
-    def project(self, pt: Point):
+    def project(self, pt):
         """The orthogonal projection of a point onto the line.
 
         Parameters
@@ -597,7 +597,7 @@ class Plane(Subspace):
         l = self.perpendicular(pt)
         return self.meet(l)
 
-    def perpendicular(self, through: Point):
+    def perpendicular(self, through):
         """Construct the perpendicular line though a point.
 
         Parameters

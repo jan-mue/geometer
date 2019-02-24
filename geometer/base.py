@@ -55,8 +55,8 @@ class Tensor:
 
     @property
     def tensor_shape(self):
-        """:obj:`tuple` of :obj:`int`: The shape of the indices of the tensor, the first number is the number of covariant
-        indices, the second the number of contravariant indices."""
+        """:obj:`tuple` of :obj:`int`: The shape of the indices of the tensor, the first number is the number of
+        covariant indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
 
     def copy(self):
@@ -181,7 +181,9 @@ class TensorDiagram:
             self._indices.extend(range(len(self._indices), index_count))
 
         if len(free_source) == 0 or len(free_target) == 0:
-            raise TensorComputationError("Could not add the edge because no free indices are left in the following tensors: " + str((source, target)))
+            raise TensorComputationError(
+                "Could not add the edge because no free indices are left in the following tensors: " + str(
+                    (source, target)))
 
         i = source_index + free_source.pop()
         j = target_index + free_target.pop()
