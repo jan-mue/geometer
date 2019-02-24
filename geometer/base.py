@@ -20,19 +20,46 @@ def _symbols(n):
 class Shape(ABC):
     """Base class for geometric shapes, i.e. line segments, polytopes and polygons.
 
+    Parameters
+    ----------
+    *args
+        The sides of the shape.
+
     """
+
+    def __init__(self, *args):
+        self._sides = list(args)
 
     @property
     def dim(self):
-        return self.vertices[0].dim
+        """int: The dimension of the space that the shape lives in."""
+        return self.sides[0].dim
 
     @property
     @abstractmethod
     def vertices(self):
+        """list of Points: The vertices of the shape."""
         pass
+
+    @property
+    def sides(self):
+        """list of Shape: The sides of the shape."""
+        return self._sides
 
     @abstractmethod
     def intersect(self, other):
+        """Intersect the shape with another object.
+
+        Parameters
+        ----------
+        other : Line, Plane, Quadric or Shape
+
+        Returns
+        -------
+        list of Point or Segment
+            The points of intersection or the segments on which the objects intersect.
+
+        """
         pass
 
     def __repr__(self):
@@ -269,6 +296,7 @@ class TensorDiagram(Tensor):
                 break
 
         def add(tensor):
+            # TODO: directly use tensordot to contract
             self.array = self.tensordot(tensor).array
             self._index_mapping.extend([len(self._nodes)] * len(tensor.array.shape))
             self._nodes.append(tensor)

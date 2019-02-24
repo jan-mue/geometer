@@ -105,7 +105,7 @@ class Transformation(ProjectiveElement):
             inv = self.inverse()
             return type(other)(TensorDiagram((inv, other), (other, inv)))
         if isinstance(other, Shape):
-            return type(other)(*[self*v for v in other.vertices])
+            return type(other)(*[self*v for v in other.sides])
         raise NotImplementedError
 
     def __pow__(self, power, modulo=None):

@@ -20,7 +20,12 @@ class TestSegment:
         d = Point(2, 0)
         s1 = Segment(a, c)
         s2 = Segment(b, d)
+        s3 = Segment(a, 2*c)
+        s4 = Segment(-c, c)
+
         assert s1.intersect(s2) == [Point(1, 1)]
+        assert s1.intersect(s3) == [s1]
+        assert s4.intersect(s1) == [s1]
 
     def test_midpoint(self):
         p = Point(0, 0)
