@@ -25,10 +25,10 @@ def rotation(angle, axis=None):
                                [np.sin(angle), np.cos(angle), 0],
                                [0, 0, 1]])
 
-    # TODO: fix for arbitrary axes (e.g. (1,1,2) doesn't work)
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)
     a = axis.normalized_array[:-1]
+    a = a / np.linalg.norm(a)
     d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = np.outer(a, a)
