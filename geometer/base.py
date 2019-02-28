@@ -147,9 +147,17 @@ class Tensor:
         return TensorDiagram((self, other))
 
     def __eq__(self, other):
+        a = self.array
         if np.isscalar(other):
-            return np.allclose(self.array, np.full(self.array.shape, other))
-        return np.allclose(self.array, other.array)
+            b = np.full(self.array.shape, other)
+        elif isinstance(other, Tensor):
+            b = other.array
+        else:
+            return NotImplemented
+        try:
+            return np.allclose(a, b)
+        except TypeError:
+            return np.all(a == b)
 
 
 class LeviCivitaTensor(Tensor):
@@ -266,15 +274,51 @@ class TensorDiagram(Tensor):
         cov_count = len(result_indices[0])
         result_indices = result_indices[0] + result_indices[1]
 
-        x = np.einsum(*args, result_indices)
+        try:
+            x = np.einsum(*args, result_indices)
+        except TypeError:
+            x = self._slow_einsum(*args, result_indices)
 
         self._index_mapping = index_mapping[0] + index_mapping[1]
         super(TensorDiagram, self).__init__(x, covariant=range(cov_count))
 
+    def _slow_einsum(self, *args):
+        operands, contraction_list = np.einsum_path(*args, einsum_call=True)
+
+        for contraction in contraction_list:
+            ind_contract, ind_removed, einsum_str, remaining, blas = contraction
+
+            if not blas:
+                raise TypeError("invalid data type for einsum")
+
+            tmp_operands = [operands.pop(x) for x in ind_contract]
+
+            input_str, results_index = einsum_str.split('->')
+            input_left, input_right = input_str.split(',')
+
+            tensor_result = input_left + input_right
+            for s in ind_removed:
+                tensor_result = tensor_result.replace(s, "")
+
+            left_pos, right_pos = [], []
+            for s in sorted(ind_removed):
+                left_pos.append(input_left.find(s))
+                right_pos.append(input_right.find(s))
+
+            tmp_tensor = np.tensordot(*tmp_operands, axes=(tuple(left_pos), tuple(right_pos)))
+
+            operands.append(tmp_tensor)
+            del tmp_operands, tmp_tensor
+
+        return operands[0]
+
     def _contract_index(self, i, j):
         indices = list(range(len(self.array.shape)))
         indices[max(i, j)] = min(i, j)
-        self.array = np.einsum(self.array, indices)
+        try:
+            self.array = np.einsum(self.array, indices)
+        except TypeError:
+            self.array = self._slow_einsum(self.array, indices)
         self._covariant_indices.remove(i)
         self._contravariant_indices.remove(j)
         self._index_mapping.pop(i)
