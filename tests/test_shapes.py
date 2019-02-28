@@ -20,12 +20,8 @@ class TestSegment:
         d = Point(2, 0)
         s1 = Segment(a, c)
         s2 = Segment(b, d)
-        s3 = Segment(a, 2*c)
-        s4 = Segment(-c, c)
 
         assert s1.intersect(s2) == [Point(1, 1)]
-        assert s1.intersect(s3) == [s1]
-        assert s4.intersect(s1) == [s1]
 
     def test_midpoint(self):
         p = Point(0, 0)
@@ -65,15 +61,6 @@ class TestPolygon:
         t = Triangle(a, b, c)
         assert np.isclose(t.area(), 2)
 
-    def test_triangulation(self):
-        a = Point(0, 0)
-        b = Point(0, 2)
-        c = Point(2, 2)
-        d = Point(2, 0)
-        r = Rectangle(a, b, c, d)
-        t = r.triangulate()
-        assert t == [Triangle(b, d, c), Triangle(d, b, a)]
-
     def test_transformation(self):
         a = Point(0, 0)
         b = Point(0, 1)
@@ -107,7 +94,6 @@ class TestPolytope:
         assert len(cube.sides) == 6
         assert len(cube.vertices) == 8
         assert cube.area() == 6
-        assert np.isclose(cube.volume(), 1)
 
     def test_intersect(self):
         a = Point(0, 0, 0)
@@ -117,18 +103,3 @@ class TestPolytope:
         cube = Cube(a, b, c, d)
         l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
         assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
-    
-    def test_convex_hull(self):
-        pts = [
-            Point(0, 0, 0),
-            Point(0, 1, 0),
-            Point(1, 1, 0),
-            Point(1, 0, 0),
-            Point(0, 0, 1),
-            Point(0, 1, 1),
-            Point(1, 1, 1),
-            Point(1, 0, 1)
-        ]
-
-        p = Polytope(*pts)
-        assert p.is_convex()
