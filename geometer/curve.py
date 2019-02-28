@@ -140,10 +140,7 @@ class AlgebraicCurve(ProjectiveElement):
             except NotImplementedError:
                 continue
 
-        if (0, 0, 0) in sol:
-            sol.remove((0, 0, 0))
-
-        return [Point(np.real_if_close(p)) for p in sol]
+        return [Point(np.real_if_close(x)) for x in sol if Tensor(x) != 0]
     
     
 class Quadric(AlgebraicCurve):
@@ -498,3 +495,14 @@ class Circle(Ellipse):
     def center(self):
         """Point: the center point of the circle."""
         return self.foci[0]
+
+
+class Sphere(Quadric):
+
+    def __init__(self, center=Point(0, 0, 0), radius=1):
+        m = np.eye(4)
+        c = -center.normalized_array
+        m[3, :] = c
+        m[:, 3] = c
+        m[3, 3] = c[:-1].dot(c[:-1])-radius**2
+        super(Sphere, self).__init__(m)
