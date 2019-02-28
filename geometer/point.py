@@ -354,7 +354,6 @@ class Line(Subspace):
         """Line: The contravariant version of a line in 3D."""
         if self.tensor_shape[1] > 0:
             return self
-        # TODO: fix for dim != 3
         e = LeviCivitaTensor(4, False)
         result = TensorDiagram((self, e), (self, e))
         return Line(result)
