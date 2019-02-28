@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.spatial
 
 from .base import Shape
 from .point import Line, Plane, Point, join, infty_hyperplane
@@ -11,8 +10,10 @@ from .exceptions import NotCoplanar, LinearDependenceError
 class Segment(Shape):
     """Represents a line segment in an arbitrary projective space.
 
-    The order of the arguments matters! As a (real) projective line is homeomorphic to a circle, there are two line
-    segments that connect two points.
+    As a (real) projective line is homeomorphic to a circle, there are two line segments that connect two points. An
+    instance of this class will represent the finite segment connecting the two points, if there is one and the segment
+    in the direction of the infinite point otherwise (ignoring the identification of scalar multiples). When both points
+    are at infinity, the points will be considered in the oriented projective space to define the segment between them.
 
     Segments with one point at infinity represent rays/half-lines in a traditional sense.
 
@@ -34,17 +35,17 @@ class Segment(Shape):
         return self._sides
 
     def contains(self, other):
-        """Tests whether a point or segment is contained in the segment.
+        """Tests whether a point is contained in the segment.
 
         Parameters
         ----------
-        other : Point or Segment
-            The object to test.
+        other : Point
+            The point to test.
 
         Returns
         -------
         bool
-            True if the supplied object is contained in the segment.
+            True if the point is contained in the segment.
 
         """
         if not self._line.contains(other):
@@ -52,9 +53,11 @@ class Segment(Shape):
 
         p, q = self.vertices
 
-        # TODO: move to attributes
         pinf = np.isclose(p.array[-1], 0)
         qinf = np.isclose(q.array[-1], 0)
+
+        if np.isclose(other.array[-1], 0) and not (pinf and qinf):
+            return other == p or other == q
 
         if pinf and not qinf:
             direction = - p.array[:-1]
@@ -68,16 +71,7 @@ class Segment(Shape):
             direction = (q - p).array[:-1]
             d2 = direction.dot(direction)
 
-        if isinstance(other, Segment):
-            # TODO: fix for infinite segments
-            a, b = other.sides
-            d1 = (b - a).array[:-1].dot(direction)
-
-        elif np.isclose(other.array[-1], 0) and not (pinf and qinf):
-            return other == p or other == q
-
-        else:
-            d1 = (other - p).array[:-1].dot(direction)
+        d1 = (other - p).array[:-1].dot(direction)
 
         return 0 <= d1 <= d2
 
@@ -85,22 +79,13 @@ class Segment(Shape):
         if isinstance(other, (Line, Plane)):
             try:
                 pt = other.meet(self._line)
-            except LinearDependenceError:
-                return [self]
-            except NotCoplanar:
+            except (LinearDependenceError, NotCoplanar):
                 return []
             return [pt] if self.contains(pt) else []
 
         if isinstance(other, Segment):
             if self._line == other._line:
-                result = [p for p in self.vertices if other.contains(p)]
-                result += [p for p in other.vertices if p not in result and self.contains(p)]
-                if len(result) == 1:
-                    return result
-                s = Segment(*result)
-                if self.contains(s) and other.contains(s):
-                    return [s]
-                return [Segment(*reversed(result))]
+                return []
 
             i = other.intersect(self._line)
             return i if i and self.contains(i[0]) else []
@@ -111,17 +96,6 @@ class Segment(Shape):
         # TODO: intersect quadric
 
         return NotImplemented
-
-    def complement(self):
-        """Returns the complement of the line segment.
-
-        Returns
-        -------
-        Segment
-            The complement of this segment.
-
-        """
-        return Segment(*reversed(self.vertices))
 
     def midpoint(self):
         """Returns the midpoint of the segment.
@@ -179,10 +153,7 @@ class Polytope(Shape):
         if len(args) < 3:
             raise ValueError("Expected at least 3 arguments, got {}.".format(str(len(args))))
 
-        if all(isinstance(x, Point) for x in args):
-            super(Polytope, self).__init__(*self._convex_hull_from_vertices(args))
-        else:
-            super(Polytope, self).__init__(*args)
+        super(Polytope, self).__init__(*args)
 
     @property
     def vertices(self):
@@ -203,57 +174,17 @@ class Polytope(Shape):
             return self._sum_lists(self.intersect(s) for s in other.sides if s != other)
         return self._sum_lists(s.intersect(other) for s in self.sides if s != other)
 
-    @staticmethod
-    def _convex_hull_from_vertices(vertices):
-        hull = scipy.spatial.ConvexHull([p.normalized_array[:-1] for p in vertices])
-        return [Simplex(*[vertices[i] for i in a]) for a in hull.simplices]
+    def area(self):
+        """Calculates the surface area of the polytope.
 
-    def convex_hull(self):
-        """Calculates the convex hull of the vertices of the polytope.
-
-        In a projective space a convex set is defined as follows:
-
-            A set S is convex if for any two points of S, exactly one of the segments determined by these points
-            is contained in S.
+        Works only for 3-polytopes, i.e. polyhedra with polygons as sides.
 
         Returns
         -------
-        Polytope
-            The convex hull of the vertices.
+        float
+            The surface area of the polytope.
 
         """
-        sides = self._convex_hull_from_vertices(self.vertices)
-        return Polytope(*sides)
-
-    def triangulate(self):
-        points = self.vertices
-        a = np.concatenate([p.array.reshape((p.array.shape[0], 1)) for p in points], axis=1)
-        tri = scipy.spatial.Delaunay((a[:-1] / a[-1]).T)
-        return [Simplex(*[points[i] for i in a]) for a in tri.simplices]
-
-    def is_convex(self):
-        polys = self.sides
-        for p1 in polys:
-            for p2 in polys:
-                if p1._plane == p2._plane:
-                    continue
-
-                if any(s in p2.sides for s in p1.sides):
-                    # Check interior angle
-                    # TODO: check angle range
-                    if abs(angle(p1._plane, p2._plane)) > np.pi:
-                        return False
-                else:
-                    # Check for intersection
-                    if p1.intersect(p2):
-                        return False
-
-        return True
-
-    def volume(self):
-        return sum(t.volume() for t in self.triangulate())
-
-    def area(self):
         return sum(s.area() for s in self.sides)
 
     def __eq__(self, other):
@@ -279,6 +210,14 @@ class Simplex(Polytope):
             raise ValueError("Expected {} vertices, got {}.".format(str(self.dim + 1), str(len(self.vertices))))
 
     def volume(self):
+        """Calculates the volume of the simplex.
+
+        Returns
+        -------
+        float
+            The volume of the simplex.
+
+        """
         points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
         return 1 / np.math.factorial(self.dim) * abs(np.linalg.det(points / points[-1]))
 
@@ -345,22 +284,25 @@ class Polygon(Polytope):
 
         return super(Polygon, self).intersect(other)
 
-    def triangulate(self):
-        if self.dim == 2:
-            return super(Polygon, self).triangulate()
-        vertices = self.vertices
-        m = self._plane.basis_matrix
-        points = np.concatenate([v.array.reshape((m.shape[1], 1)) for v in vertices], axis=1)
-        points = m.dot(points)
-        points = points / points[-1]
-        tri = scipy.spatial.Delaunay(points.T[:, :-1])
-        return [Triangle(*[vertices[i] for i in a]) for a in tri.simplices]
-
     def area(self):
-        return sum(t.area() for t in self.triangulate())
+        points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
+
+        if self.dim > 2:
+            e = self._plane
+            o = Point(*[0] * self.dim)
+            if not e.contains(o):
+                # use parallel hyperplane for projection to avoid rescaling
+                e = e.parallel(o)
+            m = e.basis_matrix
+            points = m.dot(points)
+
+        points = (points / points[-1]).T
+        a = sum(np.linalg.det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
+        return 1/2 * abs(a)
 
     @property
     def angles(self):
+        """list of float: The interior angles of the polytope."""
         result = []
         a = self.sides[-1]
         for b in self.sides:
@@ -387,19 +329,6 @@ class Triangle(Polygon):
 
     def __init__(self, a, b, c):
         super(Triangle, self).__init__(a, b, c)
-
-    def area(self):
-        points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
-        if self.dim == 2:
-            return 1 / 2 * abs(np.linalg.det(points / points[-1]))
-        e = self._plane
-        o = Point(*[0]*self.dim)
-        if not e.contains(o):
-            # use parallel hyperplane for projection to avoid rescaling
-            e = e.parallel(o)
-        m = e.basis_matrix
-        points = m.dot(points)
-        return 1 / 2 * abs(np.linalg.det(points / points[-1]))
 
 
 class Rectangle(Polygon):

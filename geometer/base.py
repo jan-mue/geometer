@@ -56,8 +56,8 @@ class Shape(ABC):
 
         Returns
         -------
-        list of Point or Segment
-            The points of intersection or the segments on which the objects intersect.
+        list of Point
+            The points of intersection.
 
         """
         pass
@@ -85,6 +85,9 @@ class Tensor:
     """
 
     def __init__(self, *args, covariant=True):
+        if len(args) == 0:
+            raise TypeError("At least one argument is required.")
+
         if len(args) == 1:
             if isinstance(args[0], Tensor):
                 self.array = args[0].array
@@ -191,6 +194,9 @@ class TensorDiagram(Tensor):
     def __init__(self, *edges):
         self._nodes = []
         self._index_mapping = []
+
+        if len(edges) == 0:
+            raise TypeError("Cannot create an empty tensor diagram.")
 
         free_indices = []
         split = []
