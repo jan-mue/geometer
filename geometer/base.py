@@ -200,23 +200,18 @@ class TensorDiagram(Tensor):
     """
 
     def __init__(self, *edges):
-        self._nodes = []
-        self._index_mapping = []
 
         if len(edges) == 0:
             raise TypeError("Cannot create an empty tensor diagram.")
 
+        nodes = []
+        temp = None
         free_indices = []
-        split = []
-        contract_indices = []
 
         def add(node):
-            nonlocal index_count
-            split.append(index_count)
-            self._nodes.append(node)
-            ind = (node._covariant_indices.copy(), node._contravariant_indices.copy())
+            nodes.append(node)
+            ind = (list(node._covariant_indices), list(node._contravariant_indices))
             free_indices.append(ind)
-            index_count += len(node.array.shape)
             return ind
 
         for source, target in edges:
@@ -227,98 +222,69 @@ class TensorDiagram(Tensor):
             source_index, target_index = None, None
             index_count = 0
 
-            for i, tensor in enumerate(self._nodes):
+            for tensor, ind in zip(nodes, free_indices):
                 if tensor is source:
                     source_index = index_count
-                    free_source = free_indices[i][0]
+                    free_source = ind[0]
                 if tensor is target:
                     target_index = index_count
-                    free_target = free_indices[i][1]
+                    free_target = ind[1]
 
-                index_count += len(tensor.array.shape)
+                index_count += len(ind[0]) + len(ind[1])
 
                 if source_index is not None and target_index is not None:
                     break
 
             else:
                 if source_index is None:
-                    source_index = index_count
                     free_source = add(source)[0]
                 if target_index is None:
-                    target_index = index_count
                     free_target = add(target)[1]
 
             if len(free_source) == 0 or len(free_target) == 0:
                 raise TensorComputationError("Could not add the edge because no free indices are left in the following tensors: " + str((source, target)))
 
-            i = source_index + free_source.pop()
-            j = target_index + free_target.pop()
-            contract_indices.append((min(i, j), max(i, j)))
+            if source_index is None and target_index is None:
+                i = free_source.pop()
+                j = free_target.pop()
+                x = np.tensordot(source.array, target.array, axes=(i, j))
+                temp = x if temp is None else np.tensordot(temp, x, 0)
 
-        indices = list(range(index_count))
-        for i, j in contract_indices:
-            indices[j] = i
+            elif source_index is None:
+                i = free_source.pop()
+                j = target_index + free_target.pop()
+                temp = np.tensordot(temp, source.array, axes=(j, i))
 
-        args = []
-        result_indices = ([], [])
+            elif target_index is None:
+                i = source_index + free_source.pop()
+                j = free_target.pop()
+                temp = np.tensordot(temp, target.array, axes=(i, j))
+
+            else:
+                i = source_index + free_source.pop()
+                j = target_index + free_target.pop()
+                temp = np.sum(np.diagonal(temp, axis1=i, axis2=j), axis=-1)
+
         index_mapping = ([], [])
-        for i, (node, ind, offset) in enumerate(zip(self._nodes, free_indices, split)):
+        covariant = []
+        index_count = 0
+        for i, (node, ind) in enumerate(zip(nodes, free_indices)):
+            covariant.extend(index_count + x for x in ind[0])
             index_mapping[0].extend([i] * len(ind[0]))
             index_mapping[1].extend([i] * len(ind[1]))
-            result_indices[0].extend(offset + x for x in ind[0])
-            result_indices[1].extend(offset + x for x in ind[1])
-            args.append(node.array)
-            s = slice(offset, split[i + 1] if i + 1 < len(split) else None)
-            args.append(indices[s])
+            index_count += len(ind[0]) + len(ind[1])
 
-        cov_count = len(result_indices[0])
-        result_indices = result_indices[0] + result_indices[1]
+        cov_count = len(covariant)
 
-        try:
-            x = np.einsum(*args, result_indices)
-        except TypeError:
-            x = self._slow_einsum(*args, result_indices)
+        if len(covariant) != 0:
+            temp = np.transpose(temp, axes=covariant + [x for x in range(index_count) if x not in covariant])
 
+        self._nodes = nodes
         self._index_mapping = index_mapping[0] + index_mapping[1]
-        super(TensorDiagram, self).__init__(x, covariant=range(cov_count))
-
-    def _slow_einsum(self, *args):
-        operands, contraction_list = np.einsum_path(*args, einsum_call=True)
-
-        for contraction in contraction_list:
-            ind_contract, ind_removed, einsum_str, remaining, blas = contraction
-
-            if not blas:
-                raise TypeError("invalid data type for einsum")
-
-            tmp_operands = [operands.pop(x) for x in ind_contract]
-
-            input_str, results_index = einsum_str.split('->')
-            input_left, input_right = input_str.split(',')
-
-            tensor_result = input_left + input_right
-            for s in ind_removed:
-                tensor_result = tensor_result.replace(s, "")
-
-            left_pos, right_pos = [], []
-            for s in sorted(ind_removed):
-                left_pos.append(input_left.find(s))
-                right_pos.append(input_right.find(s))
-
-            tmp_tensor = np.tensordot(*tmp_operands, axes=(tuple(left_pos), tuple(right_pos)))
-
-            operands.append(tmp_tensor)
-            del tmp_operands, tmp_tensor
-
-        return operands[0]
+        super(TensorDiagram, self).__init__(temp, covariant=range(cov_count))
 
     def _contract_index(self, i, j):
-        indices = list(range(len(self.array.shape)))
-        indices[max(i, j)] = min(i, j)
-        try:
-            self.array = np.einsum(self.array, indices)
-        except TypeError:
-            self.array = self._slow_einsum(self.array, indices)
+        self.array = np.sum(np.diagonal(self.array, axis1=i, axis2=j), axis=-1)
         self._covariant_indices.remove(i)
         self._contravariant_indices.remove(j)
         self._index_mapping.pop(i)
