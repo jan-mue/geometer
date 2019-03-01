@@ -28,7 +28,7 @@ def polyval(x, c):
         The result of the evaluation as described above.
 
     """
-    if len(x) != len(c.shape):
+    if len(x) != c.ndim:
         raise ValueError("Dimension of point and polynomial do not match.")
     for xi in x:
         c = pl.polyval(xi, c, tensor=False)

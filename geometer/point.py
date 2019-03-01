@@ -222,8 +222,8 @@ class Subspace(ProjectiveElement):
     def basis_matrix(self):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         x = self.array
-        if len(x.shape) > 2:
-            x = self.array.reshape((x.shape[0]**(len(x.shape)-1), x.shape[-1]))
+        if x.ndim > 2:
+            x = self.array.reshape((x.shape[0]**(x.ndim-1), x.shape[-1]))
         return null_space(x).T
 
     def contains(self, other):

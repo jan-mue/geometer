@@ -100,11 +100,11 @@ class Tensor:
             self.array = np.array(args)
 
         if covariant is True:
-            self._covariant_indices = set(range(len(self.array.shape)))
+            self._covariant_indices = set(range(self.array.ndim))
         else:
             self._covariant_indices = set(covariant) if covariant else set()
 
-        self._contravariant_indices = set(range(len(self.array.shape))) - self._covariant_indices
+        self._contravariant_indices = set(range(self.array.ndim)) - self._covariant_indices
 
     @property
     def tensor_shape(self):
@@ -127,7 +127,7 @@ class Tensor:
 
         """
         ind = self._covariant_indices
-        d = len(self.array.shape)
+        d = self.array.ndim
         ind.update(d + i for i in other._covariant_indices)
         return Tensor(np.tensordot(self.array, other.array, 0), covariant=ind)
 
@@ -208,7 +208,7 @@ class TensorDiagram(Tensor):
             self._nodes.append(node)
             ind = (node._covariant_indices.copy(), node._contravariant_indices.copy())
             free_indices.append(ind)
-            index_count += len(node.array.shape)
+            index_count += node.array.ndim
             return ind
 
         for source, target in edges:
@@ -227,7 +227,7 @@ class TensorDiagram(Tensor):
                     target_index = index_count
                     free_target = free_indices[i][1]
 
-                index_count += len(tensor.array.shape)
+                index_count += tensor.array.ndim
 
                 if source_index is not None and target_index is not None:
                     break
@@ -272,7 +272,7 @@ class TensorDiagram(Tensor):
         super(TensorDiagram, self).__init__(x, covariant=range(cov_count))
 
     def _contract_index(self, i, j):
-        indices = list(range(len(self.array.shape)))
+        indices = list(range(self.array.ndim))
         indices[max(i, j)] = min(i, j)
         self.array = np.einsum(self.array, indices)
         self._covariant_indices.remove(i)
@@ -304,7 +304,7 @@ class TensorDiagram(Tensor):
         def add(tensor):
             # TODO: directly use tensordot to contract
             self.array = self.tensordot(tensor).array
-            self._index_mapping.extend([len(self._nodes)] * len(tensor.array.shape))
+            self._index_mapping.extend([len(self._nodes)] * tensor.array.ndim)
             self._nodes.append(tensor)
 
         if target_index is None:
