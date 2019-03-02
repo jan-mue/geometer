@@ -219,13 +219,13 @@ class TensorDiagram(Tensor):
             source_index, target_index = None, None
             index_count = 0
 
-            for i, tensor in enumerate(self._nodes):
+            for tensor, ind in zip(self._nodes, free_indices):
                 if tensor is source:
                     source_index = index_count
-                    free_source = free_indices[i][0]
+                    free_source = ind[0]
                 if tensor is target:
                     target_index = index_count
-                    free_target = free_indices[i][1]
+                    free_target = ind[1]
 
                 index_count += tensor.array.ndim
 
