@@ -2,6 +2,26 @@
 Changelog
 =========
 
+0.2 - unreleased
+----------------
+
+New Features
+------------
+
+- New shape module that implements line segments, polygons and general polytopes
+- Tensor has a new tensordot method to calculate the tensor product with another tensor
+- New sphere class
+- Ellipse class that constructs a conic from center and radius
+- Added Conic.foci and Conic.polar
+- Construct a conic from points and a tangent line or from its focal points
+
+Bug fixes
+---------
+
+- Plane.perpendicular now also works for points tha lie on the plane
+- Support for non-trivial numerical objects such as fractions and sympy expressions
+
+
 0.1.2 - released (24.2.2019)
 ----------------------------
 
