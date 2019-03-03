@@ -11,10 +11,10 @@ class TestTensorDiagram:
                     [0, 0, 0, 0],
                     [0, 0, 0, 0],
                     [0, 0, 0, 0]], covariant=False)
-        c = TensorDiagram((a, b))
-        assert c == Tensor([42, 0, 0, 0])
-        c.add_edge(a.copy(), b)
-        assert c == 42
+        diagram = TensorDiagram((a, b))
+        assert diagram.calculate() == Tensor([42, 0, 0, 0])
+        diagram.add_edge(a.copy(), b)
+        assert diagram.calculate() == 42
 
     def test_sympy_symbols(self):
         arr = np.array([[a, b, c],
@@ -23,4 +23,4 @@ class TestTensorDiagram:
 
         diagram = TensorDiagram((Tensor(arr, covariant=[0]), Tensor(arr, covariant=[0])))
 
-        assert diagram == Tensor(arr.dot(arr))
+        assert diagram.calculate() == Tensor(arr.dot(arr))

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import warnings
 from itertools import permutations
 
 import numpy as np
@@ -141,10 +140,10 @@ class Tensor:
         return self.copy()
 
     def __mul__(self, other):
-        return TensorDiagram((other, self))
+        return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other):
-        return TensorDiagram((self, other))
+        return TensorDiagram((self, other)).calculate()
 
     def __eq__(self, other):
         a = self.array
@@ -189,7 +188,7 @@ class LeviCivitaTensor(Tensor):
         super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
 
 
-class TensorDiagram(Tensor):
+class TensorDiagram:
     """A class used to specify and calculate tensor diagrams (also called Penrose Graphical Notation).
 
     Parameters
@@ -204,91 +203,22 @@ class TensorDiagram(Tensor):
         if len(edges) == 0:
             raise TypeError("Cannot create an empty tensor diagram.")
 
-        nodes = []
-        temp = None
-        free_indices = []
+        self._nodes = []
+        self._free_indices = []
+        self._node_positions = []
+        self._contraction_list = []
+        self._index_count = 0
 
-        def add(node):
-            nodes.append(node)
-            ind = (list(node._covariant_indices), list(node._contravariant_indices))
-            free_indices.append(ind)
-            return ind
+        for e in edges:
+            self.add_edge(*e)
 
-        for source, target in edges:
-
-            if source.array.shape[0] != target.array.shape[0]:
-                raise TensorComputationError("Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(str(source.array.shape[0]), str(target.array.shape[0])))
-
-            source_index, target_index = None, None
-            index_count = 0
-
-            for tensor, ind in zip(nodes, free_indices):
-                if tensor is source:
-                    source_index = index_count
-                    free_source = ind[0]
-                if tensor is target:
-                    target_index = index_count
-                    free_target = ind[1]
-
-                index_count += len(ind[0]) + len(ind[1])
-
-                if source_index is not None and target_index is not None:
-                    break
-
-            else:
-                if source_index is None:
-                    free_source = add(source)[0]
-                if target_index is None:
-                    free_target = add(target)[1]
-
-            if len(free_source) == 0 or len(free_target) == 0:
-                raise TensorComputationError("Could not add the edge because no free indices are left in the following tensors: " + str((source, target)))
-
-            if source_index is None and target_index is None:
-                i = free_source.pop()
-                j = free_target.pop()
-                x = np.tensordot(source.array, target.array, axes=(i, j))
-                temp = x if temp is None else np.tensordot(temp, x, 0)
-
-            elif source_index is None:
-                i = free_source.pop()
-                j = target_index + free_target.pop()
-                temp = np.tensordot(temp, source.array, axes=(j, i))
-
-            elif target_index is None:
-                i = source_index + free_source.pop()
-                j = free_target.pop()
-                temp = np.tensordot(temp, target.array, axes=(i, j))
-
-            else:
-                i = source_index + free_source.pop()
-                j = target_index + free_target.pop()
-                temp = np.sum(np.diagonal(temp, axis1=i, axis2=j), axis=-1)
-
-        index_mapping = ([], [])
-        covariant = []
-        index_count = 0
-        for i, (node, ind) in enumerate(zip(nodes, free_indices)):
-            covariant.extend(index_count + x for x in ind[0])
-            index_mapping[0].extend([i] * len(ind[0]))
-            index_mapping[1].extend([i] * len(ind[1]))
-            index_count += len(ind[0]) + len(ind[1])
-
-        cov_count = len(covariant)
-
-        if len(covariant) != 0:
-            temp = np.transpose(temp, axes=covariant + [x for x in range(index_count) if x not in covariant])
-
-        self._nodes = nodes
-        self._index_mapping = index_mapping[0] + index_mapping[1]
-        super(TensorDiagram, self).__init__(temp, covariant=range(cov_count))
-
-    def _contract_index(self, i, j):
-        self.array = np.sum(np.diagonal(self.array, axis1=i, axis2=j), axis=-1)
-        self._covariant_indices.remove(i)
-        self._contravariant_indices.remove(j)
-        self._index_mapping.pop(i)
-        self._index_mapping.pop(j)
+    def _add_node(self, node):
+        self._nodes.append(node)
+        self._node_positions.append(self._index_count)
+        self._index_count += node.array.ndim
+        ind = (list(node._covariant_indices), list(node._contravariant_indices))
+        self._free_indices.append(ind)
+        return ind
 
     def add_edge(self, source, target):
         """Add an edge to the diagram.
@@ -301,49 +231,45 @@ class TensorDiagram(Tensor):
             The target tensor of the edge in the diagram.
 
         """
+
+        if source.array.shape[0] != target.array.shape[0]:
+            raise TensorComputationError("Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(str(source.array.shape[0]), str(target.array.shape[0])))
+
+        # First step: Find nodes if they are already in the diagram
         source_index, target_index = None, None
-        for i, node in enumerate(self._nodes):
+        for index, node in enumerate(self._nodes):
             if node is source:
-                source_index = i
+                source_index = index
+                free_source = self._free_indices[index][0]
             if node is target:
-                target_index = i
+                target_index = index
+                free_target = self._free_indices[index][1]
 
             if source_index is not None and target_index is not None:
                 break
 
-        def add(tensor):
-            # TODO: directly use tensordot to contract
-            self.array = self.tensordot(tensor).array
-            self._index_mapping.extend([len(self._nodes)] * len(tensor.array.shape))
-            self._nodes.append(tensor)
-
-        if target_index is None:
-            free_target = set(sum(self.tensor_shape) + x for x in target._contravariant_indices)
-            add(target)
+        # One or both nodes were not found in the diagram
         else:
-            free_target = set()
-            for i in self._contravariant_indices:
-                if self._index_mapping[i] == target_index:
-                    free_target.add(i)
+            # Second step: Add new nodes to nodes and free indices list
+            if source_index is None:
+                source_index = len(self._nodes)
+                free_source = self._add_node(source)[0]
 
-        if source_index is None:
-            free_source = set(sum(self.tensor_shape) + x for x in source._covariant_indices)
-            add(source)
-        else:
-            free_source = set()
-            for i in self._covariant_indices:
-                if self._index_mapping[i] == source_index:
-                    free_source.add(i)
+            if target_index is None:
+                target_index = len(self._nodes)
+                free_target = self._add_node(target)[1]
 
         if len(free_source) == 0 or len(free_target) == 0:
-            raise TensorComputationError("Could not add the edge because no free indices are left.")
+            raise TensorComputationError("Could not add the edge because no free indices are left in the following tensors: " + str((source, target)))
 
-        self._contract_index(free_source.pop(), free_target.pop())
+        # Third step: Pick some free indices
+        i = free_source.pop()
+        j = free_target.pop()
+
+        self._contraction_list.append((source_index, target_index, i, j))
 
     def calculate(self):
         """Calculates the result of the diagram.
-
-        Deprecated as of version v0.2.
 
         Returns
         -------
@@ -351,8 +277,74 @@ class TensorDiagram(Tensor):
             The tensor resulting from the specified tensor diagram.
 
         """
-        warnings.warn("deprecated", DeprecationWarning)
-        return self
+        # Build the list of indices for einsum
+        indices = list(range(self._index_count))
+        for source_index, target_index, i, j in self._contraction_list:
+            i = self._node_positions[source_index] + i
+            j = self._node_positions[target_index] + j
+            indices[max(i, j)] = min(i, j)
+
+        # Split the indices and insert the arrays
+        args = []
+        result_indices = ([], [])
+        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
+            result_indices[0].extend(offset + x for x in ind[0])
+            result_indices[1].extend(offset + x for x in ind[1])
+            args.append(node.array)
+            s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
+            args.append(indices[s])
+
+        try:
+            # This only works for numeric types build into numpy (because c_einsum is called)
+            temp = np.einsum(*args, result_indices[0] + result_indices[1])
+
+        except TypeError:
+            # einsum failed -> calculate contraction step by step
+            temp = None
+            operands = [node.array for node in self._nodes]
+            contracted_nodes = set()
+            for source_index, target_index, i, j in self._contraction_list:
+                if source_index in contracted_nodes and target_index in contracted_nodes:
+                    i += self._node_positions[source_index]
+                    j += self._node_positions[target_index]
+
+                    # Sum over the axes i and j where they are equal
+                    temp = np.sum(np.diagonal(temp, axis1=i, axis2=j), axis=-1)
+
+                elif source_index in contracted_nodes:
+                    i += self._node_positions[source_index]
+
+                    # Multiply and sum over axes i and j and add the remaining axes of target to the end of temp
+                    temp = np.tensordot(temp, operands[target_index], axes=(i, j))
+                    contracted_nodes.add(target_index)
+
+                elif target_index in contracted_nodes:
+                    j += self._node_positions[target_index]
+
+                    # Same as in the last case, tensordot with source
+                    temp = np.tensordot(temp, operands[source_index], axes=(j, i))
+                    contracted_nodes.add(source_index)
+
+                else:
+                    x = np.tensordot(operands[source_index], operands[target_index], axes=(i, j))
+
+                    # the indices of x are not contracted with any indices of temp -> use tensor product
+                    temp = x if temp is None else np.tensordot(temp, x, 0)
+                    contracted_nodes.update((source_index, target_index))
+
+            # To bring the contracted axes in the right order (covariant in front), build index list
+            index_count = 0
+            result_indices = ([], [])
+            for ind in self._free_indices:
+                result_indices[0].extend(range(index_count, index_count + len(ind[0])))
+                index_count += len(ind[0])
+                result_indices[1].extend(range(index_count, index_count + len(ind[1])))
+                index_count += len(ind[1])
+
+            # Reorder the axes
+            temp = np.transpose(temp, axes=tuple(result_indices[0] + result_indices[1]))
+
+        return Tensor(temp, covariant=range(len(result_indices[0])))
 
 
 class ProjectiveElement(Tensor, ABC):
