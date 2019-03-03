@@ -122,6 +122,12 @@ class Test3D:
 
         assert is_perpendicular(l, m)
 
+        r = Point(1, 2, 3)
+        e = Plane(p, q, r)
+        m = e.perpendicular(p)
+
+        assert is_perpendicular(l, m)
+
 
 class Test4D:
 

@@ -547,7 +547,7 @@ class Plane(Subspace):
     def mirror(self, pt):
         """Construct the reflection of a point at this plane.
 
-        Currently only works in 3D.
+        Only works in 3D.
 
         Parameters
         ----------
@@ -580,6 +580,8 @@ class Plane(Subspace):
     def project(self, pt):
         """The orthogonal projection of a point onto the plane.
 
+        Only works in 3D.
+
         Parameters
         ----------
         pt : Point
@@ -597,6 +599,8 @@ class Plane(Subspace):
     def perpendicular(self, through):
         """Construct the perpendicular line though a point.
 
+        Only works in 3D.
+
         Parameters
         ----------
         through : Point
@@ -608,6 +612,26 @@ class Plane(Subspace):
             The perpendicular line.
 
         """
+        if self.contains(through):
+            l = self.meet(infty_plane)
+            l = Line(np.cross(*l.basis_matrix[:, :-1]))
+            p1, p2 = [Point(a) for a in l.basis_matrix]
+            polar1 = Line(p1.array)
+            polar2 = Line(p2.array)
+
+            from .curve import absolute_conic
+            tangent_points1 = absolute_conic.intersect(polar1)
+            tangent_points2 = absolute_conic.intersect(polar2)
+
+            from .operators import harmonic_set
+            q1, q2 = harmonic_set(*tangent_points1, l.meet(polar1)), harmonic_set(*tangent_points2, l.meet(polar2))
+            m1, m2 = p1.join(q1), p2.join(q2)
+
+            p = m1.meet(m2)
+            p = Point(np.append(p.array, 0))
+
+            return through.join(p)
+
         return self.mirror(through).join(through)
 
 
