@@ -1,4 +1,5 @@
-from geometer import *
+from geometer import Point, Line, Plane, join, meet, is_perpendicular
+from fractions import Fraction
 
 
 class Test2D:
@@ -7,6 +8,13 @@ class Test2D:
         p = Point(1, 0)
         q = Point(0, 1)
         assert p.join(q) == Line(-1, -1, 1)
+
+        p = Point(Fraction(1, 3), Fraction(2, 3))
+        q = Point(Fraction(1, 2), Fraction(-1, 9))
+
+        line = Line(p, q)
+        assert line.contains(p)
+        assert line.contains(q)
 
     def test_meet(self):
         l = Line(-1, -1, 2)
@@ -28,7 +36,7 @@ class Test2D:
         r = Point(0,0)
         l = Line(p, q)
         m = l.parallel(through=r)
-        assert m == Line(0,1,0)
+        assert m == Line(0, 1, 0)
         assert l.is_parallel(m)
 
     def test_perpendicular(self):

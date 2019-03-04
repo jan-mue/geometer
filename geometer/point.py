@@ -5,7 +5,7 @@ import sympy
 
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape, _symbols
 from .exceptions import LinearDependenceError, NotCoplanar
-from .utils import null_space
+from .utils import null_space, isclose
 
 
 def _join_meet_duality(*args, intersect_lines=True):
@@ -148,12 +148,12 @@ class Point(ProjectiveElement):
         return (-1) * self
 
     def __repr__(self):
-        return "Point({})".format(",".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
+        return "Point({})".format(",".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if isclose(self.array[-1], 0) else "")
 
     @property
     def normalized_array(self):
         """numpy.ndarray: The normalized coordinates as array."""
-        if np.isclose(self.array[-1], 0):
+        if isclose(self.array[-1], 0):
             return np.real_if_close(self.array)
         return np.real_if_close(self.array / self.array[-1])
 
@@ -453,10 +453,10 @@ class Line(Subspace):
         if self.dim > 2:
             return Point(self.basis_matrix[0, :])
 
-        if np.isclose(self.array[2], 0):
+        if isclose(self.array[2], 0):
             return Point(0, 0)
 
-        if not np.isclose(self.array[1], 0):
+        if not isclose(self.array[1], 0):
             return Point([0, -self.array[2], self.array[1]])
 
         return Point([self.array[2], 0, -self.array[0]])
@@ -467,7 +467,7 @@ class Line(Subspace):
         if self.dim > 2:
             base = self.basis_matrix
             return Point(base[0, :]) - Point(base[1, :])
-        if np.isclose(self.array[0], 0) and np.isclose(self.array[1], 0):
+        if isclose(self.array[0], 0) and isclose(self.array[1], 0):
             return Point([0, 1, 0])
         return Point(self.array[1], -self.array[0])
 

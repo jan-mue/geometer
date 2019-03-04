@@ -4,6 +4,7 @@ from itertools import permutations
 import numpy as np
 import sympy
 
+from .utils import isclose, allclose
 from .exceptions import TensorComputationError
 
 
@@ -153,10 +154,7 @@ class Tensor:
             b = other.array
         else:
             return NotImplemented
-        try:
-            return np.allclose(a, b)
-        except TypeError:
-            return np.all(a == b)
+        return allclose(a, b)
 
 
 class LeviCivitaTensor(Tensor):
@@ -199,10 +197,6 @@ class TensorDiagram:
     """
 
     def __init__(self, *edges):
-
-        if len(edges) == 0:
-            raise TypeError("Cannot create an empty tensor diagram.")
-
         self._nodes = []
         self._free_indices = []
         self._node_positions = []
@@ -233,7 +227,9 @@ class TensorDiagram:
         """
 
         if source.array.shape[0] != target.array.shape[0]:
-            raise TensorComputationError("Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(str(source.array.shape[0]), str(target.array.shape[0])))
+            raise TensorComputationError(
+                "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
+                    str(source.array.shape[0]), str(target.array.shape[0])))
 
         # First step: Find nodes if they are already in the diagram
         source_index, target_index = None, None
@@ -260,7 +256,7 @@ class TensorDiagram:
                 free_target = self._add_node(target)[1]
 
         if len(free_source) == 0 or len(free_target) == 0:
-            raise TensorComputationError("Could not add the edge because no free indices are left in the following tensors: " + str((source, target)))
+            raise TensorComputationError("Could not add the edge because no free indices are left.")
 
         # Third step: Pick some free indices
         i = free_source.pop()
@@ -311,26 +307,50 @@ class TensorDiagram:
                     # Sum over the axes i and j where they are equal
                     temp = np.sum(np.diagonal(temp, axis1=i, axis2=j), axis=-1)
 
+                    for n, index in enumerate(self._node_positions):
+                        if index > j:
+                            self._node_positions[n] -= 1
+                        if index > i:
+                            self._node_positions[n] -= 1
+
                 elif source_index in contracted_nodes:
                     i += self._node_positions[source_index]
 
                     # Multiply and sum over axes i and j and add the remaining axes of target to the end of temp
                     temp = np.tensordot(temp, operands[target_index], axes=(i, j))
+
                     contracted_nodes.add(target_index)
+                    for n, index in enumerate(self._node_positions):
+                        if index > i:
+                            self._node_positions[n] -= 1
+                        elif index > temp.ndim:
+                            self._node_positions[n] -= 2
 
                 elif target_index in contracted_nodes:
                     j += self._node_positions[target_index]
 
                     # Same as in the last case, tensordot with source
                     temp = np.tensordot(temp, operands[source_index], axes=(j, i))
+
                     contracted_nodes.add(source_index)
+                    for n, index in enumerate(self._node_positions):
+                        if index > j:
+                            self._node_positions[n] -= 1
+                        elif n > temp.ndim:
+                            self._node_positions[n] -= 2
 
                 else:
                     x = np.tensordot(operands[source_index], operands[target_index], axes=(i, j))
 
                     # the indices of x are not contracted with any indices of temp -> use tensor product
                     temp = x if temp is None else np.tensordot(temp, x, 0)
+
                     contracted_nodes.update((source_index, target_index))
+                    for n in range(len(self._node_positions)):
+                        if n > source_index:
+                            self._node_positions[n] -= 1
+                        if n > target_index:
+                            self._node_positions[n] -= 1
 
             # To bring the contracted axes in the right order (covariant in front), build index list
             index_count = 0
@@ -361,7 +381,8 @@ class ProjectiveElement(Tensor, ABC):
             # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
             a = self.array.ravel()
             b = other.array.ravel()
-            return np.isclose(np.abs(np.vdot(a, b)) ** 2, np.vdot(a, a) * np.vdot(b, b))
+            ab = np.vdot(a, b)
+            return isclose(ab * np.conjugate(ab), np.vdot(a, a) * np.vdot(b, b))
         return NotImplemented
 
     @property

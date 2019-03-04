@@ -2,7 +2,7 @@ import numpy as np
 import sympy
 from .point import Point, Line, Plane, I, J
 from .base import ProjectiveElement, Tensor, _symbols
-from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
+from .utils import polyval, np_array_to_poly, poly_to_np_array, isclose
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
@@ -104,7 +104,7 @@ class AlgebraicCurve(ProjectiveElement):
             True if the curve contains the point.
 
         """
-        return np.isclose(polyval(pt.array, self.array), 0)
+        return isclose(polyval(pt.array, self.array), 0)
 
     def intersect(self, other):
         """Calculates points of intersection with the algebraic curve.
@@ -189,7 +189,7 @@ class Quadric(AlgebraicCurve):
             True if the quadric contains the point.
 
         """
-        return np.isclose(pt.array.dot(self.array.dot(pt.array)), 0)
+        return isclose(pt.array.dot(self.array.dot(pt.array)), 0)
 
     @property
     def polynomial(self):
@@ -199,7 +199,7 @@ class Quadric(AlgebraicCurve):
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return np.isclose(np.linalg.det(self.array), 0)
+        return isclose(np.linalg.det(self.array), 0)
 
 
 class Conic(Quadric):

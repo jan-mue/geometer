@@ -1,6 +1,7 @@
 import numpy as np
 
 from .base import Shape
+from .utils import isclose
 from .point import Line, Plane, Point, join, infty_hyperplane
 from .operators import dist, angle, harmonic_set
 from .transformation import rotation
@@ -53,10 +54,10 @@ class Segment(Shape):
 
         p, q = self.vertices
 
-        pinf = np.isclose(p.array[-1], 0)
-        qinf = np.isclose(q.array[-1], 0)
+        pinf = isclose(p.array[-1], 0)
+        qinf = isclose(q.array[-1], 0)
 
-        if np.isclose(other.array[-1], 0) and not (pinf and qinf):
+        if isclose(other.array[-1], 0) and not (pinf and qinf):
             return other == p or other == q
 
         if pinf and not qinf:

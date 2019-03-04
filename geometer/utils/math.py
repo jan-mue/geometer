@@ -1,6 +1,20 @@
 import numpy as np
 
 
+def isclose(a, b):
+    try:
+        return np.isclose(a, b)
+    except TypeError:
+        return a == b
+
+
+def allclose(a, b):
+    try:
+        return np.allclose(a, b)
+    except TypeError:
+        return np.all(a == b)
+
+
 def null_space(A):
     """Constructs an orthonormal basis for the null space of a matrix.
 

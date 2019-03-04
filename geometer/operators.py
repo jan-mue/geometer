@@ -2,6 +2,7 @@ import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
 from .base import LeviCivitaTensor, TensorDiagram
+from .utils import isclose
 from .exceptions import IncidenceError, NotCollinear
 
 
@@ -300,7 +301,7 @@ def is_cocircular(a, b, c, d):
 
     i = crossratio(a, b, c, d, I)
     j = crossratio(a, b, c, d, J)
-    return np.isclose(i, j)
+    return isclose(i, j)
 
 
 def is_perpendicular(l, m):
@@ -319,6 +320,7 @@ def is_perpendicular(l, m):
         True if the two lines are perpendicular.
 
     """
+    # TODO: extend to planes
     if l.dim > 2:
         e = join(l, m)
         basis = e.basis_matrix
@@ -327,7 +329,7 @@ def is_perpendicular(l, m):
     else:
         L = l.meet(infty)
         M = m.meet(infty)
-    return np.isclose(crossratio(L,M, I,J, Point(1, 1)), -1)
+    return isclose(crossratio(L,M, I,J, Point(1, 1)), -1)
 
 
 def is_coplanar(*args):
@@ -348,7 +350,7 @@ def is_coplanar(*args):
 
     """
     n = args[0].dim + 1
-    if not np.isclose(np.linalg.det([a.array for a in args[:n]]), 0):
+    if not isclose(np.linalg.det([a.array for a in args[:n]]), 0):
         return False
     if len(args) == n:
         return True
