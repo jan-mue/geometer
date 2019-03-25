@@ -20,7 +20,7 @@ is represented by a four-dimensional vector. This has the following advantages:
 - Special complex points at infinity and cross ratios can be used to calculate
   angles and to construct perpendicular geometric structures.
 
-Most of the computation in the library done via tensor diagrams (using numpy.einsum).
+Most of the computation in the library is done via tensor diagrams (using numpy.einsum).
 
 The source code of the package can be found on [GitHub](https://github.com/jan-mue/geometer)
 and the documentation on [Read the Docs](https://geometer.readthedocs.io).
