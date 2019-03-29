@@ -1,5 +1,6 @@
 import numpy as np
 from sympy.abc import x, y, z
+from fractions import Fraction
 from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere
 from geometer.curve import AlgebraicCurve
 
@@ -28,6 +29,13 @@ class TestAlgebraicCurve:
         assert len(i) == 2
         assert Point(1, 0) in i
         assert Point(-1, 0) in i
+
+        c1 = AlgebraicCurve(x ** 2 + y ** 2 - Fraction(1, 9), symbols=[x, y, z])
+        c2 = AlgebraicCurve(y, symbols=[x, y, z])
+        i = c1.intersect(c2)
+        assert len(i) == 2
+        assert Point(Fraction(1, 3), 0) in i
+        assert Point(-Fraction(1, 3), 0) in i
 
 
 class TestConic:

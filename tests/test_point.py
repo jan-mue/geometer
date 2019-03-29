@@ -123,6 +123,7 @@ class Test3D:
 
         e = Plane(0, 0, 1, 0)
         assert e.project(Point(1, 1, 5)) == p1
+        assert e.project(Point(1, 1, Fraction(1, 5))) == p1
 
     def test_parallel(self):
         p = Point(0, 0, 1)
