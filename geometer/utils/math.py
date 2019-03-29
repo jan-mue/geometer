@@ -1,4 +1,6 @@
 import numpy as np
+import sympy
+import math
 
 
 def isclose(a, b):
@@ -100,6 +102,35 @@ def _exact_null_space(A):
     return basis
 
 
+def _norm(x):
+    try:
+        return math.sqrt(np.vdot(x, x))
+    except TypeError:
+        return sympy.sqrt(np.vdot(x, x))
+
+
+def orth(A):
+    """Constructs an orthonormal basis for the range of A using Gram-Schmidt.
+
+    Parameters
+    ----------
+    A : array_like
+        The input matrix.
+
+    Returns
+    -------
+    numpy.ndarray
+        Orthonormal basis for the range of A (as column vectors in the returned matrix).
+
+    """
+    basis = []
+    for v in A.T:
+        w = v - np.sum(np.vdot(v, b) * b for b in basis)
+        if not allclose(w, 0):
+            basis.append(w / _norm(w))
+    return np.array(basis).T
+
+
 def null_space(A):
     """Constructs an orthonormal basis for the null space of a A using SVD.
 
@@ -120,8 +151,7 @@ def null_space(A):
         u, s, vh = np.linalg.svd(A, full_matrices=True)
     except TypeError:
         m = _exact_null_space(A)
-        q, r = np.linalg.qr(m)
-        return q
+        return orth(m)
 
     cond = np.finfo(s.dtype).eps * max(vh.shape)
     tol = np.amax(s) * cond
