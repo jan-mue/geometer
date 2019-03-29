@@ -37,7 +37,7 @@ def _join_meet_duality(*args, intersect_lines=True):
             else:
                 coplanar = n < 4 or a.is_coplanar(b)
 
-            if not coplanar and intersect_lines:
+            if not coplanar and (intersect_lines or n <= 4):
                 raise NotCoplanar("The given lines are not coplanar.")
 
             if coplanar:
@@ -408,7 +408,7 @@ class Line(Subspace):
 
             if n > 3:
                 # additional point is required to determine the exact line
-                arr = np.zeros(n)
+                arr = np.zeros(n, dtype=self.array.dtype)
                 for i in range(n):
                     arr[-i - 1] = 1
                     o = Point(arr)

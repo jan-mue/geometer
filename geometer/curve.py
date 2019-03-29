@@ -2,7 +2,7 @@ import numpy as np
 import sympy
 from .point import Point, Line, Plane, I, J
 from .base import ProjectiveElement, Tensor, _symbols
-from .utils import polyval, np_array_to_poly, poly_to_np_array, isclose
+from .utils import polyval, det, np_array_to_poly, poly_to_np_array, isclose
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
@@ -199,7 +199,7 @@ class Quadric(AlgebraicCurve):
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return isclose(np.linalg.det(self.array), 0)
+        return isclose(det(self.array), 0)
 
 
 class Conic(Quadric):
@@ -237,10 +237,10 @@ class Conic(Quadric):
 
         """
         a, b, c, d, e = a.normalized_array, b.normalized_array, c.normalized_array, d.normalized_array, e.normalized_array
-        ace = np.linalg.det([a, c, e])
-        bde = np.linalg.det([b, d, e])
-        ade = np.linalg.det([a, d, e])
-        bce = np.linalg.det([b, c, e])
+        ace = det([a, c, e])
+        bde = det([b, d, e])
+        ade = det([a, d, e])
+        bce = det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
         return Conic(np.real_if_close(m+m.T))
 
@@ -292,10 +292,10 @@ class Conic(Quadric):
             o[2-i] = 1
             i += 1
 
-        a2b1 = np.linalg.det([o, a2, b1])
-        a2b2 = np.linalg.det([o, a2, b2])
-        a1b1 = np.linalg.det([o, a1, b1])
-        a1b2 = np.linalg.det([o, a1, b2])
+        a2b1 = det([o, a2, b1])
+        a2b2 = det([o, a2, b2])
+        a1b1 = det([o, a1, b1])
+        a1b2 = det([o, a1, b2])
 
         c1 = csqrt(a2b1*a2b2)
         c2 = csqrt(a1b1*a1b2)
@@ -334,9 +334,9 @@ class Conic(Quadric):
     @property
     def components(self):
         """:obj:`list` of :obj:`ProjectiveElement`: The components of a degenerate conic."""
-        a = csqrt(-np.linalg.det(self.array[[[1], [2]], [1, 2]]))
-        b = csqrt(-np.linalg.det(self.array[[[0], [2]], [0, 2]]))
-        c = csqrt(-np.linalg.det(self.array[[[0], [1]], [0, 1]]))
+        a = csqrt(-det(self.array[[[1], [2]], [1, 2]]))
+        b = csqrt(-det(self.array[[[0], [2]], [0, 2]]))
+        c = csqrt(-det(self.array[[[0], [1]], [0, 1]]))
         m = np.array([[0, c, -b],
                       [-c, 0, a],
                       [b, -a, 0]])
@@ -500,8 +500,8 @@ class Circle(Ellipse):
 class Sphere(Quadric):
 
     def __init__(self, center=Point(0, 0, 0), radius=1):
-        m = np.eye(4)
         c = -center.normalized_array
+        m = np.eye(4, dtype=(c*radius).dtype)
         m[3, :] = c
         m[:, 3] = c
         m[3, 3] = c[:-1].dot(c[:-1])-radius**2

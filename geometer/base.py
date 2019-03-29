@@ -95,7 +95,7 @@ class Tensor:
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
             else:
-                self.array = np.array(args[0])
+                self.array = np.atleast_1d(args[0])
         else:
             self.array = np.array(args)
 
@@ -149,7 +149,7 @@ class Tensor:
     def __eq__(self, other):
         a = self.array
         if np.isscalar(other):
-            b = np.full(self.array.shape, other)
+            b = other
         elif isinstance(other, Tensor):
             b = other.array
         else:

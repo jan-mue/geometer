@@ -1,7 +1,7 @@
 import numpy as np
 
 from .base import Shape
-from .utils import isclose
+from .utils import det, isclose
 from .point import Line, Plane, Point, join, infty_hyperplane
 from .operators import dist, angle, harmonic_set
 from .transformation import rotation
@@ -220,7 +220,7 @@ class Simplex(Polytope):
 
         """
         points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
-        return 1 / np.math.factorial(self.dim) * abs(np.linalg.det(points / points[-1]))
+        return 1 / np.math.factorial(self.dim) * abs(det(points / points[-1]))
 
 
 class Polygon(Polytope):
@@ -298,7 +298,7 @@ class Polygon(Polytope):
             points = m.dot(points)
 
         points = (points / points[-1]).T
-        a = sum(np.linalg.det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
+        a = sum(det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
         return 1/2 * abs(a)
 
     @property
