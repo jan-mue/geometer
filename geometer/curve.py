@@ -1,34 +1,37 @@
-import numpy as np
+import math
+
 import sympy
-from .point import Point, Line, Plane, I, J
-from .base import ProjectiveElement, Tensor, _symbols
-from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
+import numpy as np
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
+from .point import Point, Line, Plane, I, J
+from .base import ProjectiveElement, Tensor, _symbols
+from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
 
-class AlgebraicCurve(ProjectiveElement):
-    """A general algebraic curve, defined by the zero set of a homogeneous polynomial.
+
+class AlgebraicHypersurface(ProjectiveElement):
+    """A general algebraic hypersurface, i.e. a hypersurface defined by the zero set of a homogeneous polynomial.
 
     Parameters
     ----------
     poly : :obj:`sympy.Expr` or :obj:`numpy.ndarray`
-        The polynomial defining the curve. It is automatically homogenized.
+        The polynomial defining the hypersurface. It is automatically homogenized.
     symbols : :obj:`tuple` of :obj:`sympy.Symbol`, optional
         The symbols that are used in the polynomial. By default the symbols (x1, ..., xn) will be used.
 
     Attributes
     ----------
     symbols : :obj:`tuple` of :obj:`sympy.Symbol`
-        The symbols used in the polynomial defining the curve.
+        The symbols used in the polynomial defining the hypersurface.
 
     """
 
     def __init__(self, poly, symbols=None):
 
         if isinstance(poly, np.ndarray):
-            self.symbols = symbols or _symbols(poly.shape[0])
-            super(AlgebraicCurve, self).__init__(poly, covariant=False)
+            self.symbols = symbols or _symbols(poly.ndim)
+            super(AlgebraicHypersurface, self).__init__(poly, covariant=False)
             return
 
         if not isinstance(poly, sympy.Expr):
@@ -43,15 +46,15 @@ class AlgebraicCurve(ProjectiveElement):
 
         poly = poly.homogenize(symbols[-1])
 
-        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols), covariant=False)
+        super(AlgebraicHypersurface, self).__init__(poly_to_np_array(poly, symbols), covariant=False)
 
     @property
     def polynomial(self):
-        """sympy.Poly: The polynomial defining this curve."""
+        """sympy.Poly: The polynomial defining this hypersurface."""
         return np_array_to_poly(self.array, self.symbols)
 
     def tangent(self, at):
-        """Calculates the tangent space of the curve at a given point.
+        """Calculates the tangent space of the surface at a given point.
 
         Parameters
         ----------
@@ -69,29 +72,8 @@ class AlgebraicCurve(ProjectiveElement):
             return Line(dx)
         return Plane(dx)
 
-    @property
-    def degree(self):
-        """int: The degree of the curve, i.e. the homogeneous order of the defining polynomial."""
-        return self.polynomial.homogeneous_order()
-
-    def is_tangent(self, line):
-        """Tests if a given line is tangent to the curve.
-
-        Parameters
-        ----------
-        line : Line
-            The line to test.
-
-        Returns
-        -------
-        bool
-            True if the given line is tangent to the algebraic curve.
-
-        """
-        return len(self.intersect(line)) < self.degree
-
     def contains(self, pt):
-        """Tests if a given point lies on the algebraic curve.
+        """Tests if a given point lies on the hypersurface.
 
         Parameters
         ----------
@@ -107,12 +89,12 @@ class AlgebraicCurve(ProjectiveElement):
         return np.isclose(polyval(pt.array, self.array), 0)
 
     def intersect(self, other):
-        """Calculates points of intersection with the algebraic curve.
+        """Calculates points of intersection with the hypersurface.
 
         Parameters
         ----------
         other : :obj:`Line` or :obj:`AlgebraicCurve`
-            The object to intersect this curve with.
+            The object to intersect this surface with.
 
         Returns
         -------
@@ -141,9 +123,45 @@ class AlgebraicCurve(ProjectiveElement):
                 continue
 
         return [Point(np.real_if_close(x)) for x in sol if Tensor(x) != 0]
+
+
+class AlgebraicCurve(AlgebraicHypersurface):
+    """A plane algebraic curve, defined by the zero set of a homogeneous polynomial in 3 variables.
+
+    """
+
+    def __init__(self, poly, symbols=None):
+        super(AlgebraicCurve, self).__init__(poly, symbols)
+        if len(self.symbols) != 3:
+            raise AttributeError("Expected a polynomial in 3 variables.")
+
+    @property
+    def degree(self):
+        """int: The degree of the curve, i.e. the homogeneous order of the defining polynomial."""
+        return self.polynomial.homogeneous_order()
+
+    def is_tangent(self, line):
+        """Tests if a given line is tangent to the curve.
+
+        The method compares the number of intersections to the degree of the algebraic curve. If the line is tangent
+        to the curve it will have at least a double intersection and using Bezout's theorem we know that otherwise the
+        number of intersections (counted without multiplicity) is equal to the degree of the curve.
+
+        Parameters
+        ----------
+        line : Line
+            The line to test.
+
+        Returns
+        -------
+        bool
+            True if the given line is tangent to the algebraic curve.
+
+        """
+        return len(self.intersect(line)) < self.degree
     
     
-class Quadric(AlgebraicCurve):
+class Quadric(AlgebraicHypersurface):
     """Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
     The quadric is defined by a symmetric matrix of size n+1 where n is the dimension of the space.
@@ -157,7 +175,7 @@ class Quadric(AlgebraicCurve):
 
     def __init__(self, matrix):
         matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        super(Quadric, self).__init__(matrix)
+        super(Quadric, self).__init__(matrix, symbols=_symbols(matrix.shape[0]))
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -202,7 +220,7 @@ class Quadric(AlgebraicCurve):
         return np.isclose(np.linalg.det(self.array), 0)
 
 
-class Conic(Quadric):
+class Conic(Quadric, AlgebraicCurve):
     """A two-dimensional conic.
 
     Parameters
@@ -489,6 +507,7 @@ class Circle(Ellipse):
     """
 
     def __init__(self, center=Point(0, 0), radius=1):
+        self.radius = radius
         super(Circle, self).__init__(center, radius, radius)
 
     @property
@@ -496,13 +515,69 @@ class Circle(Ellipse):
         """Point: the center point of the circle."""
         return self.foci[0]
 
+    @property
+    def lie_coordinates(self):
+        """Point: The Lie coordinates of the circle as point in RP4."""
+        m = self.center.normalized_array
+        x = m[0]**2 + m[1]**2 - self.radius**2
+        return Point([(1 + x)/2, (1 - x)/2, m[0], m[1], self.radius])
+
+    def intersection_angle(self, other):
+        """Calculates the angle of intersection of two circles using its Lie coordinates.
+
+        Parameters
+        ----------
+        other : Circle
+            The circle to intersect this circle with.
+
+        Returns
+        -------
+        float
+            The angle of intersection.
+
+        References
+        ----------
+        .. [1] https://en.wikipedia.org/wiki/Lie_sphere_geometry
+
+        """
+        # lorenz coordinates
+        p1 = self.lie_coordinates.normalized_array[:-1]
+        p2 = other.lie_coordinates.normalized_array[:-1]
+
+        return np.arccos(np.vdot(p1, p2))
+
+    def area(self):
+        return 2*np.pi*self.radius**2
+
 
 class Sphere(Quadric):
+    """A sphere in any dimension.
+
+    Parameters
+    ----------
+    center : Point, optional
+        The center of the sphere, default is Point(0, 0, 0).
+    radius : float, optional
+        The radius of the sphere, default is 1.
+
+    """
 
     def __init__(self, center=Point(0, 0, 0), radius=1):
+        self.radius = radius
         m = np.eye(4)
         c = -center.normalized_array
         m[3, :] = c
         m[:, 3] = c
         m[3, 3] = c[:-1].dot(c[:-1])-radius**2
         super(Sphere, self).__init__(m)
+
+    @staticmethod
+    def _alpha(n):
+        return math.pi**(n/2) / math.gamma(n/2 + 1)
+
+    def volume(self):
+        return self._alpha(self.dim)*self.radius**self.dim
+
+    def area(self):
+        n = self.dim
+        return n*self._alpha(n)*self.radius**(n-1)

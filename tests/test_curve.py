@@ -99,12 +99,22 @@ class TestConic:
         assert len(f) == 2
         assert f1 in f and f2 in f
 
-    def test_circle(self):
+
+class TestCircle:
+
+    def test_contains(self):
         c = Circle(Point(0, 1), 1)
         assert c.contains(Point(0, 2))
         assert c.contains(Point(1, 1))
-        assert c.tangent(at=Point(0, 0)) == Line(0, 1, 0)
+
+    def test_center(self):
+        c = Circle(Point(0, 1), 1)
         assert c.center == Point(0, 1)
+
+    def test_intersection_angle(self):
+        c1 = Circle()
+        c2 = Circle(Point(1, 1), 1)
+        assert np.isclose(c1.intersection_angle(c2), np.pi/2)
 
 
 class TestQuadric:
