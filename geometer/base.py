@@ -108,7 +108,7 @@ class Tensor:
 
     @property
     def tensor_shape(self):
-        """:obj:`tuple` of :obj:`int`: The shape of the indices of the tensor, the first number is the number of
+        """:obj:`tuple` of :obj:`int`: The shape or type of the tensor, the first number is the number of
         covariant indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
 
@@ -162,6 +162,10 @@ class LeviCivitaTensor(Tensor):
     covariant: :obj:`bool`, optional
         If true, the tensor will only have covariant indices. Default: True
 
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Levi-Civita_symbol#Generalization_to_n_dimensions
+
     """
 
     _cache = {}
@@ -179,6 +183,50 @@ class LeviCivitaTensor(Tensor):
 
             self._cache[size] = array
         super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
+
+
+class KroneckerDelta(Tensor):
+    """This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
+
+    Parameters
+    ----------
+    p : int
+        The number of covariant and contravariant indices of the tensor.
+    n : int, optional
+        The dimension of the tensor, by default equal to p.
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Kronecker_delta#Generalizations
+
+    """
+
+    _cache = {}
+
+    def __init__(self, p, n=None):
+        if n is None:
+            n = p
+
+        if p == 1:
+            array = np.eye(n)
+        elif (p, n) in self._cache:
+            array = self._cache[(p, n)]
+        elif p == n:
+            e = LeviCivitaTensor(n)
+            array = np.tensordot(e.array, e.array, 0)
+
+            self._cache[(p, n)] = array
+        else:
+            d1 = KroneckerDelta(1, n)
+            d2 = KroneckerDelta(p-1, n)
+
+            def calc(*args):
+                return sum((-1)**(p+k+1)*d1.array[args[k], args[-1]]*d2.array[tuple(x for i, x in enumerate(args[:-1]) if i != k)] for k in range(p))
+
+            f = np.vectorize(calc)
+            array = np.fromfunction(f, tuple(2*p*[n]), dtype=int)
+
+        super(KroneckerDelta, self).__init__(array, covariant=range(p))
 
 
 class TensorDiagram(Tensor):
