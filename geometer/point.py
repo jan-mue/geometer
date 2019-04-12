@@ -5,7 +5,7 @@ import sympy
 
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape, _symbols
 from .exceptions import LinearDependenceError, NotCoplanar
-from .utils import null_space, isclose
+from .utils import null_space, orth, norm, isclose
 
 
 def _join_meet_duality(*args, intersect_lines=True):
@@ -477,8 +477,7 @@ class Line(Subspace):
         if self.dim == 2:
             a = self.base_point.array
             b = np.cross(self.array, a)
-            result = np.array([a, b])
-            return result / np.linalg.norm(result)
+            return np.array([a/norm(a), b/norm(b)])
         return super(Line, self).basis_matrix
 
     def mirror(self, pt):
@@ -535,8 +534,7 @@ class Plane(Subspace):
         a = [j for j in range(n) if j != i]
         result[i, :] = self.array[a]
         result[a, range(n - 1)] = -self.array[i]
-        q, r = np.linalg.qr(result)
-        return q.T
+        return orth(result).T
 
     @property
     def polynomial(self):

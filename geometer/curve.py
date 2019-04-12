@@ -2,7 +2,7 @@ import numpy as np
 import sympy
 from .point import Point, Line, Plane, I, J
 from .base import ProjectiveElement, Tensor, _symbols
-from .utils import polyval, det, np_array_to_poly, poly_to_np_array, isclose
+from .utils import polyval, det, inv, np_array_to_poly, poly_to_np_array, isclose
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
@@ -329,7 +329,7 @@ class Conic(Quadric):
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
         c = cls.from_points_and_tangent(Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array), Line(bound.array))
-        return Conic(np.linalg.inv(c.array))
+        return Conic(inv(c.array))
 
     @property
     def components(self):
@@ -446,7 +446,7 @@ class Conic(Quadric):
     @property
     def dual(self):
         """Conic: The dual conic."""
-        return Conic(np.linalg.inv(self.array), is_dual=not self.is_dual)
+        return Conic(inv(self.array), is_dual=not self.is_dual)
 
 
 absolute_conic = Conic(np.eye(3))

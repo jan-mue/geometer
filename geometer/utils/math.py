@@ -40,7 +40,7 @@ def det(A):
         from ..base import TensorDiagram, Tensor, LeviCivitaTensor
         e = LeviCivitaTensor(A[0].shape[0], False)
         tensors = [Tensor(a) for a in A]
-        return TensorDiagram(*[(t, e) for t in tensors]).calculate().array[0]
+        return TensorDiagram(*[(t, e) for t in reversed(tensors)]).calculate().array[0]
 
 
 def _exact_null_space(A):
@@ -102,15 +102,38 @@ def _exact_null_space(A):
     return basis
 
 
-def _norm(x):
+def norm(x):
+    """The euclidean vector norm.
+
+    Parameters
+    ----------
+    x : array_like
+        A one-dimensional array.
+
+    Returns
+    -------
+    float
+        The norm of the vector.
+
+    """
+    if issubclass(x.dtype.type, np.complexfloating):
+        sqnorm = np.dot(x.real, x.real) + np.dot(x.imag, x.imag)
+    else:
+        sqnorm = np.dot(x, x)
+
     try:
-        return math.sqrt(np.vdot(x, x))
-    except TypeError:
-        return sympy.sqrt(np.vdot(x, x))
+        return np.sqrt(sqnorm)
+    except AttributeError:
+        try:
+            return math.sqrt(sqnorm)
+        except TypeError:
+            return sympy.sqrt(sqnorm)
 
 
 def orth(A):
-    """Constructs an orthonormal basis for the range of A using Gram-Schmidt.
+    """Constructs an orthonormal basis for the range of A.
+
+    Uses QR-factorization by default and falls back to Gram-Schmidt when handling incompatible numeric types.
 
     Parameters
     ----------
@@ -123,12 +146,51 @@ def orth(A):
         Orthonormal basis for the range of A (as column vectors in the returned matrix).
 
     """
-    basis = []
-    for v in A.T:
-        w = v - np.sum(np.vdot(v, b) * b for b in basis)
-        if not allclose(w, 0):
-            basis.append(w / _norm(w))
-    return np.array(basis).T
+    try:
+        q, r = np.linalg.qr(A)
+        return q
+    except TypeError:
+        basis = []
+        for v in A.T:
+            w = v - np.sum(np.vdot(v, b) * b for b in basis)
+            if not allclose(w, 0):
+                basis.append(w / norm(w))
+        return np.array(basis).T
+
+
+def inv(A):
+    """Compute the (multiplicative) inverse of the matrix A.
+
+    If A contains non-trivial numerical objects, it will fall back to computing the adjugate matrix of A.
+
+    Parameters
+    ----------
+    A : ndarray
+        The matrix to be inverted.
+
+    Returns
+    -------
+    ndarray
+        The inverse of the matrix A.
+
+    """
+    try:
+        return np.linalg.inv(A)
+    except TypeError:
+        d = det(A)
+
+        if d == 0:
+            raise np.linalg.LinAlgError("Singular matrix")
+
+        if A.shape == (2, 2):
+            return np.array([[A[1, 1], -A[0, 1]], [-A[1, 0], A[0, 0]]]) / d
+
+        cofactors = np.empty(A.shape, A.dtype)
+        for i in np.ndindex(cofactors.shape):
+            minor = A[[[x] for x in range(A.shape[0]) if x != i[0]], [x for x in range(A.shape[1]) if x != i[1]]]
+            cofactors[i] = (-1)**sum(i) * det(minor)
+
+        return cofactors.T / d
 
 
 def null_space(A):

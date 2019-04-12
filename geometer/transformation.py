@@ -2,6 +2,7 @@ import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape
 from .point import Point, Line, Plane
 from .curve import Quadric
+from .utils import norm, inv
 
 
 def rotation(angle, axis=None):
@@ -28,7 +29,7 @@ def rotation(angle, axis=None):
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)
     a = axis.normalized_array[:-1]
-    a = a / np.linalg.norm(a)
+    a = a / norm(a)
     d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = np.outer(a, a)
@@ -94,7 +95,7 @@ class Transformation(ProjectiveElement):
         b = [y.array for x, y in args]
         m1 = np.array(b[:-1]).T.dot(np.diag(b[-1]))
         m2 = np.array(a[:-1]).T.dot(np.diag(a[-1]))
-        return Transformation(m1.dot(np.linalg.inv(m2)))
+        return Transformation(m1.dot(inv(m2)))
 
     def __mul__(self, other):
         if isinstance(other, (Point, Transformation)):
@@ -120,7 +121,7 @@ class Transformation(ProjectiveElement):
             The inverse transformation.
 
         """
-        return Transformation(np.linalg.inv(self.array))
+        return Transformation(inv(self.array))
 
     def __rmul__(self, other):
         return self*other

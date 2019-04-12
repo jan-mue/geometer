@@ -2,7 +2,7 @@ import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
 from .base import LeviCivitaTensor, TensorDiagram
-from .utils import det, isclose
+from .utils import det, orth, isclose
 from .exceptions import IncidenceError, NotCollinear
 
 
@@ -254,7 +254,7 @@ def dist(p, q):
         x = np.array([p.normalized_array, q.normalized_array])
         z = x[:, -1]
 
-        m, _ = np.linalg.qr(x.T)
+        m = orth(x.T)
         x = m.T.dot(x.T)
         x = np.append(x, [z], axis=0).T
         p, q = Point(x[0]), Point(x[1])
