@@ -17,13 +17,13 @@ def _join_meet_duality(*args, intersect_lines=True):
     if all(o.tensor_shape == args[0].tensor_shape for o in args[1:]) and sum(args[0].tensor_shape) == 1:
         covariant = args[0].tensor_shape[0] > 0
         e = LeviCivitaTensor(n, not covariant)
-        result = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args])
+        result = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args]).calculate()
 
     elif len(args) == 2:
         a, b = args
         if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
             e = LeviCivitaTensor(n)
-            result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1])
+            result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
         elif isinstance(a, Line) and isinstance(b, Point):
             result = a * b
         elif isinstance(a, Point) and isinstance(b, Line):
@@ -32,16 +32,17 @@ def _join_meet_duality(*args, intersect_lines=True):
             e = LeviCivitaTensor(n)
 
             if n > 4:
-                result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1]))
+                result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1])).calculate()
                 coplanar = result == 0
             else:
                 coplanar = n < 4 or a.is_coplanar(b)
 
-            if not coplanar and intersect_lines:
+            if not coplanar and (intersect_lines or n <= 4):
                 raise NotCoplanar("The given lines are not coplanar.")
 
             if coplanar:
-                array = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b)).array
+                diagram = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b))
+                array = diagram.calculate().array
                 i = np.unravel_index(np.abs(array).argmax(), array.shape)
                 if not intersect_lines:
                     result = Tensor(array[i[0], ...], covariant=False)
@@ -346,8 +347,8 @@ class Line(Subspace):
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
-        result = TensorDiagram((e, self), (e, self))
-        return Line(result)
+        diagram = TensorDiagram((e, self), (e, self))
+        return Line(diagram.calculate())
 
     @property
     def contravariant_tensor(self):
@@ -355,8 +356,8 @@ class Line(Subspace):
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
-        result = TensorDiagram((self, e), (self, e))
-        return Line(result)
+        diagram = TensorDiagram((self, e), (self, e))
+        return Line(diagram.calculate())
 
     def is_coplanar(self, other):
         """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect.
@@ -376,7 +377,8 @@ class Line(Subspace):
             return True
 
         e = LeviCivitaTensor(self.dim + 1)
-        return TensorDiagram(*[(e, self)]*(self.dim - 1), *[(e, other)]*(self.dim - 1)) == 0
+        d = TensorDiagram(*[(e, self)]*(self.dim - 1), *[(e, other)]*(self.dim - 1))
+        return d.calculate() == 0
 
     def __add__(self, point):
         from .transformation import translation
@@ -406,7 +408,7 @@ class Line(Subspace):
 
             if n > 3:
                 # additional point is required to determine the exact line
-                arr = np.zeros(n)
+                arr = np.zeros(n, dtype=self.array.dtype)
                 for i in range(n):
                     arr[-i - 1] = 1
                     o = Point(arr)
@@ -475,8 +477,7 @@ class Line(Subspace):
         if self.dim == 2:
             a = self.base_point.array
             b = np.cross(self.array, a)
-            result = np.array([a, b])
-            return result / np.linalg.norm(result)
+            return np.array([a / np.linalg.norm(a), b / np.linalg.norm(b)])
         return super(Line, self).basis_matrix
 
     def mirror(self, pt):

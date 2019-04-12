@@ -354,7 +354,8 @@ def is_coplanar(*args):
         return True
     covariant = args[0].tensor_shape[1] > 0
     e = LeviCivitaTensor(n, covariant=covariant)
-    tensor = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n-1]])
+    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n-1]])
+    tensor = diagram.calculate()
     for t in args[n:]:
         if not (covariant and t*tensor == 0 or not covariant and tensor*t == 0):
             return False

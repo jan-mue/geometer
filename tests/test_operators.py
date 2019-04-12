@@ -83,7 +83,7 @@ def test_angle_bisectors():
 
 
 def test_is_cocircular():
-    p = Point(0,1)
+    p = Point(0, 1)
     t = rotation(np.pi/3)
 
     assert is_cocircular(p, t*p, t*t*p, t*t*t*p)

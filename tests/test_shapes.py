@@ -1,4 +1,4 @@
-from geometer import Point, Segment, Rectangle, Triangle, Polytope, Cube, Line, RegularPolygon, dist, rotation
+from geometer import Point, Segment, Rectangle, Triangle, Cube, Line, RegularPolygon, dist, rotation
 import numpy as np
 
 

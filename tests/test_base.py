@@ -1,4 +1,4 @@
-from geometer.base import *
+from geometer.base import TensorDiagram, Tensor, KroneckerDelta
 
 
 class TestTensorDiagram:
@@ -9,10 +9,10 @@ class TestTensorDiagram:
                     [0, 0, 0, 0],
                     [0, 0, 0, 0],
                     [0, 0, 0, 0]], covariant=False)
-        c = TensorDiagram((a, b))
-        assert c == Tensor([42, 0, 0, 0])
-        c.add_edge(a.copy(), b)
-        assert c == 42
+        diagram = TensorDiagram((a, b))
+        assert diagram.calculate() == Tensor([42, 0, 0, 0])
+        diagram.add_edge(a.copy(), b)
+        assert diagram.calculate() == 42
 
     def test_kronecker_delta(self):
         d = KroneckerDelta(3, 4)

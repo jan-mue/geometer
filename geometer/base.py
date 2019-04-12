@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import warnings
 from itertools import permutations
 
 import numpy as np
@@ -95,7 +94,7 @@ class Tensor:
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
             else:
-                self.array = np.array(args[0])
+                self.array = np.atleast_1d(args[0])
         else:
             self.array = np.array(args)
 
@@ -141,15 +140,15 @@ class Tensor:
         return self.copy()
 
     def __mul__(self, other):
-        return TensorDiagram((other, self))
+        return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other):
-        return TensorDiagram((self, other))
+        return TensorDiagram((self, other)).calculate()
 
     def __eq__(self, other):
-        if np.isscalar(other):
-            return np.allclose(self.array, np.full(self.array.shape, other))
-        return np.allclose(self.array, other.array)
+        if isinstance(other, Tensor):
+            other = other.array
+        return np.allclose(self.array, other)
 
 
 class LeviCivitaTensor(Tensor):
@@ -229,7 +228,7 @@ class KroneckerDelta(Tensor):
         super(KroneckerDelta, self).__init__(array, covariant=range(p))
 
 
-class TensorDiagram(Tensor):
+class TensorDiagram:
     """A class used to specify and calculate tensor diagrams (also called Penrose Graphical Notation).
 
     Parameters
@@ -241,92 +240,21 @@ class TensorDiagram(Tensor):
 
     def __init__(self, *edges):
         self._nodes = []
-        self._index_mapping = []
+        self._free_indices = []
+        self._node_positions = []
+        self._contraction_list = []
+        self._index_count = 0
 
-        if len(edges) == 0:
-            raise TypeError("Cannot create an empty tensor diagram.")
+        for e in edges:
+            self.add_edge(*e)
 
-        free_indices = []
-        split = []
-        contract_indices = []
-
-        def add(node):
-            nonlocal index_count
-            split.append(index_count)
-            self._nodes.append(node)
-            ind = (node._covariant_indices.copy(), node._contravariant_indices.copy())
-            free_indices.append(ind)
-            index_count += node.array.ndim
-            return ind
-
-        for source, target in edges:
-
-            if source.array.shape[0] != target.array.shape[0]:
-                raise TensorComputationError("Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(str(source.array.shape[0]), str(target.array.shape[0])))
-
-            source_index, target_index = None, None
-            index_count = 0
-
-            for tensor, ind in zip(self._nodes, free_indices):
-                if tensor is source:
-                    source_index = index_count
-                    free_source = ind[0]
-                if tensor is target:
-                    target_index = index_count
-                    free_target = ind[1]
-
-                index_count += tensor.array.ndim
-
-                if source_index is not None and target_index is not None:
-                    break
-
-            else:
-                if source_index is None:
-                    source_index = index_count
-                    free_source = add(source)[0]
-                if target_index is None:
-                    target_index = index_count
-                    free_target = add(target)[1]
-
-            if len(free_source) == 0 or len(free_target) == 0:
-                raise TensorComputationError("Could not add the edge because no free indices are left in the following tensors: " + str((source, target)))
-
-            i = source_index + free_source.pop()
-            j = target_index + free_target.pop()
-            contract_indices.append((min(i, j), max(i, j)))
-
-        indices = list(range(index_count))
-        for i, j in contract_indices:
-            indices[j] = i
-
-        args = []
-        result_indices = ([], [])
-        index_mapping = ([], [])
-        for i, (node, ind, offset) in enumerate(zip(self._nodes, free_indices, split)):
-            index_mapping[0].extend([i] * len(ind[0]))
-            index_mapping[1].extend([i] * len(ind[1]))
-            result_indices[0].extend(offset + x for x in ind[0])
-            result_indices[1].extend(offset + x for x in ind[1])
-            args.append(node.array)
-            s = slice(offset, split[i + 1] if i + 1 < len(split) else None)
-            args.append(indices[s])
-
-        cov_count = len(result_indices[0])
-        result_indices = result_indices[0] + result_indices[1]
-
-        x = np.einsum(*args, result_indices)
-
-        self._index_mapping = index_mapping[0] + index_mapping[1]
-        super(TensorDiagram, self).__init__(x, covariant=range(cov_count))
-
-    def _contract_index(self, i, j):
-        indices = list(range(self.array.ndim))
-        indices[max(i, j)] = min(i, j)
-        self.array = np.einsum(self.array, indices)
-        self._covariant_indices.remove(i)
-        self._contravariant_indices.remove(j)
-        self._index_mapping.pop(i)
-        self._index_mapping.pop(j)
+    def _add_node(self, node):
+        self._nodes.append(node)
+        self._node_positions.append(self._index_count)
+        self._index_count += node.array.ndim
+        ind = (list(node._covariant_indices), list(node._contravariant_indices))
+        self._free_indices.append(ind)
+        return ind
 
     def add_edge(self, source, target):
         """Add an edge to the diagram.
@@ -339,49 +267,47 @@ class TensorDiagram(Tensor):
             The target tensor of the edge in the diagram.
 
         """
+
+        if source.array.shape[0] != target.array.shape[0]:
+            raise TensorComputationError(
+                "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
+                    str(source.array.shape[0]), str(target.array.shape[0])))
+
+        # First step: Find nodes if they are already in the diagram
         source_index, target_index = None, None
-        for i, node in enumerate(self._nodes):
+        for index, node in enumerate(self._nodes):
             if node is source:
-                source_index = i
+                source_index = index
+                free_source = self._free_indices[index][0]
             if node is target:
-                target_index = i
+                target_index = index
+                free_target = self._free_indices[index][1]
 
             if source_index is not None and target_index is not None:
                 break
 
-        def add(tensor):
-            # TODO: directly use tensordot to contract
-            self.array = self.tensordot(tensor).array
-            self._index_mapping.extend([len(self._nodes)] * tensor.array.ndim)
-            self._nodes.append(tensor)
-
-        if target_index is None:
-            free_target = set(sum(self.tensor_shape) + x for x in target._contravariant_indices)
-            add(target)
+        # One or both nodes were not found in the diagram
         else:
-            free_target = set()
-            for i in self._contravariant_indices:
-                if self._index_mapping[i] == target_index:
-                    free_target.add(i)
+            # Second step: Add new nodes to nodes and free indices list
+            if source_index is None:
+                source_index = len(self._nodes)
+                free_source = self._add_node(source)[0]
 
-        if source_index is None:
-            free_source = set(sum(self.tensor_shape) + x for x in source._covariant_indices)
-            add(source)
-        else:
-            free_source = set()
-            for i in self._covariant_indices:
-                if self._index_mapping[i] == source_index:
-                    free_source.add(i)
+            if target_index is None:
+                target_index = len(self._nodes)
+                free_target = self._add_node(target)[1]
 
         if len(free_source) == 0 or len(free_target) == 0:
             raise TensorComputationError("Could not add the edge because no free indices are left.")
 
-        self._contract_index(free_source.pop(), free_target.pop())
+        # Third step: Pick some free indices
+        i = free_source.pop()
+        j = free_target.pop()
+
+        self._contraction_list.append((source_index, target_index, i, j))
 
     def calculate(self):
         """Calculates the result of the diagram.
-
-        Deprecated as of version v0.2.
 
         Returns
         -------
@@ -389,8 +315,26 @@ class TensorDiagram(Tensor):
             The tensor resulting from the specified tensor diagram.
 
         """
-        warnings.warn("deprecated", DeprecationWarning)
-        return self
+        # Build the list of indices for einsum
+        indices = list(range(self._index_count))
+        for source_index, target_index, i, j in self._contraction_list:
+            i = self._node_positions[source_index] + i
+            j = self._node_positions[target_index] + j
+            indices[max(i, j)] = min(i, j)
+
+        # Split the indices and insert the arrays
+        args = []
+        result_indices = ([], [])
+        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
+            result_indices[0].extend(offset + x for x in ind[0])
+            result_indices[1].extend(offset + x for x in ind[1])
+            args.append(node.array)
+            s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
+            args.append(indices[s])
+
+        temp = np.einsum(*args, result_indices[0] + result_indices[1])
+
+        return Tensor(temp, covariant=range(len(result_indices[0])))
 
 
 class ProjectiveElement(Tensor, ABC):
@@ -407,7 +351,8 @@ class ProjectiveElement(Tensor, ABC):
             # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
             a = self.array.ravel()
             b = other.array.ravel()
-            return np.isclose(np.abs(np.vdot(a, b)) ** 2, np.vdot(a, a) * np.vdot(b, b))
+            ab = np.vdot(a, b)
+            return np.isclose(ab * np.conjugate(ab), np.vdot(a, a) * np.vdot(b, b))
         return NotImplemented
 
     @property

@@ -30,7 +30,7 @@ def rotation(angle, axis=None):
     a = axis.normalized_array[:-1]
     a = a / np.linalg.norm(a)
     d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
-    u = d.array
+    u = d.calculate().array
     v = np.outer(a, a)
     result = np.eye(dimension+1)
     result[:dimension, :dimension] = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v
@@ -103,7 +103,7 @@ class Transformation(ProjectiveElement):
             return type(other)(other*self.inverse())
         if isinstance(other, Quadric):
             inv = self.inverse()
-            return type(other)(TensorDiagram((inv, other), (other, inv)))
+            return type(other)(TensorDiagram((inv, other), (other, inv)).calculate())
         if isinstance(other, Shape):
             return type(other)(*[self*v for v in other.sides])
         return NotImplemented

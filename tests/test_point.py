@@ -1,4 +1,4 @@
-from geometer import *
+from geometer import Point, Line, Plane, join, meet, is_perpendicular
 
 
 class Test2D:
@@ -23,12 +23,13 @@ class Test2D:
         assert 2*p + 3*q == Point([2, 3, 0])
 
     def test_parallel(self):
-        p = Point(0,1)
-        q = Point(1,1)
-        r = Point(0,0)
+        p = Point(0, 1)
+        q = Point(1, 1)
+        r = Point(0, 0)
         l = Line(p, q)
         m = l.parallel(through=r)
-        assert m == Line(0,1,0)
+
+        assert m == Line(0, 1, 0)
         assert l.is_parallel(m)
 
     def test_perpendicular(self):
@@ -40,6 +41,13 @@ class Test2D:
 
         m = l.perpendicular(Point(0, 0))
         assert m == Line(-1, 1, 0)
+
+        p = Point(1, 1, 0)
+        q = Point(0, 0, 1)
+        l = Line(p, q)
+        m = l.perpendicular(p)
+
+        assert is_perpendicular(l, m)
 
 
 class Test3D:
