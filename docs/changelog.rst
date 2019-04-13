@@ -9,7 +9,7 @@ New Features
 ------------
 
 - New shape module that implements line segments, polygons and general polytopes
-- Tensor has a new tensordot method to calculate the tensor product with another tensor
+- Tensor has a new tensor_product method to calculate the tensor product with another tensor
 - AlgebraicCurve is now a subclass of the new class AlgebraicHypersurface
 - A new sphere class (a subclass of Quadric) that works in any dimension
 - Ellipse class that constructs a conic from center and radius

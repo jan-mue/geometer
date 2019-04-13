@@ -111,7 +111,7 @@ class Tensor:
         covariant indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
 
-    def tensordot(self, other):
+    def tensor_product(self, other):
         """Return a new tensor that is the tensor product of this and the other tensor.
 
         Parameters
@@ -125,10 +125,44 @@ class Tensor:
             The tensor product.
 
         """
-        ind = self._covariant_indices
         d = self.array.ndim
-        ind.update(d + i for i in other._covariant_indices)
-        return Tensor(np.tensordot(self.array, other.array, 0), covariant=ind)
+        covariant = self._covariant_indices.copy()
+        covariant.update(d + i for i in other._covariant_indices)
+        return Tensor(np.tensordot(self.array, other.array, 0), covariant=covariant)
+
+    def transpose(self, perm=None):
+        """Permute the indices of the tensor.
+
+        Parameters
+        ----------
+        perm : tuple of int, optional
+            A list of permuted indices or a shorter list representing a permutation in cycle notation.
+            By default, the indices are reversed.
+
+        Returns
+        -------
+        Tensor
+            The tensor with permuted indices.
+
+        """
+        if perm is None:
+            perm = reversed(range(self.array.ndim))
+
+        perm = list(perm)
+
+        if len(perm) < self.array.ndim:
+            a = list(range(self.array.ndim))
+            for ind in range(len(perm)):
+                i, j = perm[ind], perm[(ind + 1) % len(perm)]
+                a[i] = j
+            perm = a
+
+        covariant = []
+        for i, j in enumerate(perm):
+            if i in self._covariant_indices:
+                covariant.append(j)
+
+        return Tensor(np.transpose(self.array, perm), covariant=covariant)
 
     def copy(self):
         return type(self)(self)
@@ -144,6 +178,12 @@ class Tensor:
 
     def __rmul__(self, other):
         return TensorDiagram((self, other)).calculate()
+
+    def __add__(self, other):
+        return Tensor(self.array + other.array, covariant=self._covariant_indices)
+
+    def __sub__(self, other):
+        return Tensor(self.array - other.array, covariant=self._covariant_indices)
 
     def __eq__(self, other):
         if isinstance(other, Tensor):
@@ -189,10 +229,10 @@ class KroneckerDelta(Tensor):
 
     Parameters
     ----------
-    p : int
-        The number of covariant and contravariant indices of the tensor.
-    n : int, optional
-        The dimension of the tensor, by default equal to p.
+    n : int
+        The dimension of the tensor.
+    p : int, optional
+        The number of covariant and contravariant indices of the tensor, default is 1.
 
     References
     ----------
@@ -202,10 +242,7 @@ class KroneckerDelta(Tensor):
 
     _cache = {}
 
-    def __init__(self, p, n=None):
-        if n is None:
-            n = p
-
+    def __init__(self, n, p=1):
         if p == 1:
             array = np.eye(n)
         elif (p, n) in self._cache:
@@ -216,8 +253,8 @@ class KroneckerDelta(Tensor):
 
             self._cache[(p, n)] = array
         else:
-            d1 = KroneckerDelta(1, n)
-            d2 = KroneckerDelta(p-1, n)
+            d1 = KroneckerDelta(n)
+            d2 = KroneckerDelta(n, p-1)
 
             def calc(*args):
                 return sum((-1)**(p+k+1)*d1.array[args[k], args[-1]]*d2.array[tuple(x for i, x in enumerate(args[:-1]) if i != k)] for k in range(p))
@@ -231,10 +268,21 @@ class KroneckerDelta(Tensor):
 class TensorDiagram:
     """A class used to specify and calculate tensor diagrams (also called Penrose Graphical Notation).
 
+    Each edge in the diagram represents a contraction of two indices of the tensors connected by that edge. In
+    Einstein-notation that would mean that an edge from tensor A to tensor B is equivalent to the expression
+    :math:`A_{i j}B^{k j}_l`, where :math:`i, k, l` are free indices. The indices to contract are chosen from back to
+    front from contravariant and covariant indices of the tensors that are connected by an edge.
+
     Parameters
     ----------
     *edges
         Variable number of tuples, that represent the edge from one tensor to another.
+
+
+    References
+    ----------
+    .. [1] https://www-m10.ma.tum.de/foswiki/pub/Lehrstuhl/PublikationenJRG/52_TensorDiagrams.pdf
+    .. [2] J. Richter-Gebert: Perspectives on Projective Geometry, Chapters 13-14
 
     """
 
