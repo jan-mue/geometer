@@ -351,6 +351,31 @@ class Conic(Quadric, AlgebraicCurve):
 
     @classmethod
     def from_crossratio(cls, cr, a, b, c, d):
+        """Construct a conic from a cross ratio and four other points.
+
+        This method relies on the fact that a point lies on a conic with five other points, if and only of the
+        cross ratio seen from this point is the same as the cross ratio of four of the other points seen from the fith
+        point.
+
+        Parameters
+        ----------
+        cr : float
+            The crossratio of the other points that defines the conic.
+        a : Point
+        b : Point
+        c : Point
+        d : Point
+
+        Returns
+        -------
+        Conic
+            The resulting conic.
+
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
+
+        """
         p = np.array(_symbols(3))
         ac = sympy.Matrix([p, a.array, c.array]).det()
         bd = sympy.Matrix([p, b.array, d.array]).det()
