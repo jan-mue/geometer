@@ -260,7 +260,7 @@ class Conic(Quadric, AlgebraicCurve):
         ade = np.linalg.det([a, d, e])
         bce = np.linalg.det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return Conic(np.real_if_close(m+m.T))
+        return cls(np.real_if_close(m+m.T))
 
     @classmethod
     def from_lines(cls, g, h):
@@ -278,19 +278,19 @@ class Conic(Quadric, AlgebraicCurve):
 
         """
         m = np.outer(g.array, h.array)
-        return Conic(m + m.T)
+        return cls(m + m.T)
 
     @classmethod
-    def from_points_and_tangent(cls, a, b, c, d, tangent):
+    def from_tangent(cls, tangent, a, b, c, d):
         """Construct a conic through four points and tangent to a line.
 
         Parameters
         ----------
+        tangent : Line
         a : Point
         b : Point
         c : Point
         d : Point
-        tangent : Line
 
         Returns
         -------
@@ -346,8 +346,23 @@ class Conic(Quadric, AlgebraicCurve):
 
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
-        c = cls.from_points_and_tangent(Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array), Line(bound.array))
-        return Conic(np.linalg.inv(c.array))
+        c = cls.from_tangent(Line(bound.array), Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array))
+        return cls(np.linalg.inv(c.array))
+
+    @classmethod
+    def from_crossratio(cls, cr, a, b, c, d):
+        p = np.array(_symbols(3))
+        ac = sympy.Matrix([p, a.array, c.array]).det()
+        bd = sympy.Matrix([p, b.array, d.array]).det()
+        ad = sympy.Matrix([p, a.array, d.array]).det()
+        bc = sympy.Matrix([p, b.array, c.array]).det()
+
+        poly = sympy.poly(ac*bd - cr*ad*bc, _symbols(3))
+
+        matrix = np.zeros((3, 3), dtype=(cr*a.array).dtype)
+        ind = np.triu_indices(3)
+        matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
+        return cls(matrix + matrix.T)
 
     @property
     def components(self):

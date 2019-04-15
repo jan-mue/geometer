@@ -1,7 +1,6 @@
 import numpy as np
 from sympy.abc import x, y, z
-from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere
-from geometer.curve import AlgebraicCurve
+from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, AlgebraicCurve, crossratio
 
 
 class TestAlgebraicCurve:
@@ -55,20 +54,33 @@ class TestConic:
         assert el.contains(Point(1, 5))
         assert el.contains(Point(1, -1))
 
-    def test_from_points_and_tangent(self):
+    def test_from_tangent(self):
         a = Point(-1.5, 0.5)
         b = Point(0, -1)
         c = Point(1.5, 0.5)
         d = Point(1.5, -0.5)
         l = Line(0, 1, -1)
 
-        conic = Conic.from_points_and_tangent(a, b, c, d, l)
+        conic = Conic.from_tangent(l, a, b, c, d)
 
         assert conic.contains(a)
         assert conic.contains(b)
         assert conic.contains(c)
         assert conic.contains(d)
         assert conic.is_tangent(l)
+
+    def test_from_crossratio(self):
+        a = Point(0, 1)
+        b = Point(0, -1)
+        c = Point(1.5, 0.5)
+        d = Point(1.5, -0.5)
+        e = Point(-1.5, 0.5)
+
+        conic1 = Conic.from_points(a, b, c, d, e)
+        cr = crossratio(a, b, c, d, e)
+        conic2 = Conic.from_crossratio(cr, a, b, c, d)
+
+        assert conic1 == conic2
 
     def test_intersections(self):
         c = Circle(Point(0, 0), 1)
