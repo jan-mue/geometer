@@ -151,7 +151,7 @@ class Point(ProjectiveElement):
         return (-1) * self
 
     def __repr__(self):
-        return "Point({})".format(",".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
+        return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
 
     @property
     def normalized_array(self):
