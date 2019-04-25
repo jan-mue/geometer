@@ -145,3 +145,17 @@ class TestQuadric:
         l = Line(Point(-1, 0, 2), Point(1, 0, 2))
         assert s.contains(Point(0, 0, 0))
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
+
+    def test_sphere(self):
+        s2 = Sphere()
+        s3 = Sphere(Point(1, 2, 3, 4), 5)
+
+        assert s2.center == Point(0, 0, 0)
+        assert np.isclose(s2.radius, 1)
+        assert np.isclose(s2.volume(), 4/3*np.pi)
+        assert np.isclose(s2.area(), 4*np.pi)
+
+        assert s3.center == Point(1, 2, 3, 4)
+        assert np.isclose(s3.radius, 5)
+        assert np.isclose(s3.volume(), 1/2 * np.pi**2 * 5**4)
+        assert np.isclose(s3.area(), 2 * np.pi**2 * 5**3)

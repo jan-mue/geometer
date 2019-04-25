@@ -547,13 +547,18 @@ class Circle(Ellipse):
     """
 
     def __init__(self, center=Point(0, 0), radius=1):
-        self.radius = radius
         super(Circle, self).__init__(center, radius, radius)
 
     @property
     def center(self):
-        """Point: the center point of the circle."""
+        """Point: The center of the circle."""
         return self.foci[0]
+
+    @property
+    def radius(self):
+        """float: The radius of the circle."""
+        c = self.array[:2, 2] / self.array[0, 0]
+        return np.sqrt(c.dot(c) - self.array[2, 2] / self.array[0, 0])
 
     @property
     def lie_coordinates(self):
@@ -587,6 +592,14 @@ class Circle(Ellipse):
         return np.arccos(np.vdot(p1, p2))
 
     def area(self):
+        """Calculate the area of the circle.
+
+        Returns
+        -------
+        float
+            The area of the circle.
+
+        """
         return 2*np.pi*self.radius**2
 
 
@@ -603,21 +616,47 @@ class Sphere(Quadric):
     """
 
     def __init__(self, center=Point(0, 0, 0), radius=1):
-        self.radius = radius
-        m = np.eye(4)
+        m = np.eye(center.array.shape[0])
         c = -center.normalized_array
-        m[3, :] = c
-        m[:, 3] = c
-        m[3, 3] = c[:-1].dot(c[:-1])-radius**2
+        m[-1, :] = c
+        m[:, -1] = c
+        m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
         super(Sphere, self).__init__(m)
+
+    @property
+    def center(self):
+        """Point: The center of the sphere."""
+        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]))
+
+    @property
+    def radius(self):
+        """float: The radius of the sphere."""
+        c = self.array[:-1, -1] / self.array[0, 0]
+        return np.sqrt(c.dot(c) - self.array[-1, -1] / self.array[0, 0])
 
     @staticmethod
     def _alpha(n):
         return math.pi**(n/2) / math.gamma(n/2 + 1)
 
     def volume(self):
+        """Calculate the volume of the sphere.
+
+        Returns
+        -------
+        float
+            The volume of the sphere.
+
+        """
         return self._alpha(self.dim)*self.radius**self.dim
 
     def area(self):
+        """Calculate the surface area of the sphere.
+
+        Returns
+        -------
+        float
+            The surface area of the sphere.
+
+        """
         n = self.dim
         return n*self._alpha(n)*self.radius**(n-1)

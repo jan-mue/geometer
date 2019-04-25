@@ -94,7 +94,7 @@ def harmonic_set(a, b, c):
     """
     l = Line(a, b)
     n = l.dim + 1
-    arr = np.zeros(n)
+    arr = np.zeros(n, dtype=int)
     for i in range(n):
         arr[-i-1] = 1
         o = Point(arr)

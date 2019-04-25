@@ -14,7 +14,7 @@ New Features
 - A new sphere class (a subclass of Quadric) that works in any dimension
 - Ellipse class that constructs a conic from center and radius
 - Added Conic.foci and Conic.polar
-- Construct a conic from points and a tangent line or from its focal points
+- Construct a conic from its focal points, using a tangent line or a cross ratio
 - Refactored & documented the code for calculation of tensor diagrams
 - New KroneckerDelta tensor
 - Added Circle.intersection_angle to calculate the angle of intersection of two circles
