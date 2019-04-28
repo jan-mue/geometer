@@ -157,6 +157,12 @@ class Point(ProjectiveElement):
             return np.real_if_close(self.array)
         return np.real_if_close(self.array / self.array[-1])
 
+    @property
+    def lie_coordinates(self):
+        """Point: The Lie coordinates of a point in 2D."""
+        x = self.normalized_array[:-1]
+        return Point([(1+x.dot(x))/2, (1-x.dot(x))/2, x[0], x[1], 0])
+
     def join(self, *others):
         """Execute the join of this point with other objects.
 
@@ -483,6 +489,12 @@ class Line(Subspace):
             b = np.cross(self.array, a)
             return np.array([a / np.linalg.norm(a), b / np.linalg.norm(b)])
         return super(Line, self).basis_matrix
+
+    @property
+    def lie_coordinates(self):
+        """Point: The Lie coordinates of a line in 2D."""
+        g = self.array
+        return Point([-g[2], g[2], g[0], g[1], np.sqrt(g[:2].dot(g[:2]))])
 
     def mirror(self, pt):
         """Construct the reflection of a point at this line.
