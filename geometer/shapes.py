@@ -1,3 +1,5 @@
+from itertools import combinations
+
 import numpy as np
 
 from .base import Shape
@@ -133,12 +135,10 @@ class Polytope(Shape):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra and 2-polytopes are polygons.
 
-    When a list of points is passed to the init method, the resulting polytope will be the convex hull of the points.
-
     Parameters
     ----------
     *args
-        The polygons defining the faces ot the polytope or a list of points.
+        The polytopes defining the sides ot the polytope.
 
     """
 
@@ -158,10 +158,10 @@ class Polytope(Shape):
     @property
     def vertices(self):
         """list of Point: The vertices of the polytope."""
-        return self._sum_lists(s.vertices for s in self.sides)
+        return self._collect_distinct(s.vertices for s in self.sides)
 
     @staticmethod
-    def _sum_lists(iterable):
+    def _collect_distinct(iterable):
         result = []
         for l in iterable:
             for x in l:
@@ -171,8 +171,8 @@ class Polytope(Shape):
 
     def intersect(self, other):
         if isinstance(other, Polytope):
-            return self._sum_lists(self.intersect(s) for s in other.sides if s != other)
-        return self._sum_lists(s.intersect(other) for s in self.sides if s != other)
+            return self._collect_distinct(self.intersect(s) for s in other.sides if s != other)
+        return self._collect_distinct(s.intersect(other) for s in self.sides if s != other)
 
     def area(self):
         """Calculates the surface area of the polytope.
@@ -197,32 +197,66 @@ class Polytope(Shape):
 
 
 class Simplex(Polytope):
+    """Represents a simplex in any dimension, i.e. a k-polytope with k+1 vertices where k is the dimension.
 
-    def __new__(cls, *args):
-        if len(args) == 3:
-            return Triangle(*args)
+    The simplex determined by k+1 points is given by the convex hull of these points.
 
-        return super(Simplex, cls).__new__(cls, *args)
+    Parameters
+    ----------
+    *args
+        The points that are the vertices of the simplex.
+
+    """
 
     def __init__(self, *args):
+        if all(isinstance(x, Point) for x in args):
+            args = [Simplex(*x) for x in combinations(args, len(args)-1)]
+
         super(Simplex, self).__init__(*args)
-        if len(self.vertices) != self.dim + 1:
-            raise ValueError("Expected {} vertices, got {}.".format(str(self.dim + 1), str(len(self.vertices))))
 
     def volume(self):
-        """Calculates the volume of the simplex.
+        """Calculates the volume of the simplex using the Cayley–Menger determinant.
+
+        For a 2-dimensional simplex this will be the same as the area of a triangle.
 
         Returns
         -------
         float
             The volume of the simplex.
 
+        References
+        ----------
+        .. [1] https://en.wikipedia.org/wiki/Cayley%E2%80%93Menger_determinant
+
         """
-        points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
-        return 1 / np.math.factorial(self.dim) * abs(np.linalg.det(points / points[-1]))
+        points = np.concatenate([v.array.reshape((1, v.array.shape[0])) for v in self.vertices], axis=0)
+        points = (points.T / points[:, -1]).T
+        n, k = points.shape
+
+        if n == k:
+            return 1 / np.math.factorial(n-1) * abs(np.linalg.det(points))
+
+        indices = np.triu_indices(n)
+        distances = points[indices[0]] - points[indices[1]]
+        distances = np.sum(distances**2, axis=1)
+        m = np.zeros((n+1, n+1), dtype=distances.dtype)
+        m[indices] = distances
+        m += m.T
+        m[-1, :-1] = 1
+        m[:-1, -1] = 1
+
+        return np.sqrt((-1)**n/(np.math.factorial(n-1)**2 * 2**(n-1)) * np.linalg.det(m))
 
 
 class Polygon(Polytope):
+    """A flat polygon with vertices in any dimension.
+
+    Parameters
+    ----------
+    *args
+        The coplanar points that are the vertices of the polygon. They will be connected sequentially by line segments.
+
+    """
 
     def __init__(self, *args):
         segments = []
@@ -285,6 +319,14 @@ class Polygon(Polytope):
         return super(Polygon, self).intersect(other)
 
     def area(self):
+        """Calculates the area of the polygon.
+
+        Returns
+        -------
+        float
+            The area of the polygon.
+
+        """
         points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
 
         if self.dim > 2:
@@ -325,7 +367,7 @@ class RegularPolygon(Polygon):
         super(RegularPolygon, self).__init__(*[rotation(2*i*np.pi/n, axis=axis)*vertex for i in range(n)])
 
 
-class Triangle(Polygon):
+class Triangle(Polygon, Simplex):
 
     def __init__(self, a, b, c):
         super(Triangle, self).__init__(a, b, c)
