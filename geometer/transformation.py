@@ -1,5 +1,5 @@
 import numpy as np
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Polytope
 from .point import Point, Line, Plane
 from .curve import Quadric
 
@@ -104,8 +104,8 @@ class Transformation(ProjectiveElement):
         if isinstance(other, Quadric):
             inv = self.inverse()
             return type(other)(TensorDiagram((inv, other), (other, inv)).calculate())
-        if isinstance(other, Shape):
-            return type(other)(*[self*v for v in other.sides])
+        if isinstance(other, Polytope):
+            return type(other)(*[self*v for v in other.facets])
         return NotImplemented
 
     def __pow__(self, power, modulo=None):

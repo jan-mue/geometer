@@ -3,7 +3,7 @@ from collections import Iterable
 import numpy as np
 import sympy
 
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Shape, _symbols
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Polytope, _symbols
 from .exceptions import LinearDependenceError, NotCoplanar
 from .utils import null_space
 
@@ -251,7 +251,7 @@ class Subspace(ProjectiveElement):
             return self * other == 0
         elif isinstance(other, Line):
             return self * other.covariant_tensor == 0
-        elif isinstance(other, Shape):
+        elif isinstance(other, Polytope):
             return all(self.contains(v) for v in other.vertices)
 
     def meet(self, *others):

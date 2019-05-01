@@ -2,20 +2,21 @@ from itertools import combinations
 
 import numpy as np
 
-from .base import Shape
+from .base import Polytope
 from .point import Line, Plane, Point, join, infty_hyperplane
 from .operators import dist, angle, harmonic_set
 from .transformation import rotation
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
-class Segment(Shape):
+class Segment(Polytope):
     """Represents a line segment in an arbitrary projective space.
 
     As a (real) projective line is homeomorphic to a circle, there are two line segments that connect two points. An
-    instance of this class will represent the finite segment connecting the two points, if there is one and the segment
-    in the direction of the infinite point otherwise (ignoring the identification of scalar multiples). When both points
-    are at infinity, the points will be considered in the oriented projective space to define the segment between them.
+    instance of this class will represent the finite segment connecting the two points, if there is one, and the segment
+    in the direction of the infinite point otherwise (identifying only scalar multiples by positive scalar factors).
+    When both points are at infinity, the points will be considered in the oriented projective space to define the
+    segment between them.
 
     Segments with one point at infinity represent rays/half-lines in a traditional sense.
 
@@ -34,7 +35,7 @@ class Segment(Shape):
 
     @property
     def vertices(self):
-        return self._sides
+        return self._facets
 
     def contains(self, other):
         """Tests whether a point is contained in the segment.
@@ -131,71 +132,6 @@ class Segment(Shape):
         return Segment(*[p + other for p in self.vertices])
 
 
-class Polytope(Shape):
-    """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
-    have some (n-1)-polytopes in common, where 3-polytopes are polyhedra and 2-polytopes are polygons.
-
-    Parameters
-    ----------
-    *args
-        The polytopes defining the sides ot the polytope.
-
-    """
-
-    def __new__(cls, *args, **kwargs):
-        if len(args) == 2:
-            return Segment(*args)
-
-        return super(Polytope, cls).__new__(cls)
-
-    def __init__(self, *args):
-
-        if len(args) < 3:
-            raise ValueError("Expected at least 3 arguments, got {}.".format(str(len(args))))
-
-        super(Polytope, self).__init__(*args)
-
-    @property
-    def vertices(self):
-        """list of Point: The vertices of the polytope."""
-        return self._collect_distinct(s.vertices for s in self.sides)
-
-    @staticmethod
-    def _collect_distinct(iterable):
-        result = []
-        for l in iterable:
-            for x in l:
-                if x not in result:
-                    result.append(x)
-        return result
-
-    def intersect(self, other):
-        if isinstance(other, Polytope):
-            return self._collect_distinct(self.intersect(s) for s in other.sides if s != other)
-        return self._collect_distinct(s.intersect(other) for s in self.sides if s != other)
-
-    def area(self):
-        """Calculates the surface area of the polytope.
-
-        Works only for 3-polytopes, i.e. polyhedra with polygons as sides.
-
-        Returns
-        -------
-        float
-            The surface area of the polytope.
-
-        """
-        return sum(s.area() for s in self.sides)
-
-    def __eq__(self, other):
-        if isinstance(other, Polytope):
-            return self.sides == other.sides
-        return NotImplemented
-
-    def __add__(self, other):
-        return type(self)(*[s + other for s in self.sides])
-
-
 class Simplex(Polytope):
     """Represents a simplex in any dimension, i.e. a k-polytope with k+1 vertices where k is the dimension.
 
@@ -207,6 +143,12 @@ class Simplex(Polytope):
         The points that are the vertices of the simplex.
 
     """
+
+    def __new__(cls, *args, **kwargs):
+        if len(args) == 2 and all(isinstance(x, Point) for x in args):
+            return Segment(*args)
+
+        return super(Polytope, cls).__new__(cls)
 
     def __init__(self, *args):
         if all(isinstance(x, Point) for x in args):
@@ -272,6 +214,10 @@ class Polygon(Polytope):
                 if not self._plane.contains(s):
                     raise NotCoplanar("The vertices of a polygon must be coplanar!")
 
+    @property
+    def edges(self):
+        return self.facets
+
     def contains(self, other):
         """Tests whether a point or segment is contained in the polygon.
 
@@ -316,6 +262,9 @@ class Polygon(Polytope):
                 i = other.intersect(self._plane)
                 return i if i and self.contains(i[0]) else []
 
+            if isinstance(other, Polytope) and not isinstance(other, Segment):
+                return other.intersect(self)
+
         return super(Polygon, self).intersect(other)
 
     def area(self):
@@ -346,8 +295,8 @@ class Polygon(Polytope):
     def angles(self):
         """list of float: The interior angles of the polytope."""
         result = []
-        a = self.sides[-1]
-        for b in self.sides:
+        a = self.edges[-1]
+        for b in self.edges:
             result.append(angle(a.vertices[1], a.vertices[0], b.vertices[1]))
             a = b
 
@@ -379,7 +328,25 @@ class Rectangle(Polygon):
         super(Rectangle, self).__init__(a, b, c, d)
 
 
-class Cube(Polytope):
+class Polyhedron(Polytope):
+
+    @property
+    def faces(self):
+        return self.facets
+
+    def area(self):
+        """Calculates the surface area of the polyhedron.
+
+        Returns
+        -------
+        float
+            The surface area of the polyhedron.
+
+        """
+        return sum(s.area() for s in self.faces)
+
+
+class Cube(Polyhedron):
 
     def __init__(self, a, b, c, d):
         x, y, z = b-a, c-a, d-a

@@ -76,11 +76,11 @@ class TestPolygon:
         a = Point(0, 0, 0)
         p = RegularPolygon(a, 1, 6, axis=Point(0, 0, 1))
 
-        d = p.sides[0].length()
+        d = p.edges[0].length()
 
         assert len(p.vertices) == 6
         assert np.isclose(dist(a, p.vertices[0]), 1)
-        assert all(np.isclose(s.length(), d) for s in p.sides[1:])
+        assert all(np.isclose(s.length(), d) for s in p.edges[1:])
         
         
 class TestPolytope:
@@ -91,7 +91,7 @@ class TestPolytope:
         c = Point(0, 1, 0)
         d = Point(0, 0, 1)
         cube = Cube(a, b, c, d)
-        assert len(cube.sides) == 6
+        assert len(cube.faces) == 6
         assert len(cube.vertices) == 8
         assert cube.area() == 6
 

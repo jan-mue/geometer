@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from itertools import permutations
 
 import numpy as np
@@ -14,55 +14,6 @@ def _symbols(n):
     if len(_symbol_cache) <= n:
         _symbol_cache.extend(sympy.symbols(["x" + str(i) for i in range(len(_symbol_cache), n)]))
     return _symbol_cache[0] if n == 1 else _symbol_cache[:n]
-
-
-class Shape(ABC):
-    """Base class for geometric shapes, i.e. line segments, polytopes and polygons.
-
-    Parameters
-    ----------
-    *args
-        The sides of the shape.
-
-    """
-
-    def __init__(self, *args):
-        self._sides = list(args)
-
-    @property
-    def dim(self):
-        """int: The dimension of the space that the shape lives in."""
-        return self.sides[0].dim
-
-    @property
-    @abstractmethod
-    def vertices(self):
-        """list of Points: The vertices of the shape."""
-        pass
-
-    @property
-    def sides(self):
-        """list of Shape: The sides of the shape."""
-        return self._sides
-
-    @abstractmethod
-    def intersect(self, other):
-        """Intersect the shape with another object.
-
-        Parameters
-        ----------
-        other : Line, Plane, Quadric or Shape
-
-        Returns
-        -------
-        list of Point
-            The points of intersection.
-
-        """
-        pass
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
 
 
 class Tensor:
@@ -407,3 +358,69 @@ class ProjectiveElement(Tensor, ABC):
     def dim(self):
         """int: The dimension of the tensor."""
         return self.array.shape[0] - 1
+
+
+class Polytope:
+    """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
+    have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
+    line segments.
+
+    Parameters
+    ----------
+    *args
+        The polytopes defining the facets ot the polytope.
+
+    """
+
+    def __init__(self, *args):
+        self._facets = list(args)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
+
+    @property
+    def vertices(self):
+        """list of Point: The vertices of the polytope."""
+        return self._collect_distinct(s.vertices for s in self.facets)
+
+    @staticmethod
+    def _collect_distinct(iterable):
+        result = []
+        for l in iterable:
+            for x in l:
+                if x not in result:
+                    result.append(x)
+        return result
+
+    @property
+    def dim(self):
+        """int: The dimension of the space that the polytope lives in."""
+        return self.facets[0].dim
+
+    @property
+    def facets(self):
+        """list of Polytope: The facets of the polytope."""
+        return self._facets
+
+    def intersect(self, other):
+        """Intersect the polytope with another object.
+
+        Parameters
+        ----------
+        other : Line, Plane, Quadric or Polytope
+
+        Returns
+        -------
+        list of Point
+            The points of intersection.
+
+        """
+        return self._collect_distinct(s.intersect(other) for s in self.facets if s != other)
+
+    def __eq__(self, other):
+        if isinstance(other, Polytope):
+            return self.facets == other.facets
+        return NotImplemented
+
+    def __add__(self, other):
+        return type(self)(*[s + other for s in self.facets])
