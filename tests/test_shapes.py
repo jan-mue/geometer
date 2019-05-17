@@ -1,4 +1,4 @@
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, dist, rotation
+from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, Plane, RegularPolygon, dist, rotation
 import numpy as np
 
 
@@ -103,6 +103,9 @@ class TestPolytope:
         cube = Cuboid(a, b, c, d)
         l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
         assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
+
+        e = Plane(0, 0, 1, -0.5)
+        assert cube.intersect(e) == Rectangle(Point(0, 0, 0.5), Point(1, 0, 0.5), Point(1, 1, 0.5), Point(0, 1, 0.5))
 
     def test_simplex_volume(self):
         a = Point(0, 0, 0)

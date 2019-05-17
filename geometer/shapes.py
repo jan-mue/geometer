@@ -55,13 +55,15 @@ class Polytope:
 
         """
         if isinstance(other, Plane):
-            return Polytope(*[side for f in self.facets for side in f.intersect(other)])
+            facets = [f.intersect(other) for f in self.facets]
+            return Polytope(*[f for f in facets if f])
 
         return list(distinct(pt for f in self.facets for pt in f.intersect(other) if f != other))
 
     def __eq__(self, other):
         if isinstance(other, Polytope):
-            return self.facets == other.facets
+            # facets equal up to reordering
+            return np.all(f in other.facets for f in self.facets) and np.all(f in self.facets for f in other.facets)
         return NotImplemented
 
     def __add__(self, other):
@@ -156,8 +158,6 @@ class Segment(Polytope):
             return other.intersect(self)
 
         # TODO: intersect quadric
-
-        return NotImplemented
 
     def midpoint(self):
         """Returns the midpoint of the segment.
@@ -312,7 +312,8 @@ class Polygon(Polytope):
 
             if isinstance(other, Line):
                 if self._plane.contains(other):
-                    return Segment(*super(Polygon, self).intersect(other))
+                    pts = super(Polygon, self).intersect(other)
+                    return Segment(*pts) if pts else []
 
                 p = self._plane.meet(other)
                 return [p] if self.contains(p) else []
