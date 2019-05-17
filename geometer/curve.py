@@ -304,11 +304,7 @@ class Conic(Quadric, AlgebraicCurve):
         a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
         b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array
 
-        o = [1, 0, 1]
-        i = 0
-        while tangent.contains(Point(o)):
-            o[2-i] = 1
-            i += 1
+        o = tangent.general_point.array
 
         a2b1 = np.linalg.det([o, a2, b1])
         a2b2 = np.linalg.det([o, a2, b2])

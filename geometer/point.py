@@ -233,6 +233,17 @@ class Subspace(ProjectiveElement):
             x = self.array.reshape((x.shape[0]**(x.ndim-1), x.shape[-1]))
         return null_space(x).T
 
+    @property
+    def general_point(self):
+        """Point: A point in general position i.e. not in the subspace, to be used in geometric constructions."""
+        n = self.dim + 1
+        arr = np.zeros(n, dtype=int)
+        for i in range(n):
+            arr[-i - 1] = 1
+            p = Point(arr)
+            if not self.contains(p):
+                return p
+
     def contains(self, other):
         """Tests whether a given point or line lies in the subspace.
 
@@ -262,7 +273,7 @@ class Subspace(ProjectiveElement):
 
         Returns
         -------
-        Point
+        Subspace or Point
             The result of the meet operation.
 
         See Also
@@ -282,7 +293,7 @@ class Subspace(ProjectiveElement):
 
         Returns
         -------
-        Plane
+        Subspace
             The result of the join operation.
 
         See Also
@@ -416,13 +427,8 @@ class Line(Subspace):
 
             if n > 3:
                 # additional point is required to determine the exact line
-                arr = np.zeros(n, dtype=self.array.dtype)
-                for i in range(n):
-                    arr[-i - 1] = 1
-                    o = Point(arr)
-                    if not self.contains(o):
-                        break
-                e = join(self, o)
+                e = join(self, self.general_point)
+
                 basis = e.basis_matrix
                 line_pts = basis.dot(self.basis_matrix.T)
                 l = Line(np.cross(*line_pts.T))

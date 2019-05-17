@@ -110,6 +110,10 @@ def test_is_perpendicular():
     m = Line(p1, p3)
     assert is_perpendicular(l, m)
 
+    e1 = Plane(p1, p2, p3)
+    e2 = Plane(p1, p2, Point(0, 0, 1))
+    assert is_perpendicular(e1, e2)
+
 
 def test_pappos():
     a1 = Point(0, 1)

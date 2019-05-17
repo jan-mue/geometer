@@ -10,20 +10,20 @@ def crossratio(a, b, c, d, from_point=None):
 
     Parameters
     ----------
-    a : :obj:`Point` or :obj:`Line`
-        A point or line.
-    b : :obj:`Point` or :obj:`Line`
-        A point or line.
-    c : :obj:`Point` or :obj:`Line`
-        A point or line.
-    d : :obj:`Point` or :obj:`Line`
-        A point or line.
+    a : Point, Line or Plane
+        A point, line or plane in any dimension.
+    b : Point, Line or Plane
+        A point, line or plane in any dimension.
+    c : Point, Line or Plane
+        A point, line or plane in any dimension.
+    d : Point, Line or Plane
+        A point, line or plane in any dimension.
     from_point : Point, optional
         A 2D point, only possible if the other arguments are also 2D points.
 
     Returns
     -------
-    :obj:`float` of :obj:`complex`
+    float or complex
         The cross ration of the given objects.
 
     """
@@ -75,16 +75,18 @@ def crossratio(a, b, c, d, from_point=None):
 def harmonic_set(a, b, c):
     """Constructs a fourth point that forms a harmonic set with the given points.
 
+    The three given points must be collinear.
+
     If the returned point is d, the points {{a, b}, {c, d}} will be in harmonic position.
 
     Parameters
     ----------
     a : Point
-        A point in 2D or 3D.
+        A point in any dimension.
     b : Point
-        A point in 2D or 3D.
+        A point in any dimension.
     c : Point
-        A point in 2D or 3D.
+        A point in any dimension.
 
     Returns
     -------
@@ -93,13 +95,9 @@ def harmonic_set(a, b, c):
 
     """
     l = Line(a, b)
+    o = l.general_point
     n = l.dim + 1
-    arr = np.zeros(n, dtype=int)
-    for i in range(n):
-        arr[-i-1] = 1
-        o = Point(arr)
-        if not l.contains(o):
-            break
+
     if n > 3:
         e = join(l, o)
         basis = e.basis_matrix
@@ -115,6 +113,7 @@ def harmonic_set(a, b, c):
 
     if n > 3:
         return Point(basis.T.dot(result.array))
+
     return result
 
 
@@ -122,8 +121,8 @@ def angle(*args):
     """Calculates the (oriented) angle between given points, lines or planes.
 
     The function uses the Laguerre formula to calculate angles in two or three dimensional projective space
-    using cross ratios. To calculate the cross ratio of planes, two additional planes tangent to the absolute
-    conic are constructed.
+    using cross ratios. To calculate the angle between two planes, two additional planes tangent to the absolute
+    conic are constructed (see [1]).
 
     Parameters
     ----------
@@ -134,6 +133,10 @@ def angle(*args):
     -------
     float
         The oriented angle between the given objects.
+
+    References
+    ----------
+    .. [1] Olivier Faugeras, Three-dimensional Computer Vision, Page 30
 
     """
     if len(args) == 3:
@@ -186,13 +189,13 @@ def angle_bisectors(l, m):
     Parameters
     ----------
     l : Line
-        A line in 2D or 3D.
+        A line in any dimension.
     m : Line
-        A line in 2D or 3D.
+        A line in any dimension.
 
     Returns
     -------
-    :obj:`tuple` of :obj:`Line`
+    tuple of Line
         The two angle bisectors.
 
     """
@@ -226,9 +229,9 @@ def dist(p, q):
 
     Parameters
     ----------
-    p : :obj:`Point`, :obj:`Line` or :obj:`Plane`
+    p : Point, Line or Plane
         A point, line or plane to calculate the distance to.
-    q : :obj:`Point`, :obj:`Line` or :obj:`Plane`
+    q : Point, Line or Plane
         A point, line or plane to calculate the distance to.
 
     Returns
@@ -304,30 +307,45 @@ def is_cocircular(a, b, c, d):
 
 
 def is_perpendicular(l, m):
-    """Tests whether two lines are perpendicular.
+    """Tests whether two lines/planes are perpendicular.
 
     Parameters
     ----------
-    l : Line
-        A line in 2D or 3D.
-    m : Line
-        A line in 2D or 3D.
+    l : Line or Plane
+        A line in any dimension or a plane in 3D.
+    m : Line or Plane
+        A second line or a plane in 3D.
 
     Returns
     -------
     bool
-        True if the two lines are perpendicular.
+        True if the two lines/planes are perpendicular.
 
     """
-    if l.dim > 2:
+    if l.dim < 3:
+        L = l.meet(infty)
+        M = m.meet(infty)
+
+    elif isinstance(l, Line) and isinstance(m, Line):
         e = join(l, m)
         basis = e.basis_matrix
         L = Point(basis.dot(l.meet(infty_plane).array))
         M = Point(basis.dot(m.meet(infty_plane).array))
+
+    elif isinstance(l, Plane) and isinstance(m, Plane):
+        x = l.meet(m)
+        p = x.meet(infty_plane)
+        polar = Line(p.array[:-1])
+        tangent_points = absolute_conic.intersect(polar)
+        tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+        i = x.join(p.join(tangent_points[0]))
+        j = x.join(p.join(tangent_points[1]))
+        return np.isclose(crossratio(l, m, i, j), -1)
+
     else:
-        L = l.meet(infty)
-        M = m.meet(infty)
-    return np.isclose(crossratio(L,M, I,J, Point(1, 1)), -1)
+        raise NotImplementedError("Only two lines or two planes are supported.")
+
+    return np.isclose(crossratio(L, M, I, J, Point(1, 1)), -1)
 
 
 def is_coplanar(*args):
