@@ -1,7 +1,8 @@
 import numpy as np
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, Polytope
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 from .point import Point, Line, Plane
 from .curve import Quadric
+from .shapes import Polytope
 
 
 def rotation(angle, axis=None):

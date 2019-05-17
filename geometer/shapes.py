@@ -2,11 +2,70 @@ from itertools import combinations
 
 import numpy as np
 
-from .base import Polytope
+from .utils import distinct
 from .point import Line, Plane, Point, join, infty_hyperplane
 from .operators import dist, angle, harmonic_set
-from .transformation import rotation
 from .exceptions import NotCoplanar, LinearDependenceError
+
+
+class Polytope:
+    """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
+    have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
+    line segments.
+
+    Parameters
+    ----------
+    *args
+        The polytopes defining the facets ot the polytope.
+
+    """
+
+    def __init__(self, *args):
+        self._facets = list(args)
+
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
+
+    @property
+    def vertices(self):
+        """list of Point: The vertices of the polytope."""
+        return list(distinct(v for f in self.facets for v in f.vertices))
+
+    @property
+    def dim(self):
+        """int: The dimension of the space that the polytope lives in."""
+        return self.facets[0].dim
+
+    @property
+    def facets(self):
+        """list of Polytope: The facets of the polytope."""
+        return self._facets
+
+    def intersect(self, other):
+        """Intersect the polytope with another object.
+
+        Parameters
+        ----------
+        other : Line, Plane, Quadric or Polytope
+
+        Returns
+        -------
+        Polytope, Quadric or list of Point
+            The points of intersection.
+
+        """
+        if isinstance(other, Plane):
+            return Polytope(*[side for f in self.facets for side in f.intersect(other)])
+
+        return list(distinct(pt for f in self.facets for pt in f.intersect(other) if f != other))
+
+    def __eq__(self, other):
+        if isinstance(other, Polytope):
+            return self.facets == other.facets
+        return NotImplemented
+
+    def __add__(self, other):
+        return type(self)(*[s + other for s in self.facets])
 
 
 class Segment(Polytope):
@@ -243,20 +302,35 @@ class Polygon(Polytope):
         else:
             p = self._plane.meet(e).base_point
         s = Segment(other, p)
+
+        # TODO: ignore intersection with vertices
+
         return len(super(Polygon, self).intersect(s)) % 2 == 1
 
     def intersect(self, other):
         if self.dim > 2:
+
+            if isinstance(other, Line):
+                if self._plane.contains(other):
+                    return Segment(*super(Polygon, self).intersect(other))
+
+                p = self._plane.meet(other)
+                return [p] if self.contains(p) else []
+
+            if isinstance(other, Plane):
+                if self._plane == other:
+                    return self
+
+                l = self._plane.meet(other)
+                return self.intersect(l)
+
+            # TODO: handle intersection of coplanar polygons correctly
             if isinstance(other, Polygon) and self._plane != other._plane:
                 l = self._plane.meet(other._plane)
                 i1 = self.intersect(l)
                 i2 = other.intersect(l)
                 pts = [p for p in i1 + i2 if self.contains(p) and other.contains(p)]
                 return [Segment(pts[i], pts[i+1]) for i in range(0, len(pts), 2)]
-
-            if isinstance(other, Line) and not self._plane.contains(other):
-                p = self._plane.meet(other)
-                return [p] if self.contains(p) else []
 
             if isinstance(other, Segment) and not self._plane.contains(other):
                 i = other.intersect(self._plane)
@@ -293,7 +367,7 @@ class Polygon(Polytope):
 
     @property
     def angles(self):
-        """list of float: The interior angles of the polytope."""
+        """list of float: The interior angles of the polygon."""
         result = []
         a = self.edges[-1]
         for b in self.edges:
@@ -304,6 +378,18 @@ class Polygon(Polytope):
 
 
 class RegularPolygon(Polygon):
+    """A class that can be used to construct regular polygon from a radius and a center point.
+
+    Parameters
+    ----------
+    center : Point
+        The center of the polygon.
+    radius : float
+        The distance from the center to the vertices of the polygon.
+    axis : Point, optional
+        If constructed in higher-dimensional spaces, an axis vector is required to orient the polygon.
+
+    """
 
     def __init__(self, center, radius, n, axis=None):
         self.center = center
@@ -313,22 +399,46 @@ class RegularPolygon(Polygon):
             e = Plane(np.append(axis.array[:-1], [0]))
             p = Point(*e.basis_matrix[0, :-1])
         vertex = center + radius*p
+
+        from .transformation import rotation
         super(RegularPolygon, self).__init__(*[rotation(2*i*np.pi/n, axis=axis)*vertex for i in range(n)])
 
 
 class Triangle(Polygon, Simplex):
+    """A class representing triangles.
+
+    Parameters
+    ----------
+    a : Point
+    b : Point
+    c : Point
+
+    """
 
     def __init__(self, a, b, c):
         super(Triangle, self).__init__(a, b, c)
 
 
 class Rectangle(Polygon):
+    """A class representing rectangles.
+
+    Parameters
+    ----------
+    a : Point
+    b : Point
+    c : Point
+    d : Point
+
+    """
 
     def __init__(self, a, b, c, d):
         super(Rectangle, self).__init__(a, b, c, d)
 
 
 class Polyhedron(Polytope):
+    """A class representing polyhedra (3-polytopes).
+
+    """
 
     @property
     def faces(self):
@@ -346,11 +456,25 @@ class Polyhedron(Polytope):
         return sum(s.area() for s in self.faces)
 
 
-class Cube(Polyhedron):
+class Cuboid(Polyhedron):
+    """A class that can be used to construct a cuboid/box or a cube.
+
+    Parameters
+    ----------
+    a : Point
+        The base point of the cuboid.
+    b : Point
+        The vertex that determines the first direction of the edges.
+    b : Point
+        The vertex that determines the second direction of the edges.
+    b : Point
+        The vertex that determines the third direction of the edges.
+
+    """
 
     def __init__(self, a, b, c, d):
         x, y, z = b-a, c-a, d-a
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)
         xy = Rectangle(a, a + x, a + x + y, a + y)
-        super(Cube, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z)
+        super(Cuboid, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z)

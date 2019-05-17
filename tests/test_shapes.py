@@ -1,4 +1,4 @@
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cube, Line, RegularPolygon, dist, rotation
+from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, dist, rotation
 import numpy as np
 
 
@@ -90,7 +90,7 @@ class TestPolytope:
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
         d = Point(0, 0, 1)
-        cube = Cube(a, b, c, d)
+        cube = Cuboid(a, b, c, d)
         assert len(cube.faces) == 6
         assert len(cube.vertices) == 8
         assert cube.area() == 6
@@ -100,7 +100,7 @@ class TestPolytope:
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
         d = Point(0, 0, 1)
-        cube = Cube(a, b, c, d)
+        cube = Cuboid(a, b, c, d)
         l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
         assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
 
