@@ -96,7 +96,7 @@ A.meet(l)
 
 p3 = Point(1, 2, 1)
 p4 = Point(1, 1, 2)
-c = Cube(p1, p2, p3, p4)
+c = Cuboid(p1, p2, p3, p4)
 c.area()
 # 6
 

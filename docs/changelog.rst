@@ -8,7 +8,7 @@ Changelog
 New Features
 ------------
 
-- New shape module that implements line segments, polygons and general polytopes
+- New shapes module that implements line segments, polygons and general polytopes
 - Tensor has a new tensor_product method to calculate the tensor product with another tensor
 - AlgebraicCurve is now a subclass of the new class AlgebraicHypersurface
 - A new sphere class (a subclass of Quadric) that works in any dimension
@@ -18,6 +18,7 @@ New Features
 - Refactored & documented the code for calculation of tensor diagrams
 - New KroneckerDelta tensor
 - Added Circle.intersection_angle to calculate the angle of intersection of two circles
+- is_perpendicular now works with two planes
 
 Bug fixes
 ---------
