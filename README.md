@@ -78,7 +78,7 @@ ellipse = Conic.from_foci(c, d, bound=b)
 o = Point(0, 0)
 x, y = Point(1, 0), Point(0, 1)
 r = Rectangle(o, x, x+y, y)
-r.area()
+r.area
 # 1
 
 # 3-dimensional objects
@@ -97,7 +97,7 @@ A.meet(l)
 p3 = Point(1, 2, 1)
 p4 = Point(1, 1, 2)
 c = Cuboid(p1, p2, p3, p4)
-c.area()
+c.area
 # 6
 
 # Cross ratios
