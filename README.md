@@ -20,7 +20,7 @@ is represented by a four-dimensional vector. This has the following advantages:
 - Special complex points at infinity and cross ratios can be used to calculate
   angles and to construct perpendicular geometric structures.
 
-Most of the computation in the library done via tensor diagrams (using numpy.einsum).
+Most of the computation in the library is done via tensor diagrams (using numpy.einsum).
 
 The source code of the package can be found on [GitHub](https://github.com/jan-mue/geometer)
 and the documentation on [Read the Docs](https://geometer.readthedocs.io).
@@ -64,7 +64,7 @@ t2 = rotation(-np.pi)
 t1*t2*p
 # Point(-2, -5)
 
-# Quadratic forms
+# Ellipses/Quadratic forms
 a = Point(-1, 0)
 b = Point(0, 3)
 c = Point(1, 2)
@@ -72,6 +72,14 @@ d = Point(2, 1)
 e = Point(0, -1)
 
 conic = Conic.from_points(a, b, c, d, e)
+ellipse = Conic.from_foci(c, d, bound=b)
+
+# Shapes
+o = Point(0, 0)
+x, y = Point(1, 0), Point(0, 1)
+r = Rectangle(o, x, x+y, y)
+r.area
+# 1
 
 # 3-dimensional objects
 p1 = Point(1, 1, 0)
@@ -85,6 +93,12 @@ A.project(Point(3, 4, 5))
 l = Line(Point(1, 2, 3), Point(3, 4, 5))
 A.meet(l)
 # Point(-2, -1, 0)
+
+p3 = Point(1, 2, 1)
+p4 = Point(1, 1, 2)
+c = Cuboid(p1, p2, p3, p4)
+c.area
+# 6
 
 # Cross ratios
 t = rotation(np.pi/16)

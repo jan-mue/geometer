@@ -4,8 +4,8 @@ import numpy as np
 import sympy
 
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, _symbols
-from .utils import null_space
 from .exceptions import LinearDependenceError, NotCoplanar
+from .utils import null_space
 
 
 def _join_meet_duality(*args, intersect_lines=True):
@@ -17,15 +17,13 @@ def _join_meet_duality(*args, intersect_lines=True):
     if all(o.tensor_shape == args[0].tensor_shape for o in args[1:]) and sum(args[0].tensor_shape) == 1:
         covariant = args[0].tensor_shape[0] > 0
         e = LeviCivitaTensor(n, not covariant)
-        diagram = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args])
-        result = diagram.calculate()
+        result = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args]).calculate()
 
     elif len(args) == 2:
         a, b = args
         if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
             e = LeviCivitaTensor(n)
-            d = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1])
-            result = d.calculate()
+            result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
         elif isinstance(a, Line) and isinstance(b, Point):
             result = a * b
         elif isinstance(a, Point) and isinstance(b, Line):
@@ -34,13 +32,12 @@ def _join_meet_duality(*args, intersect_lines=True):
             e = LeviCivitaTensor(n)
 
             if n > 4:
-                diagram = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1]))
-                result = diagram.calculate()
+                result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1])).calculate()
                 coplanar = result == 0
             else:
                 coplanar = n < 4 or a.is_coplanar(b)
 
-            if not coplanar and intersect_lines:
+            if not coplanar and (intersect_lines or n <= 4):
                 raise NotCoplanar("The given lines are not coplanar.")
 
             if coplanar:
@@ -160,6 +157,12 @@ class Point(ProjectiveElement):
             return np.real_if_close(self.array)
         return np.real_if_close(self.array / self.array[-1])
 
+    @property
+    def lie_coordinates(self):
+        """Point: The Lie coordinates of a point in 2D."""
+        x = self.normalized_array[:-1]
+        return Point([(1+x.dot(x))/2, (1-x.dot(x))/2, x[0], x[1], 0])
+
     def join(self, *others):
         """Execute the join of this point with other objects.
 
@@ -226,9 +229,20 @@ class Subspace(ProjectiveElement):
     def basis_matrix(self):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         x = self.array
-        if len(x.shape) > 2:
-            x = self.array.reshape((x.shape[0]**(len(x.shape)-1), x.shape[-1]))
+        if x.ndim > 2:
+            x = self.array.reshape((x.shape[0]**(x.ndim-1), x.shape[-1]))
         return null_space(x).T
+
+    @property
+    def general_point(self):
+        """Point: A point in general position i.e. not in the subspace, to be used in geometric constructions."""
+        n = self.dim + 1
+        arr = np.zeros(n, dtype=int)
+        for i in range(n):
+            arr[-i - 1] = 1
+            p = Point(arr)
+            if not self.contains(p):
+                return p
 
     def contains(self, other):
         """Tests whether a given point or line lies in the subspace.
@@ -259,7 +273,7 @@ class Subspace(ProjectiveElement):
 
         Returns
         -------
-        Point
+        Subspace or Point
             The result of the meet operation.
 
         See Also
@@ -279,7 +293,7 @@ class Subspace(ProjectiveElement):
 
         Returns
         -------
-        Plane
+        Subspace
             The result of the join operation.
 
         See Also
@@ -373,13 +387,17 @@ class Line(Subspace):
         bool
             True if the two lines intersect (i.e. they lie in the same plane).
 
+        References
+        ----------
+        .. [1] Jim Blinn, Lines in Space: Back to the Diagrams, Line Intersections
+
         """
         if self.dim == 2:
             return True
 
         e = LeviCivitaTensor(self.dim + 1)
-        diagram = TensorDiagram(*[(e, self)]*(self.dim - 1), *[(e, other)]*(self.dim - 1))
-        return diagram.calculate() == 0
+        d = TensorDiagram(*[(e, self)]*(self.dim - 1), *[(e, other)]*(self.dim - 1))
+        return d.calculate() == 0
 
     def __add__(self, point):
         from .transformation import translation
@@ -409,13 +427,8 @@ class Line(Subspace):
 
             if n > 3:
                 # additional point is required to determine the exact line
-                arr = np.zeros(n)
-                for i in range(n):
-                    arr[-i - 1] = 1
-                    o = Point(arr)
-                    if not self.contains(o):
-                        break
-                e = join(self, o)
+                e = join(self, self.general_point)
+
                 basis = e.basis_matrix
                 line_pts = basis.dot(self.basis_matrix.T)
                 l = Line(np.cross(*line_pts.T))
@@ -478,9 +491,14 @@ class Line(Subspace):
         if self.dim == 2:
             a = self.base_point.array
             b = np.cross(self.array, a)
-            result = np.array([a, b])
-            return result / np.linalg.norm(result)
+            return np.array([a / np.linalg.norm(a), b / np.linalg.norm(b)])
         return super(Line, self).basis_matrix
+
+    @property
+    def lie_coordinates(self):
+        """Point: The Lie coordinates of a line in 2D."""
+        g = self.array
+        return Point([-g[2], g[2], g[0], g[1], np.sqrt(g[:2].dot(g[:2]))])
 
     def mirror(self, pt):
         """Construct the reflection of a point at this line.
@@ -494,6 +512,10 @@ class Line(Subspace):
         -------
         Point
             The mirror point.
+
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
 
         """
         l = self
@@ -550,7 +572,7 @@ class Plane(Subspace):
     def mirror(self, pt):
         """Construct the reflection of a point at this plane.
 
-        Currently only works in 3D.
+        Only works in 3D.
 
         Parameters
         ----------
@@ -583,6 +605,8 @@ class Plane(Subspace):
     def project(self, pt):
         """The orthogonal projection of a point onto the plane.
 
+        Only works in 3D.
+
         Parameters
         ----------
         pt : Point
@@ -600,6 +624,8 @@ class Plane(Subspace):
     def perpendicular(self, through):
         """Construct the perpendicular line though a point.
 
+        Only works in 3D.
+
         Parameters
         ----------
         through : Point
@@ -611,6 +637,26 @@ class Plane(Subspace):
             The perpendicular line.
 
         """
+        if self.contains(through):
+            l = self.meet(infty_plane)
+            l = Line(np.cross(*l.basis_matrix[:, :-1]))
+            p1, p2 = [Point(a) for a in l.basis_matrix]
+            polar1 = Line(p1.array)
+            polar2 = Line(p2.array)
+
+            from .curve import absolute_conic
+            tangent_points1 = absolute_conic.intersect(polar1)
+            tangent_points2 = absolute_conic.intersect(polar2)
+
+            from .operators import harmonic_set
+            q1, q2 = harmonic_set(*tangent_points1, l.meet(polar1)), harmonic_set(*tangent_points2, l.meet(polar2))
+            m1, m2 = p1.join(q1), p2.join(q2)
+
+            p = m1.meet(m2)
+            p = Point(np.append(p.array, 0))
+
+            return through.join(p)
+
         return self.mirror(through).join(through)
 
 

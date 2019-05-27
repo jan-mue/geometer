@@ -2,6 +2,30 @@
 Changelog
 =========
 
+0.2 - unreleased
+----------------
+
+New Features
+------------
+
+- New shapes module that implements line segments, polygons and general polytopes
+- Tensor has a new tensor_product method to calculate the tensor product with another tensor
+- AlgebraicCurve is now a subclass of the new class AlgebraicHypersurface
+- A new sphere class (a subclass of Quadric) that works in any dimension
+- Ellipse class that constructs a conic from center and radius
+- Added Conic.foci and Conic.polar
+- Construct a conic from its focal points, using a tangent line or a cross ratio
+- Refactored & documented the code for calculation of tensor diagrams
+- New KroneckerDelta tensor
+- Added Circle.intersection_angle to calculate the angle of intersection of two circles
+- is_perpendicular now works with two planes
+
+Bug fixes
+---------
+
+- Plane.perpendicular now also works for points tha lie on the plane
+
+
 0.1.2 - released (24.2.2019)
 ----------------------------
 

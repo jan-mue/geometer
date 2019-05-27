@@ -57,6 +57,14 @@ geometer.point module
     :undoc-members:
     :show-inheritance:
 
+geometer.shapes module
+----------------------
+
+.. automodule:: geometer.shapes
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 geometer.transformation module
 ------------------------------
 

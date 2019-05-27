@@ -1,7 +1,6 @@
 import numpy as np
 from sympy.abc import x, y, z
-from geometer import Point, Line, Conic, Circle, Quadric, Plane
-from geometer.curve import AlgebraicCurve
+from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, AlgebraicCurve, crossratio
 
 
 class TestAlgebraicCurve:
@@ -47,6 +46,42 @@ class TestConic:
         assert conic.contains(d)
         assert conic.contains(e)
 
+    def test_ellipse(self):
+        el = Ellipse(Point(1, 2), 2, 3)
+
+        assert el.contains(Point(-1, 2))
+        assert el.contains(Point(3, 2))
+        assert el.contains(Point(1, 5))
+        assert el.contains(Point(1, -1))
+
+    def test_from_tangent(self):
+        a = Point(-1.5, 0.5)
+        b = Point(0, -1)
+        c = Point(1.5, 0.5)
+        d = Point(1.5, -0.5)
+        l = Line(0, 1, -1)
+
+        conic = Conic.from_tangent(l, a, b, c, d)
+
+        assert conic.contains(a)
+        assert conic.contains(b)
+        assert conic.contains(c)
+        assert conic.contains(d)
+        assert conic.is_tangent(l)
+
+    def test_from_crossratio(self):
+        a = Point(0, 1)
+        b = Point(0, -1)
+        c = Point(1.5, 0.5)
+        d = Point(1.5, -0.5)
+        e = Point(-1.5, 0.5)
+
+        conic1 = Conic.from_points(a, b, c, d, e)
+        cr = crossratio(a, b, c, d, e)
+        conic2 = Conic.from_crossratio(cr, a, b, c, d)
+
+        assert conic1 == conic2
+
     def test_intersections(self):
         c = Circle(Point(0, 0), 1)
         i = c.intersect(Line(0, 1, 0))
@@ -64,14 +99,39 @@ class TestConic:
 
         assert c.contains(Point(1, 0))
 
-    def test_circle(self):
+    def test_foci(self):
+        f1 = Point(0, np.sqrt(5))
+        f2 = Point(0, -np.sqrt(5))
+        b = Point(0, 3)
+
+        conic = Conic.from_foci(f1, f2, b)
+        f = conic.foci
+
+        assert conic.contains(b)
+        assert len(f) == 2
+        assert f1 in f and f2 in f
+
+
+class TestCircle:
+
+    def test_contains(self):
         c = Circle(Point(0, 1), 1)
         assert c.contains(Point(0, 2))
         assert c.contains(Point(1, 1))
-        assert c.tangent(at=Point(0, 0)) == Line(0, 1, 0)
+
+    def test_center(self):
+        c = Circle(Point(0, 1), 1)
         assert c.center == Point(0, 1)
 
-    def test_quadric(self):
+    def test_intersection_angle(self):
+        c1 = Circle()
+        c2 = Circle(Point(1, 1), 1)
+        assert np.isclose(c1.intersection_angle(c2), np.pi/2)
+
+
+class TestQuadric:
+
+    def test_tangent(self):
         q = Quadric([[1, 0, 0, 0],
                      [0, 1, 0, 0],
                      [0, 0, 1, 0],
@@ -79,3 +139,23 @@ class TestConic:
 
         assert q.contains(Point(1, 0, 0))
         assert q.tangent(at=Point(1, 0, 0)) == Plane(Point(1, 0, 0), Point(1, 0, 1), Point(1, 1, 0))
+
+    def test_intersection(self):
+        s = Sphere(Point(0, 0, 2), 2)
+        l = Line(Point(-1, 0, 2), Point(1, 0, 2))
+        assert s.contains(Point(0, 0, 0))
+        assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
+
+    def test_sphere(self):
+        s2 = Sphere()
+        s3 = Sphere(Point(1, 2, 3, 4), 5)
+
+        assert s2.center == Point(0, 0, 0)
+        assert np.isclose(s2.radius, 1)
+        assert np.isclose(s2.volume(), 4/3*np.pi)
+        assert np.isclose(s2.area(), 4*np.pi)
+
+        assert s3.center == Point(1, 2, 3, 4)
+        assert np.isclose(s3.radius, 5)
+        assert np.isclose(s3.volume(), 1/2 * np.pi**2 * 5**4)
+        assert np.isclose(s3.area(), 2 * np.pi**2 * 5**3)

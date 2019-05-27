@@ -2,6 +2,7 @@ import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 from .point import Point, Line, Plane
 from .curve import Quadric
+from .shapes import Polytope
 
 
 def rotation(angle, axis=None):
@@ -104,7 +105,9 @@ class Transformation(ProjectiveElement):
         if isinstance(other, Quadric):
             inv = self.inverse()
             return type(other)(TensorDiagram((inv, other), (other, inv)).calculate())
-        raise NotImplemented
+        if isinstance(other, Polytope):
+            return type(other)(*[self*v for v in other.facets])
+        return NotImplemented
 
     def __pow__(self, power, modulo=None):
         return Transformation(pow(self.array, power, modulo))

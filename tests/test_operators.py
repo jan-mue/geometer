@@ -83,7 +83,7 @@ def test_angle_bisectors():
 
 
 def test_is_cocircular():
-    p = Point(0,1)
+    p = Point(0, 1)
     t = rotation(np.pi/3)
 
     assert is_cocircular(p, t*p, t*t*p, t*t*t*p)
@@ -109,6 +109,10 @@ def test_is_perpendicular():
     l = Line(p1, p2)
     m = Line(p1, p3)
     assert is_perpendicular(l, m)
+
+    e1 = Plane(p1, p2, p3)
+    e2 = Plane(p1, p2, Point(0, 0, 1))
+    assert is_perpendicular(e1, e2)
 
 
 def test_pappos():
