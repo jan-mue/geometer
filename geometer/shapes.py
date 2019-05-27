@@ -27,38 +27,19 @@ class Polytope:
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
 
     @property
-    def vertices(self):
-        """list of Point: The vertices of the polytope."""
-        return list(distinct(v for f in self.facets for v in f.vertices))
-
-    @property
     def dim(self):
         """int: The dimension of the space that the polytope lives in."""
         return self.facets[0].dim
 
     @property
+    def vertices(self):
+        """list of Point: The vertices of the polytope."""
+        return list(distinct(v for f in self.facets for v in f.vertices))
+
+    @property
     def facets(self):
         """list of Polytope: The facets of the polytope."""
         return self._facets
-
-    def intersect(self, other):
-        """Intersect the polytope with another object.
-
-        Parameters
-        ----------
-        other : Line, Plane, Quadric or Polytope
-
-        Returns
-        -------
-        Polytope, Quadric or list of Point
-            The points of intersection.
-
-        """
-        if isinstance(other, Plane):
-            facets = [f.intersect(other) for f in self.facets]
-            return Polytope(*[f for f in facets if f])
-
-        return list(distinct(pt for f in self.facets for pt in f.intersect(other) if f != other))
 
     def __eq__(self, other):
         if isinstance(other, Polytope):
@@ -67,7 +48,12 @@ class Polytope:
         return NotImplemented
 
     def __add__(self, other):
-        return type(self)(*[s + other for s in self.facets])
+        if isinstance(other, Point):
+            return type(self)(*[f + other for f in self.facets])
+        return NotImplemented
+
+    def __radd__(self, other):
+        return self + other
 
 
 class Segment(Polytope):
@@ -140,6 +126,18 @@ class Segment(Polytope):
         return 0 <= d1 <= d2
 
     def intersect(self, other):
+        """Intersect the line segment with another object.
+
+        Parameters
+        ----------
+        other : Line, Plane, Segment, Polygon or Polyhedron
+
+        Returns
+        -------
+        list of Point
+            The points of intersection.
+
+        """
         if isinstance(other, (Line, Plane)):
             try:
                 pt = other.meet(self._line)
@@ -154,41 +152,24 @@ class Segment(Polytope):
             i = other.intersect(self._line)
             return i if i and self.contains(i[0]) else []
 
-        if isinstance(other, Polytope):
+        if isinstance(other, (Polygon, Polyhedron)):
             return other.intersect(self)
 
-        # TODO: intersect quadric
-
+    @property
     def midpoint(self):
-        """Returns the midpoint of the segment.
-
-        Returns
-        -------
-        Point
-            The midpoint of the segment.
-
-        """
+        """Point: The midpoint of the segment."""
         l = self._line.meet(infty_hyperplane(self.dim))
         return harmonic_set(*self.vertices, l)
 
+    @property
     def length(self):
-        """Returns the length of the segment.
-
-        Returns
-        -------
-        float
-            The length of the segment.
-
-        """
+        """float: The length of the segment."""
         return dist(*self.vertices)
 
     def __eq__(self, other):
         if isinstance(other, Segment):
             return self.vertices == other.vertices
         return NotImplemented
-
-    def __add__(self, other):
-        return Segment(*[p + other for p in self.vertices])
 
 
 class Simplex(Polytope):
@@ -215,21 +196,9 @@ class Simplex(Polytope):
 
         super(Simplex, self).__init__(*args)
 
+    @property
     def volume(self):
-        """Calculates the volume of the simplex using the Cayley–Menger determinant.
-
-        For a 2-dimensional simplex this will be the same as the area of a triangle.
-
-        Returns
-        -------
-        float
-            The volume of the simplex.
-
-        References
-        ----------
-        .. [1] https://en.wikipedia.org/wiki/Cayley%E2%80%93Menger_determinant
-
-        """
+        """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
         points = np.concatenate([v.array.reshape((1, v.array.shape[0])) for v in self.vertices], axis=0)
         points = (points.T / points[:, -1]).T
         n, k = points.shape
@@ -278,79 +247,73 @@ class Polygon(Polytope):
         return self.facets
 
     def contains(self, other):
-        """Tests whether a point or segment is contained in the polygon.
+        """Tests whether a point is contained in the polygon.
 
         Parameters
         ----------
-        other : Point or Segment
-            The object to test.
+        other : Point
+            The point to test.
 
         Returns
         -------
         bool
-            True if the supplied object is contained in the polygon.
+            True if the point is contained in the polygon.
 
         """
-        if isinstance(other, Segment):
-            return len(self.intersect(other)) == 0
 
-        e = infty_hyperplane(self.dim)
-        if e.contains(other):
-            p = Point([0]*self.dim + [1])
+        if self.dim > 2 and not self._plane.contains(other):
+            return False
+
+        if np.isclose(other.array[-1], 0):
+            direction = Point([0]*self.dim + [1])
         elif self.dim == 2:
-            p = Point([1, 0, 0])
+            direction = Point([1, 0, 0])
         else:
-            p = self._plane.meet(e).base_point
-        s = Segment(other, p)
+            a = self._plane.array
+            if np.isclose(a[0], 0):
+                direction = Point([1] + [0]*self.dim)
+            else:
+                direction = Point([a[1], -a[0]] + [0]*(self.dim-1))
 
-        # TODO: ignore intersection with vertices
+        ray = Segment(other, direction)
+        intersections = [p for s in self.edges for p in s.intersect(ray)]
 
-        return len(super(Polygon, self).intersect(s)) % 2 == 1
+        return len(intersections) % 2 == 1
 
     def intersect(self, other):
-        if self.dim > 2:
+        """Intersect the polygon with another object.
 
-            if isinstance(other, Line):
-                if self._plane.contains(other):
-                    pts = super(Polygon, self).intersect(other)
-                    return Segment(*pts) if pts else []
-
-                p = self._plane.meet(other)
-                return [p] if self.contains(p) else []
-
-            if isinstance(other, Plane):
-                if self._plane == other:
-                    return self
-
-                l = self._plane.meet(other)
-                return self.intersect(l)
-
-            # TODO: handle intersection of coplanar polygons correctly
-            if isinstance(other, Polygon) and self._plane != other._plane:
-                l = self._plane.meet(other._plane)
-                i1 = self.intersect(l)
-                i2 = other.intersect(l)
-                pts = [p for p in i1 + i2 if self.contains(p) and other.contains(p)]
-                return [Segment(pts[i], pts[i+1]) for i in range(0, len(pts), 2)]
-
-            if isinstance(other, Segment) and not self._plane.contains(other):
-                i = other.intersect(self._plane)
-                return i if i and self.contains(i[0]) else []
-
-            if isinstance(other, Polytope) and not isinstance(other, Segment):
-                return other.intersect(self)
-
-        return super(Polygon, self).intersect(other)
-
-    def area(self):
-        """Calculates the area of the polygon.
+        Parameters
+        ----------
+        other : Line or Segment
 
         Returns
         -------
-        float
-            The area of the polygon.
+        list of Point
+            The points of intersection.
 
         """
+        if self.dim > 2:
+
+            if isinstance(other, Line):
+                try:
+                    p = self._plane.meet(other)
+                except LinearDependenceError:
+                    return []
+                return [p] if self.contains(p) else []
+
+            if isinstance(other, Segment):
+                if self._plane.contains(other._line):
+                    return []
+
+                i = other.intersect(self._plane)
+                return i if i and self.contains(i[0]) else []
+
+        return list(distinct(x for f in self.edges for x in f.intersect(other)))
+
+    @property
+    def area(self):
+        """float: The area of the polygon."""
         points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
 
         if self.dim > 2:
@@ -445,16 +408,29 @@ class Polyhedron(Polytope):
     def faces(self):
         return self.facets
 
+    @property
+    def edges(self):
+        return list(distinct(s for f in self.faces for s in f.edges))
+
+    @property
     def area(self):
-        """Calculates the surface area of the polyhedron.
+        """float: The surface area of the polyhedron."""
+        return sum(s.area for s in self.faces)
+
+    def intersect(self, other):
+        """Intersect the polyhedron with another object.
+
+        Parameters
+        ----------
+        other : Line or Segment
 
         Returns
         -------
-        float
-            The surface area of the polyhedron.
+        list of Point
+            The points of intersection.
 
         """
-        return sum(s.area() for s in self.faces)
+        return list(distinct(x for f in self.faces for x in f.intersect(other)))
 
 
 class Cuboid(Polyhedron):
