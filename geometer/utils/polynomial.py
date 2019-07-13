@@ -24,7 +24,7 @@ def polyval(x, c):
 
     Returns
     -------
-    :obj:`float` of :obj:`complex`
+    :obj:`float` or :obj:`complex`
         The result of the evaluation as described above.
 
     """
@@ -49,7 +49,7 @@ def poly_to_np_array(p, symbols):
     ----------
     p : sympy.Expr
         The sympy expression that represents the polynomial.
-    symbols : :obj:`list` of :obj:`sympy.Symbol`
+    symbols : list of sympy.Symbol
         The variables used in the polynomial expression.
 
     Returns
@@ -86,7 +86,7 @@ def np_array_to_poly(c, symbols):
     c : array_like
         Array of coefficients where the different axis correspond to different variables with the degree
         in each axis given by the corresponding index.
-    symbols : :obj:`list` of :obj:`sympy.Symbol`
+    symbols : list of sympy.Symbol
         The symbols to be used as variables of the polynomial.
 
     Returns

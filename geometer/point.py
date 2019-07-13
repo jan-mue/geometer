@@ -14,11 +14,13 @@ def _join_meet_duality(*args, intersect_lines=True):
 
     n = args[0].dim + 1
 
+    # all arguments are 1-tensors
     if all(o.tensor_shape == args[0].tensor_shape for o in args[1:]) and sum(args[0].tensor_shape) == 1:
         covariant = args[0].tensor_shape[0] > 0
         e = LeviCivitaTensor(n, not covariant)
         result = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args]).calculate()
 
+    # two lines/planes
     elif len(args) == 2:
         a, b = args
         if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
@@ -49,6 +51,7 @@ def _join_meet_duality(*args, intersect_lines=True):
                 else:
                     result = Tensor(array[(slice(None),) + i[1:]])
         else:
+            # TODO: intersect arbitrary subspaces (use GA)
             raise ValueError("Operation not supported.")
 
     else:
@@ -70,7 +73,7 @@ def _join_meet_duality(*args, intersect_lines=True):
 
 
 def join(*args):
-    """Joins a number of objects to form a line or plane.
+    """Joins a number of objects to form a line, plane or subspace.
 
     Parameters
     ----------
@@ -79,8 +82,8 @@ def join(*args):
 
     Returns
     -------
-    :obj:`Line` or :obj:`Plane`
-        The resulting plane or line.
+    Subspace
+        The resulting line, plane or subspace.
 
     """
     return _join_meet_duality(*args, intersect_lines=False)
@@ -96,8 +99,8 @@ def meet(*args):
 
     Returns
     -------
-    :obj:`Point` or :obj:`Line`
-        The resulting point or line.
+    Point or Subspace
+        The resulting point, line or subspace.
 
     """
     return _join_meet_duality(*args, intersect_lines=True)
@@ -106,7 +109,7 @@ def meet(*args):
 class Point(ProjectiveElement):
     """Represents points in a projective space of arbitrary dimension.
 
-    The number of supplied coordinates determines the dimension of the space that the vector lives in.
+    The number of supplied coordinates determines the dimension of the space that the point lives in.
     If the coordinates are given as arguments (not in a single iterable), the coordinates will automatically be
     transformed into homogeneous coordinates, i.e. a one added as an additional coordinate.
 
@@ -173,7 +176,7 @@ class Point(ProjectiveElement):
 
         Returns
         -------
-        :obj:`Line` or :obj:`Plane`
+        Subspace
             The result of the join operation.
 
         See Also
@@ -206,7 +209,7 @@ class Subspace(ProjectiveElement):
 
         Parameters
         ----------
-        symbols : :obj:`list` of :obj:`sympy.Symbol`, optional
+        symbols : list of sympy.Symbol, optional
             The symbols used in the resulting polynomial. By default "x1", ..., "xn" will be used.
 
         Returns
@@ -249,7 +252,7 @@ class Subspace(ProjectiveElement):
 
         Parameters
         ----------
-        other : :obj:`Point` or :obj:`Line`
+        other : Point or Line
             The object to test.
 
         Returns
@@ -260,6 +263,9 @@ class Subspace(ProjectiveElement):
         """
         if isinstance(other, Point):
             return self * other == 0
+
+        # TODO: test subspace
+
         elif isinstance(other, Line):
             return self * other.covariant_tensor == 0
 
@@ -273,7 +279,7 @@ class Subspace(ProjectiveElement):
 
         Returns
         -------
-        Subspace or Point
+        Point or Subspace
             The result of the meet operation.
 
         See Also
@@ -337,6 +343,13 @@ class Subspace(ProjectiveElement):
         x = self.meet(other)
         return infty_hyperplane(self.dim).contains(x)
 
+    def __add__(self, point):
+        from .transformation import translation
+        return translation(point) * self
+
+    def __radd__(self, other):
+        return self + other
+
 
 class Line(Subspace):
     """Represents a line in a projective space of arbitrary dimension.
@@ -398,13 +411,6 @@ class Line(Subspace):
         e = LeviCivitaTensor(self.dim + 1)
         d = TensorDiagram(*[(e, self)]*(self.dim - 1), *[(e, other)]*(self.dim - 1))
         return d.calculate() == 0
-
-    def __add__(self, point):
-        from .transformation import translation
-        return translation(*point.normalized_array[:-1])*self
-
-    def __radd__(self, other):
-        return self + other
 
     def perpendicular(self, through):
         """Construct the perpendicular line though a point.

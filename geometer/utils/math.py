@@ -1,6 +1,12 @@
 import numpy as np
 
 
+def hat_matrix(a, b, c):
+    return np.array([[0, c, -b],
+                     [-c, 0, a],
+                     [b, -a, 0]])
+
+
 def null_space(A):
     """Constructs an orthonormal basis for the null space of a A using SVD.
 

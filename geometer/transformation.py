@@ -1,6 +1,6 @@
 import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
-from .point import Point, Line, Plane
+from .point import Point, Subspace
 from .curve import Quadric
 from .shapes import Polytope
 
@@ -52,16 +52,18 @@ def translation(*coordinates):
         The translation.
 
     """
-    m = np.eye(len(coordinates) + 1)
-    m[:-1, -1] = coordinates
+    x = Point(*coordinates)
+    m = np.eye(x.dim + 1)
+    m[:-1, -1] = x.normalized_array[:-1]
     return Transformation(m)
 
 
 class Transformation(ProjectiveElement):
     """Represents a projective transformation in an arbitrary projective space.
 
-    The underlying array of the transformation is the matrix representation of the projective transformation.
-    The transformation can be applied to points by simple multiplication.
+    The underlying array is the matrix representation of the projective transformation. The matrix must be
+    a nonsingular square matrix of size n+1 when n is the dimension of the projective space.
+    The transformation can be applied to a point or another object by multiplication.
 
     Parameters
     ----------
@@ -69,13 +71,14 @@ class Transformation(ProjectiveElement):
         The array that defines the matrix representing the transformation.
 
     """
-    
+
     def __init__(self, *args):
         super(Transformation, self).__init__(*args, covariant=[0])
 
     @classmethod
     def from_points(cls, *args):
-        """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points.
+        """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in
+        general position.
 
         For two dimensional transformations, 4 pairs of points are required.
         For three dimensional transformations, 5 pairs of points are required.
@@ -95,22 +98,38 @@ class Transformation(ProjectiveElement):
         b = [y.array for x, y in args]
         m1 = np.array(b[:-1]).T.dot(np.diag(b[-1]))
         m2 = np.array(a[:-1]).T.dot(np.diag(a[-1]))
-        return Transformation(m1.dot(np.linalg.inv(m2)))
+        return cls(m1.dot(np.linalg.inv(m2)))
 
-    def __mul__(self, other):
+    def apply(self, other):
+        """Apply the transformation to another object.
+
+        Parameters
+        ----------
+        other : Point, Transformation, Subspace, Quadric or Polytope
+            The object to apply the transformation to.
+
+        Returns
+        -------
+        Point, Transformation, Subspace, Quadric or Polytope
+            The result of applying this transformation to the supplied object.
+
+        """
         if isinstance(other, (Point, Transformation)):
             return type(other)(super(Transformation, self).__mul__(other))
-        if isinstance(other, (Line, Plane)):
+        if isinstance(other, Subspace):
             return type(other)(other*self.inverse())
         if isinstance(other, Quadric):
             inv = self.inverse()
             return type(other)(TensorDiagram((inv, other), (other, inv)).calculate())
         if isinstance(other, Polytope):
-            return type(other)(*[self*v for v in other.facets])
+            return type(other)(other.array.dot(self.array.T))
         return NotImplemented
 
+    def __mul__(self, other):
+        return self.apply(other)
+
     def __pow__(self, power, modulo=None):
-        return Transformation(pow(self.array, power, modulo))
+        return type(self)(pow(self.array, power, modulo))
 
     def inverse(self):
         """Calculates the inverse projective transformation.
@@ -122,6 +141,3 @@ class Transformation(ProjectiveElement):
 
         """
         return Transformation(np.linalg.inv(self.array))
-
-    def __rmul__(self, other):
-        return self*other

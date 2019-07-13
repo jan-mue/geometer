@@ -22,6 +22,10 @@ is represented by a four-dimensional vector. This has the following advantages:
 
 Most of the computation in the library is done via tensor diagrams (using numpy.einsum).
 
+Geometer was originally built as a learning exercise and is based on two graduate courses taught at the
+Technical University Munich. After investing a lot of time in the project, it is now reasonably well tested
+and the API should be stable.
+
 The source code of the package can be found on [GitHub](https://github.com/jan-mue/geometer)
 and the documentation on [Read the Docs](https://geometer.readthedocs.io).
 
@@ -57,7 +61,6 @@ a = angle(l, Point(1, 0))
 p + 2*dist(p, q)*Point(np.cos(a), np.sin(a))
 # Point(4, 6)
 
-
 # Transformations
 t1 = translation(0, -1)
 t2 = rotation(-np.pi)
@@ -74,7 +77,7 @@ e = Point(0, -1)
 conic = Conic.from_points(a, b, c, d, e)
 ellipse = Conic.from_foci(c, d, bound=b)
 
-# Shapes
+# Geometric shapes
 o = Point(0, 0)
 x, y = Point(1, 0), Point(0, 1)
 r = Rectangle(o, x, x+y, y)

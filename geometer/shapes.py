@@ -18,10 +18,18 @@ class Polytope:
     *args
         The polytopes defining the facets ot the polytope.
 
+    Attributes
+    ----------
+    array : numpy.ndarray
+        The underlying numpy array.
+
     """
 
     def __init__(self, *args):
-        self._facets = list(args)
+        if len(args) == 1:
+            self.array = np.array(args[0])
+        else:
+            self.array = np.array([a.array for a in args])
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
@@ -29,17 +37,36 @@ class Polytope:
     @property
     def dim(self):
         """int: The dimension of the space that the polytope lives in."""
-        return self.facets[0].dim
+        return self.array.shape[-1] - 1
 
     @property
     def vertices(self):
         """list of Point: The vertices of the polytope."""
-        return list(distinct(v for f in self.facets for v in f.vertices))
+        vertices = self.array.reshape(-1, self.array.shape[-1])
+        return list(distinct(Point(x) for x in vertices))
 
     @property
     def facets(self):
         """list of Polytope: The facets of the polytope."""
-        return self._facets
+        def poly(array):
+            if array.ndim == 1:
+                return Point(array)
+            if array.ndim == 2:
+                if len(array) == 2:
+                    return Segment(array)
+                if len(array) == 3:
+                    return Triangle(array)
+                elif len(array) == 4:
+                    try:
+                        return Rectangle(array)
+                    except NotCoplanar:
+                        return Polytope(array)
+            try:
+                return Polygon(array)
+            except NotCoplanar:
+                return Polytope(array)
+
+        return [poly(x) for x in self.array]
 
     def __eq__(self, other):
         if isinstance(other, Polytope):
@@ -76,13 +103,9 @@ class Segment(Polytope):
 
     """
 
-    def __init__(self, p, q):
-        self._line = Line(p, q)
-        super(Segment, self).__init__(p, q)
-
-    @property
-    def vertices(self):
-        return self._facets
+    def __init__(self, *args):
+        super(Segment, self).__init__(*args)
+        self._line = Line(*self.vertices)
 
     def contains(self, other):
         """Tests whether a point is contained in the segment.
@@ -131,6 +154,7 @@ class Segment(Polytope):
         Parameters
         ----------
         other : Line, Plane, Segment, Polygon or Polyhedron
+            The object to intersect the line segment with.
 
         Returns
         -------
@@ -229,11 +253,8 @@ class Polygon(Polytope):
     """
 
     def __init__(self, *args):
-        segments = []
-        if all(isinstance(x, Point) for x in args):
-            for i in range(len(args)):
-                segments.append(Segment(args[i], args[(i+1) % len(args)]))
-            args = segments
+        if all(isinstance(x, Segment) for x in args):
+            args = [s.vertices[0] for s in args]
         super(Polygon, self).__init__(*args)
         self._plane = None
         if self.dim > 2:
@@ -241,6 +262,13 @@ class Polygon(Polytope):
             for s in self.vertices[self.dim:]:
                 if not self._plane.contains(s):
                     raise NotCoplanar("The vertices of a polygon must be coplanar!")
+
+    @property
+    def facets(self):
+        segments = []
+        for i in range(len(self.array)):
+            segments.append(Segment(self.array[[i, (i + 1) % len(self.array)]]))
+        return segments
 
     @property
     def edges(self):
@@ -286,6 +314,7 @@ class Polygon(Polytope):
         Parameters
         ----------
         other : Line or Segment
+            The object to intersect the polygon with.
 
         Returns
         -------
@@ -379,8 +408,8 @@ class Triangle(Polygon, Simplex):
 
     """
 
-    def __init__(self, a, b, c):
-        super(Triangle, self).__init__(a, b, c)
+    def __init__(self, *args):
+        super(Triangle, self).__init__(*args)
 
 
 class Rectangle(Polygon):
@@ -395,8 +424,8 @@ class Rectangle(Polygon):
 
     """
 
-    def __init__(self, a, b, c, d):
-        super(Rectangle, self).__init__(a, b, c, d)
+    def __init__(self, *args):
+        super(Rectangle, self).__init__(*args)
 
 
 class Polyhedron(Polytope):
@@ -423,6 +452,7 @@ class Polyhedron(Polytope):
         Parameters
         ----------
         other : Line or Segment
+            The object to intersect the polyhedron with.
 
         Returns
         -------
@@ -442,9 +472,9 @@ class Cuboid(Polyhedron):
         The base point of the cuboid.
     b : Point
         The vertex that determines the first direction of the edges.
-    b : Point
+    c : Point
         The vertex that determines the second direction of the edges.
-    b : Point
+    d : Point
         The vertex that determines the third direction of the edges.
 
     """

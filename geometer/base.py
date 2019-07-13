@@ -65,6 +65,9 @@ class Tensor:
     def tensor_product(self, other):
         """Return a new tensor that is the tensor product of this and the other tensor.
 
+        This method will also reorder the indices of the resulting tensor, to ensure that covariant indices are in
+        front of the contravariant indices.
+
         Parameters
         ----------
         other : Tensor
@@ -76,10 +79,13 @@ class Tensor:
             The tensor product.
 
         """
-        d = self.array.ndim
-        covariant = self._covariant_indices.copy()
-        covariant.update(d + i for i in other._covariant_indices)
-        return Tensor(np.tensordot(self.array, other.array, 0), covariant=covariant)
+        offset = self.array.ndim
+        covariant = list(self._covariant_indices) + [offset + i for i in other._covariant_indices]
+        contravariant = list(self._contravariant_indices) + [offset + i for i in other._contravariant_indices]
+
+        result = np.tensordot(self.array, other.array, 0)
+        result = np.transpose(result, axes=covariant + contravariant)
+        return Tensor(result, covariant=range(len(covariant)))
 
     def transpose(self, perm=None):
         """Permute the indices of the tensor.
@@ -110,8 +116,8 @@ class Tensor:
 
         covariant = []
         for i, j in enumerate(perm):
-            if i in self._covariant_indices:
-                covariant.append(j)
+            if j in self._covariant_indices:
+                covariant.append(i)
 
         return Tensor(np.transpose(self.array, perm), covariant=covariant)
 
@@ -195,7 +201,7 @@ class KroneckerDelta(Tensor):
 
     def __init__(self, n, p=1):
         if p == 1:
-            array = np.eye(n)
+            array = np.eye(n, dtype=int)
         elif (p, n) in self._cache:
             array = self._cache[(p, n)]
         elif p == n:
@@ -221,8 +227,8 @@ class TensorDiagram:
 
     Each edge in the diagram represents a contraction of two indices of the tensors connected by that edge. In
     Einstein-notation that would mean that an edge from tensor A to tensor B is equivalent to the expression
-    :math:`A_{i j}B^{k j}_l`, where :math:`i, k, l` are free indices. The indices to contract are chosen from back to
-    front from contravariant and covariant indices of the tensors that are connected by an edge.
+    :math:`A_{i j}B^{k j}_l`, where :math:`i, k, l` are free indices. The indices to contract are chosen from front to
+    back from contravariant and covariant indices of the tensors that are connected by an edge.
 
     Parameters
     ----------
@@ -247,7 +253,18 @@ class TensorDiagram:
         for e in edges:
             self.add_edge(*e)
 
-    def _add_node(self, node):
+    def add_node(self, node):
+        """Add a node to the tensor diagram without adding an edge/contraction.
+
+        A diagram of nodes where none are connected is equivalent to calculating the tensor product with the
+        method :meth:`Tensor.tensor_product`.
+
+        Parameters
+        ----------
+        node : Tensor
+            The node to add.
+
+        """
         self._nodes.append(node)
         self._node_positions.append(self._index_count)
         self._index_count += node.array.ndim
@@ -290,18 +307,18 @@ class TensorDiagram:
             # Second step: Add new nodes to nodes and free indices list
             if source_index is None:
                 source_index = len(self._nodes)
-                free_source = self._add_node(source)[0]
+                free_source = self.add_node(source)[0]
 
             if target_index is None:
                 target_index = len(self._nodes)
-                free_target = self._add_node(target)[1]
+                free_target = self.add_node(target)[1]
 
         if len(free_source) == 0 or len(free_target) == 0:
             raise TensorComputationError("Could not add the edge because no free indices are left.")
 
         # Third step: Pick some free indices
-        i = free_source.pop()
-        j = free_target.pop()
+        i = free_source.pop(0)
+        j = free_target.pop(0)
 
         self._contraction_list.append((source_index, target_index, i, j))
 
@@ -335,6 +352,18 @@ class TensorDiagram:
 
         return Tensor(temp, covariant=range(len(result_indices[0])))
 
+    def copy(self):
+        result = TensorDiagram()
+        result._nodes = self._nodes.copy()
+        result._free_indices = self._free_indices.copy()
+        result._node_positions = self._node_positions.copy()
+        result._contraction_list = self._contraction_list.copy()
+        result._index_count = self._index_count
+        return result
+
+    def __copy__(self):
+        return self.copy()
+
 
 class ProjectiveElement(Tensor, ABC):
     """Base class for all projective tensors, i.e. all objects that identify scalar multiples.
@@ -352,7 +381,8 @@ class ProjectiveElement(Tensor, ABC):
             b = other.array.ravel()
             ab = np.vdot(a, b)
             return np.isclose(ab * np.conjugate(ab), np.vdot(a, a) * np.vdot(b, b))
-        return NotImplemented
+
+        return super(ProjectiveElement, self).__eq__(other)
 
     @property
     def dim(self):

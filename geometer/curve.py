@@ -7,7 +7,7 @@ from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J
 from .base import ProjectiveElement, Tensor, _symbols
-from .utils.polynomial import polyval, np_array_to_poly, poly_to_np_array
+from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix
 
 
 class AlgebraicHypersurface(ProjectiveElement):
@@ -15,14 +15,14 @@ class AlgebraicHypersurface(ProjectiveElement):
 
     Parameters
     ----------
-    poly : :obj:`sympy.Expr` or :obj:`numpy.ndarray`
+    poly : sympy.Expr or numpy.ndarray
         The polynomial defining the hypersurface. It is automatically homogenized.
-    symbols : :obj:`tuple` of :obj:`sympy.Symbol`, optional
+    symbols : tuple` of sympy.Symbol, optional
         The symbols that are used in the polynomial. By default the symbols (x1, ..., xn) will be used.
 
     Attributes
     ----------
-    symbols : :obj:`tuple` of :obj:`sympy.Symbol`
+    symbols : tuple of sympy.Symbol
         The symbols used in the polynomial defining the hypersurface.
 
     """
@@ -63,7 +63,7 @@ class AlgebraicHypersurface(ProjectiveElement):
 
         Returns
         -------
-        :obj:`Line` or :obj:`Plane`
+        Subspace
             The tangent space.
 
         """
@@ -93,12 +93,12 @@ class AlgebraicHypersurface(ProjectiveElement):
 
         Parameters
         ----------
-        other : :obj:`Line` or :obj:`AlgebraicCurve`
+        other : Line or AlgebraicCurve
             The object to intersect this surface with.
 
         Returns
         -------
-        :obj:`list` of :obj:`Point`
+        list of Point
             The points of intersection.
 
         """
@@ -387,13 +387,12 @@ class Conic(Quadric, AlgebraicCurve):
 
     @property
     def components(self):
-        """:obj:`list` of :obj:`ProjectiveElement`: The components of a degenerate conic."""
+        """list of ProjectiveElement: The components of a degenerate conic."""
+        # Algorithm from Perspectives on Projective Geometry, Section 11.1
         a = csqrt(-np.linalg.det(self.array[[[1], [2]], [1, 2]]))
         b = csqrt(-np.linalg.det(self.array[[[0], [2]], [0, 2]]))
         c = csqrt(-np.linalg.det(self.array[[[0], [1]], [0, 1]]))
-        m = np.array([[0, c, -b],
-                      [-c, 0, a],
-                      [b, -a, 0]])
+        m = hat_matrix(a, b, c)
         t = self.array + m
         i = np.unravel_index(np.abs(t).argmax(), t.shape)
         if self.is_dual:
@@ -423,9 +422,7 @@ class Conic(Quadric, AlgebraicCurve):
                     p, q = g.meet(other), h.meet(other)
             else:
                 x, y, z = other.array
-                m = np.array([[0, z, -y],
-                              [-z, 0, x],
-                              [y, -x, 0]])
+                m = hat_matrix(x, y, z)
                 b = m.T.dot(self.array).dot(m)
                 p, q = Conic(b, is_dual=not self.is_dual).components
 
@@ -656,3 +653,11 @@ class Sphere(Quadric):
         """
         n = self.dim
         return n*self._alpha(n)*self.radius**(n-1)
+
+
+class Cone(Quadric):
+    pass
+
+
+class Cylinder(Quadric):
+    pass
