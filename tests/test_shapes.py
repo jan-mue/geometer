@@ -37,6 +37,14 @@ class TestSegment:
 
 class TestPolygon:
 
+    def test_equal(self):
+        points = np.random.rand(50, 3)
+
+        p1 = Polygon(points)
+        p2 = Polygon(*[Point(p) for p in points])
+
+        assert p1 == p2
+
     def test_intersect(self):
         a = Point(0, 0)
         b = Point(0, 2)

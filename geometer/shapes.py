@@ -70,8 +70,19 @@ class Polytope:
 
     def __eq__(self, other):
         if isinstance(other, Polytope):
-            # facets equal up to reordering
-            return np.all(f in other.facets for f in self.facets) and np.all(f in self.facets for f in other.facets)
+
+            if self.array.shape != other.array.shape:
+                return False
+
+            if self.array.ndim > 2:
+                # facets equal up to reordering
+                return all(f in other.facets for f in self.facets) and all(f in self.facets for f in other.facets)
+
+            a = self.array
+            b = other.array
+            ab = np.sum(a * b.conj(), axis=-1)
+            return np.allclose(ab*ab.conj(), np.sum(a*a.conj(), axis=-1) * np.sum(b*b.conj(), axis=-1))
+
         return NotImplemented
 
     def __add__(self, other):
@@ -189,11 +200,6 @@ class Segment(Polytope):
     def length(self):
         """float: The length of the segment."""
         return dist(*self.vertices)
-
-    def __eq__(self, other):
-        if isinstance(other, Segment):
-            return self.vertices == other.vertices
-        return NotImplemented
 
 
 class Simplex(Polytope):
