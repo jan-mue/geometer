@@ -41,7 +41,7 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
 
 
 def hat_matrix(a, b, c):
-    """Builds a 3x3 antisymmetric matrix with the given scalars in the positions shown below.
+    r"""Builds a 3x3 antisymmetric matrix with the given scalars in the positions shown below.
 
     .. math::
 
