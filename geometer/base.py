@@ -4,6 +4,7 @@ from itertools import permutations
 import numpy as np
 import sympy
 
+from .utils import is_multiple
 from .exceptions import TensorComputationError
 
 
@@ -376,11 +377,7 @@ class ProjectiveElement(Tensor, ABC):
             if self.array.shape != other.array.shape:
                 return False
 
-            # By Cauchy-Schwarz |(x,y)| = ||x||*||y|| iff x = cy
-            a = self.array.ravel()
-            b = other.array.ravel()
-            ab = np.vdot(a, b)
-            return np.isclose(ab * np.conjugate(ab), np.vdot(a, a) * np.vdot(b, b))
+            return is_multiple(self.array, other.array)
 
         return super(ProjectiveElement, self).__eq__(other)
 

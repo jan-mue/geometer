@@ -72,13 +72,15 @@ class AlgebraicHypersurface(ProjectiveElement):
             return Line(dx)
         return Plane(dx)
 
-    def contains(self, pt):
+    def contains(self, pt, tol=1e-8):
         """Tests if a given point lies on the hypersurface.
 
         Parameters
         ----------
-        pt: Point
+        pt : Point
             The point to test.
+        tol : float, optional
+            The accepted tolerance.
 
         Returns
         -------
@@ -86,7 +88,7 @@ class AlgebraicHypersurface(ProjectiveElement):
             True if the curve contains the point.
 
         """
-        return np.isclose(polyval(pt.array, self.array), 0)
+        return np.isclose(polyval(pt.array, self.array), 0, atol=tol)
 
     def intersect(self, other):
         """Calculates points of intersection with the hypersurface.
@@ -193,13 +195,15 @@ class Quadric(AlgebraicHypersurface):
         """
         return Plane(self.array.dot(at.array))
 
-    def contains(self, pt):
+    def contains(self, pt, tol=1e-8):
         """Tests if a given point lies on the quadric.
 
         Parameters
         ----------
-        pt: Point
+        pt : Point
             The point to test.
+        tol : float, optional
+            The accepted tolerance.
 
         Returns
         -------
@@ -207,7 +211,7 @@ class Quadric(AlgebraicHypersurface):
             True if the quadric contains the point.
 
         """
-        return np.isclose(pt.array.dot(self.array.dot(pt.array)), 0)
+        return np.isclose(pt.array.dot(self.array.dot(pt.array)), 0, atol=tol)
 
     @property
     def polynomial(self):
@@ -242,11 +246,8 @@ class Conic(Quadric, AlgebraicCurve):
 
         Parameters
         ----------
-        a : Point
-        b : Point
-        c : Point
-        d : Point
-        e : Point
+        a, b, c, d, e : Point
+            The points lying on the conic.
 
         Returns
         -------
@@ -268,8 +269,8 @@ class Conic(Quadric, AlgebraicCurve):
 
         Parameters
         ----------
-        g: Line
-        h: Line
+        g, h : Line
+            The two lines the conic consists of.
 
         Returns
         -------
@@ -287,10 +288,8 @@ class Conic(Quadric, AlgebraicCurve):
         Parameters
         ----------
         tangent : Line
-        a : Point
-        b : Point
-        c : Point
-        d : Point
+        a, b, c, d : Point
+            The points lying on the conic.
 
         Returns
         -------
@@ -328,10 +327,8 @@ class Conic(Quadric, AlgebraicCurve):
 
         Parameters
         ----------
-        f1 : Point
-            A focal point.
-        f2 : Point
-            A focal point.
+        f1, f2 : Point
+            The two focal points.
         bound : Point
             A boundary point that lies on the conic.
 
@@ -357,10 +354,8 @@ class Conic(Quadric, AlgebraicCurve):
         ----------
         cr : float
             The crossratio of the other points that defines the conic.
-        a : Point
-        b : Point
-        c : Point
-        d : Point
+        a, b, c, d : Point
+            The points lying on the conic.
 
         Returns
         -------

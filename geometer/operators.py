@@ -10,14 +10,8 @@ def crossratio(a, b, c, d, from_point=None):
 
     Parameters
     ----------
-    a : Point, Line or Plane
-        A point, line or plane in any dimension.
-    b : Point, Line or Plane
-        A point, line or plane in any dimension.
-    c : Point, Line or Plane
-        A point, line or plane in any dimension.
-    d : Point, Line or Plane
-        A point, line or plane in any dimension.
+    a, b, c, d : Point, Line or Plane
+        The points, lines or planes (any dimension) to calculate the cross ratio of.
     from_point : Point, optional
         A 2D point, only possible if the other arguments are also 2D points.
 
@@ -81,12 +75,8 @@ def harmonic_set(a, b, c):
 
     Parameters
     ----------
-    a : Point
-        A point in any dimension.
-    b : Point
-        A point in any dimension.
-    c : Point
-        A point in any dimension.
+    a, b, c : Point
+        The points (any dimension) that are used to construct the fourth point in the harmonic set.
 
     Returns
     -------
@@ -188,10 +178,8 @@ def angle_bisectors(l, m):
 
     Parameters
     ----------
-    l : Line
-        A line in any dimension.
-    m : Line
-        A line in any dimension.
+    l, m : Line
+        Two lines in any dimension.
 
     Returns
     -------
@@ -229,10 +217,8 @@ def dist(p, q):
 
     Parameters
     ----------
-    p : Point, Line or Plane
-        A point, line or plane to calculate the distance to.
-    q : Point, Line or Plane
-        A point, line or plane to calculate the distance to.
+    p, q : Point, Line or Plane
+        The points, lines or planes to calculate the distance between.
 
     Returns
     -------
@@ -270,19 +256,17 @@ def dist(p, q):
         return 4*abs(np.sqrt(pqi * pqj)/(pij*qij))
 
 
-def is_cocircular(a, b, c, d):
+def is_cocircular(a, b, c, d, rtol=1.e-5, atol=1.e-8):
     """Tests whether four points lie on a circle.
 
     Parameters
     ----------
-    a : Point
-        A point in RP2 or CP1.
-    b : Point
-        A point in RP2 or CP1.
-    c : Point
-        A point in RP2 or CP1.
-    d : Point
-        A point in RP2 or CP1.
+    a, b, c, d : Point
+        Four points in RP2 or CP1.
+    rtol : float, optional
+        The relative tolerance parameter.
+    atol : float, optional
+        The absolute tolerance parameter.
 
     Returns
     -------
@@ -303,18 +287,22 @@ def is_cocircular(a, b, c, d):
 
     i = crossratio(a, b, c, d, I)
     j = crossratio(a, b, c, d, J)
-    return np.isclose(i, j)
+    return np.isclose(i, j, rtol, atol)
 
 
-def is_perpendicular(l, m):
+def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
     """Tests whether two lines/planes are perpendicular.
 
     Parameters
     ----------
-    l : Line or Plane
-        A line in any dimension or a plane in 3D.
+    l, m : Line or Plane
+        Two lines in any dimension or two planes in 3D.
     m : Line or Plane
         A second line or a plane in 3D.
+    rtol : float, optional
+        The relative tolerance parameter.
+    atol : float, optional
+        The absolute tolerance parameter.
 
     Returns
     -------
@@ -340,15 +328,15 @@ def is_perpendicular(l, m):
         tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
-        return np.isclose(crossratio(l, m, i, j), -1)
+        return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)
 
     else:
         raise NotImplementedError("Only two lines or two planes are supported.")
 
-    return np.isclose(crossratio(L, M, I, J, Point(1, 1)), -1)
+    return np.isclose(crossratio(L, M, I, J, Point(1, 1)), -1, rtol, atol)
 
 
-def is_coplanar(*args):
+def is_coplanar(*args, tol=1.e-8):
     """Tests whether the given points or lines are collinear, coplanar or concurrent. Works in any dimension.
 
     Due to line point duality this function has dual versions :obj:`is_collinear`, :obj:`is_collinear` and
@@ -358,6 +346,8 @@ def is_coplanar(*args):
     ----------
     *args
         The points or lines to test.
+    tol : float, optional
+            The accepted tolerance.
 
     Returns
     -------
@@ -366,7 +356,7 @@ def is_coplanar(*args):
 
     """
     n = args[0].dim + 1
-    if not np.isclose(np.linalg.det([a.array for a in args[:n]]), 0):
+    if not np.isclose(np.linalg.det([a.array for a in args[:n]]), 0, atol=tol):
         return False
     if len(args) == n:
         return True
@@ -375,7 +365,8 @@ def is_coplanar(*args):
     diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n-1]])
     tensor = diagram.calculate()
     for t in args[n:]:
-        if not (covariant and t*tensor == 0 or not covariant and tensor*t == 0):
+        x = t*tensor if covariant else tensor*t
+        if not np.isclose(x.array, 0, atol=tol):
             return False
     return True
 

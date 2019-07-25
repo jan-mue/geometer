@@ -2,7 +2,7 @@ from itertools import combinations
 
 import numpy as np
 
-from .utils import distinct
+from .utils import distinct, is_multiple
 from .point import Line, Plane, Point, join, infty_hyperplane
 from .operators import dist, angle, harmonic_set
 from .exceptions import NotCoplanar, LinearDependenceError
@@ -78,10 +78,7 @@ class Polytope:
                 # facets equal up to reordering
                 return all(f in other.facets for f in self.facets) and all(f in self.facets for f in other.facets)
 
-            a = self.array
-            b = other.array
-            ab = np.sum(a * b.conj(), axis=-1)
-            return np.allclose(ab*ab.conj(), np.sum(a*a.conj(), axis=-1) * np.sum(b*b.conj(), axis=-1))
+            return np.all(is_multiple(self.array, other.array, axis=-1))
 
         return NotImplemented
 

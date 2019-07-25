@@ -54,7 +54,7 @@ def poly_to_np_array(p, symbols):
 
     Returns
     -------
-    numpy.ndarray
+    ndarray
         The coefficients of the polynomial as described above.
 
     """
