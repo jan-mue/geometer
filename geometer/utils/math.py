@@ -24,7 +24,7 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
 
     Returns
     -------
-    array_like or bool
+    numpy.ndarray or bool
         Returns a boolean array of where along the given axis the arrays are a scalar multiple of each other (within the
         given tolerance). If no axis is given, returns a single boolean value.
 
@@ -58,7 +58,7 @@ def hat_matrix(a, b, c):
 
     Returns
     -------
-    ndarray
+    numpy.ndarray
         The resulting antisymmetric matrix.
 
     """
@@ -77,7 +77,7 @@ def null_space(A):
 
     Returns
     -------
-    ndarray
+    numpyy.ndarray
         Orthonormal basis for the null space of A (as column vectors in the returned matrix).
 
     """

@@ -151,12 +151,12 @@ class Point(ProjectiveElement):
         return (-1) * self
 
     def __repr__(self):
-        return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if np.isclose(self.array[-1], 0) else "")
+        return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if self.isinf else "")
 
     @property
     def normalized_array(self):
         """numpy.ndarray: The normalized coordinates as array."""
-        if np.isclose(self.array[-1], 0):
+        if self.isinf:
             return np.real_if_close(self.array)
         return np.real_if_close(self.array / self.array[-1])
 
@@ -185,6 +185,10 @@ class Point(ProjectiveElement):
 
         """
         return join(self, *others)
+
+    @property
+    def isinf(self):
+        return np.isclose(self.array[-1], 0)
 
 
 I = Point([-1j, 1, 0])

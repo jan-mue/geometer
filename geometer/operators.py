@@ -297,8 +297,6 @@ def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
     ----------
     l, m : Line or Plane
         Two lines in any dimension or two planes in 3D.
-    m : Line or Plane
-        A second line or a plane in 3D.
     rtol : float, optional
         The relative tolerance parameter.
     atol : float, optional

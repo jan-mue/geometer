@@ -228,7 +228,7 @@ class TensorDiagram:
 
     Each edge in the diagram represents a contraction of two indices of the tensors connected by that edge. In
     Einstein-notation that would mean that an edge from tensor A to tensor B is equivalent to the expression
-    :math:`A_{i j}B^{k j}_l`, where :math:`i, k, l` are free indices. The indices to contract are chosen from front to
+    :math:`A_{i j}B^{i k}_l`, where :math:`i, k, l` are free indices. The indices to contract are chosen from front to
     back from contravariant and covariant indices of the tensors that are connected by an edge.
 
     Parameters

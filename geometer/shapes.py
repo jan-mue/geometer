@@ -113,7 +113,7 @@ class Segment(Polytope):
 
     def __init__(self, *args):
         super(Segment, self).__init__(*args)
-        self._line = Line(*self.vertices)
+        self._line = Line(Point(self.array[0]), Point(self.array[1]))
 
     def contains(self, other):
         """Tests whether a point is contained in the segment.
@@ -134,10 +134,10 @@ class Segment(Polytope):
 
         p, q = self.vertices
 
-        pinf = np.isclose(p.array[-1], 0)
-        qinf = np.isclose(q.array[-1], 0)
+        pinf = p.isinf
+        qinf = q.isinf
 
-        if np.isclose(other.array[-1], 0) and not (pinf and qinf):
+        if other.isinf and not (pinf and qinf):
             return other == p or other == q
 
         if pinf and not qinf:
@@ -295,7 +295,7 @@ class Polygon(Polytope):
         if self.dim > 2 and not self._plane.contains(other):
             return False
 
-        if np.isclose(other.array[-1], 0):
+        if other.isinf:
             direction = Point([0]*self.dim + [1])
         elif self.dim == 2:
             direction = Point([1, 0, 0])
