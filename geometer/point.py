@@ -14,10 +14,12 @@ def _join_meet_duality(*args, intersect_lines=True):
 
     n = args[0].dim + 1
 
-    # all arguments are 1-tensors
+    # all arguments are 1-tensors, i.e. points or hypersurfaces (=lines in 2D)
     if all(o.tensor_shape == args[0].tensor_shape for o in args[1:]) and sum(args[0].tensor_shape) == 1:
         covariant = args[0].tensor_shape[0] > 0
         e = LeviCivitaTensor(n, not covariant)
+
+        # summing all arguments with e gives a (n-len(args))-tensor (e.g. a 1-tensor for two 2D-lines)
         result = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args]).calculate()
 
     # two lines/planes
@@ -31,25 +33,28 @@ def _join_meet_duality(*args, intersect_lines=True):
         elif isinstance(a, Point) and isinstance(b, Line):
             result = b * a
         elif isinstance(a, Line) and isinstance(b, Line):
+            # can assume that n >= 4, because for n = 3 lines are 1-tensors
             e = LeviCivitaTensor(n)
 
-            if n > 4:
-                result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1])).calculate()
-                coplanar = result == 0
-            else:
-                coplanar = n < 4 or a.is_coplanar(b)
+            # if this is zero, the lines are coplanar
+            result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1])).calculate()
 
-            if not coplanar and (intersect_lines or n <= 4):
-                raise NotCoplanar("The given lines are not coplanar.")
-
-            if coplanar:
+            if result == 0:
+                # this part is inspired by Jim Blinn, Lines in Space: A Tale of Two Lines
                 diagram = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b))
                 array = diagram.calculate().array
                 i = np.unravel_index(np.abs(array).argmax(), array.shape)
                 if not intersect_lines:
+                    # extract the common subspace
                     result = Tensor(array[i[0], ...], covariant=False)
                 else:
+                    # extract the point of intersection
                     result = Tensor(array[(slice(None),) + i[1:]])
+
+            elif intersect_lines or n == 4:
+                # can't intersect lines that are not coplanar and can't join skew lines in 3D
+                raise NotCoplanar("The given lines are not coplanar.")
+
         else:
             # TODO: intersect arbitrary subspaces (use GA)
             raise ValueError("Operation not supported.")

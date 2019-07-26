@@ -228,7 +228,7 @@ class TensorDiagram:
 
     Each edge in the diagram represents a contraction of two indices of the tensors connected by that edge. In
     Einstein-notation that would mean that an edge from tensor A to tensor B is equivalent to the expression
-    :math:`A_{i j}B^{i k}_l`, where :math:`i, k, l` are free indices. The indices to contract are chosen from front to
+    :math:`A_{i j}B^{i k}_l`, where :math:`j, k, l` are free indices. The indices to contract are chosen from front to
     back from contravariant and covariant indices of the tensors that are connected by an edge.
 
     Parameters
@@ -285,11 +285,6 @@ class TensorDiagram:
 
         """
 
-        if source.array.shape[0] != target.array.shape[0]:
-            raise TensorComputationError(
-                "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
-                    str(source.array.shape[0]), str(target.array.shape[0])))
-
         # First step: Find nodes if they are already in the diagram
         source_index, target_index = None, None
         for index, node in enumerate(self._nodes):
@@ -320,6 +315,11 @@ class TensorDiagram:
         # Third step: Pick some free indices
         i = free_source.pop(0)
         j = free_target.pop(0)
+
+        if source.array.shape[i] != target.array.shape[j]:
+            raise TensorComputationError(
+                "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
+                    str(source.array.shape[i]), str(target.array.shape[j])))
 
         self._contraction_list.append((source_index, target_index, i, j))
 
