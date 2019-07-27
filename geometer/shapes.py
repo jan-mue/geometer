@@ -384,9 +384,9 @@ class Polygon(Polytope):
 
         ray = Segment(other, direction)
         intersections = self._intersect_coplanar_line(ray._line)
-        intersections = intersections[Segment._contains(*ray.array, intersections)]
+        intersection_count = np.sum(Segment._contains(*ray.array, intersections))
 
-        return len(intersections) % 2 == 1
+        return intersection_count % 2 == 1
 
     def intersect(self, other):
         """Intersect the polygon with another object.
@@ -532,6 +532,47 @@ class Polyhedron(Polytope):
         """float: The surface area of the polyhedron."""
         return sum(s.area for s in self.faces)
 
+    def _intersect_line(self, line):
+        n = self.array.shape[-1]
+
+        e = LeviCivitaTensor(n, False)
+        v1 = self.array[:, 0, :]
+        v2 = self.array[:, 1, :]
+        v3 = self.array[:, 2, :]
+
+        vertices = Tensor(np.einsum('ij,ik,il->ijkl', v1, v2, v3), covariant=[1, 2, 3])
+        diagram = TensorDiagram((vertices, e), (vertices, e), (vertices, e))
+
+        planes = diagram.calculate().array
+
+        e = LeviCivitaTensor(n)
+        diagram = TensorDiagram((e, Tensor(planes, covariant=[0])), (e, line), (e, line))
+        points = diagram.calculate().array.T
+
+        # filter points actually contained in the faces
+        direction = np.zeros(points.shape, int)
+        isinf = np.isclose(points[:, -1], 0)
+        direction[isinf, 0] = 1
+        ind = is_multiple(direction[isinf], points[isinf], axis=-1)
+        direction[isinf, 1] = ind.astype(int)
+
+        direction[~isinf, 3] = 1
+        direction[~isinf & np.isclose(planes[:, 0], 0), 0] = 1
+        ind = ~isinf & ~np.isclose(planes[:, 0], 0)
+        direction[ind, 0] = planes[ind, 1]
+        direction[ind, 1] = -planes[ind, 0]
+
+        ind = np.empty(points.shape[0], dtype=bool)
+
+        # TODO: replace this for loop
+        for i, (v, pt, d) in enumerate(zip(self.array, points, direction)):
+            ray = Segment([pt, d])
+            intersections = Polygon(v)._intersect_coplanar_line(ray._line)
+            intersection_count = np.sum(Segment._contains(pt, d, intersections))
+            ind[i] = intersection_count % 2 == 1
+
+        return points[ind]
+
     def intersect(self, other):
         """Intersect the polyhedron with another object.
 
@@ -546,7 +587,13 @@ class Polyhedron(Polytope):
             The points of intersection.
 
         """
-        return list(distinct(x for f in self.faces for x in f.intersect(other)))
+        if isinstance(other, Segment):
+            intersections = self._intersect_line(other._line)
+            intersections = intersections[Segment._contains(*other.array, intersections)]
+        else:
+            intersections = self._intersect_line(other)
+
+        return list(distinct(Point(x) for x in intersections))
 
 
 class Cuboid(Polyhedron):
