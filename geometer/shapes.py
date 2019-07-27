@@ -550,7 +550,7 @@ class Polyhedron(Polytope):
         points = diagram.calculate().array.T
 
         # filter points actually contained in the faces
-        direction = np.zeros(points.shape, int)
+        direction = np.zeros(points.shape, planes.dtype)
         isinf = np.isclose(points[:, -1], 0)
         direction[isinf, 0] = 1
         ind = is_multiple(direction[isinf], points[isinf], axis=-1)
