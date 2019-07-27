@@ -28,9 +28,9 @@ def _join_meet_duality(*args, intersect_lines=True):
         if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
             e = LeviCivitaTensor(n)
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
-        elif isinstance(a, Line) and isinstance(b, Point):
+        elif isinstance(a, Subspace) and isinstance(b, Point):
             result = a * b
-        elif isinstance(a, Point) and isinstance(b, Line):
+        elif isinstance(a, Point) and isinstance(b, Subspace):
             result = b * a
         elif isinstance(a, Line) and isinstance(b, Line):
             # can assume that n >= 4, because for n = 3 lines are 1-tensors

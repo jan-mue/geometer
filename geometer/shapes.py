@@ -2,6 +2,7 @@ from itertools import combinations
 
 import numpy as np
 
+from .base import TensorDiagram, Tensor, LeviCivitaTensor
 from .utils import distinct, is_multiple
 from .point import Line, Plane, Point, join, infty_hyperplane
 from .operators import dist, angle, harmonic_set
@@ -115,6 +116,75 @@ class Segment(Polytope):
         super(Segment, self).__init__(*args)
         self._line = Line(Point(self.array[0]), Point(self.array[1]))
 
+    @staticmethod
+    def _contains(vertex1, vertex2, points):
+
+        # allow multiple points for one vertex
+        if points.ndim != vertex1.ndim:
+            vertex1 = np.tile(vertex1, (len(points), 1))
+            vertex2 = np.tile(vertex2, (len(points), 1))
+
+        v1inf = np.isclose(vertex1.T[-1], 0)
+        v2inf = np.isclose(vertex2.T[-1], 0)
+        pinf = np.isclose(points.T[-1], 0)
+
+        d1 = np.empty(pinf.shape)
+        d2 = np.empty(pinf.shape)
+
+        direction = np.empty(vertex1.shape, np.common_type(vertex1, vertex2))
+        result = np.empty(pinf.shape, dtype=bool)
+
+        # when possible, we will use a finite point as start point of a ray/segment
+        start = vertex1.copy()
+
+        # normalize finite points
+        ind = ~pinf
+        points[ind] = (points[ind].T / points[ind, -1]).T
+
+        # only vertex1 at infinity
+        ind1 = v1inf & (~v2inf)
+        if np.sum(ind1) > 0:
+            direction[ind1] = vertex1[ind1]
+            start[ind1] = (vertex2[ind1].T / vertex2[ind1, -1]).T
+            d2[ind1] = np.inf
+            ind1 &= pinf
+            result[ind1] = is_multiple(vertex1[ind1], points[ind1], axis=-1)
+
+        # only vertex2 at infinity
+        ind2 = v2inf & (~v1inf)
+        if np.sum(ind2) > 0:
+            direction[ind2] = vertex2[ind2]
+            start[ind2] = (vertex1[ind2].T / vertex1[ind2, -1]).T
+            d2[ind2] = np.inf
+            ind2 &= pinf
+            result[ind2] = is_multiple(vertex2[ind2], points[ind2], axis=-1)
+
+        # both vertices finite
+        ind3 = ~v1inf & ~v2inf
+        if np.sum(ind3) > 0:
+            v1 = vertex1[ind3].T / vertex1[ind3, -1]
+            v2 = vertex2[ind3].T / vertex2[ind3, -1]
+            direction[ind3] = (v2 - v1).T
+            start[ind3] = v1.T
+            d2[ind3] = np.sum(direction[ind3] ** 2, axis=-1)
+            ind3 &= pinf
+            result[ind3] = False
+
+        # both vertices at infinity
+        ind4 = v1inf & v2inf
+        if np.sum(ind4) > 0:
+            direction[ind4] = vertex2[ind4] - vertex1[ind4]
+            d2[ind4] = np.sum(direction[ind4] ** 2, axis=-1)
+            ind4 &= ~pinf
+            result[ind4] = False
+
+        # calculate result for remaining cases
+        ind = ~(ind1 | ind2 | ind3 | ind4)
+        d1[ind] = np.sum((points[ind] - start[ind]) * direction[ind], axis=-1)
+        result[ind] = (0 <= d1[ind]) & (d1[ind] <= d2[ind])
+
+        return result
+
     def contains(self, other):
         """Tests whether a point is contained in the segment.
 
@@ -132,29 +202,7 @@ class Segment(Polytope):
         if not self._line.contains(other):
             return False
 
-        p, q = self.vertices
-
-        pinf = p.isinf
-        qinf = q.isinf
-
-        if other.isinf and not (pinf and qinf):
-            return other == p or other == q
-
-        if pinf and not qinf:
-            direction = - p.array[:-1]
-            d2 = np.inf
-
-        elif qinf and not pinf:
-            direction = q.array[:-1]
-            d2 = np.inf
-
-        else:
-            direction = (q - p).array[:-1]
-            d2 = direction.dot(direction)
-
-        d1 = (other - p).array[:-1].dot(direction)
-
-        return 0 <= d1 <= d2
+        return self._contains(*self.array, other.array)
 
     def intersect(self, other):
         """Intersect the line segment with another object.
@@ -277,6 +325,32 @@ class Polygon(Polytope):
     def edges(self):
         return self.facets
 
+    def _intersect_coplanar_line(self, line):
+        n = self.array.shape[-1]
+
+        e1 = LeviCivitaTensor(n, False)
+        v1 = self.array
+        v2 = np.roll(self.array, -1, axis=0)
+
+        vertices = Tensor(np.einsum('ij,ik->ijk', v1, v2), covariant=[1, 2])
+        diagram = TensorDiagram((vertices, e1), (vertices, e1))
+
+        e2 = LeviCivitaTensor(n)
+
+        for i in range(n-2):
+            diagram.add_edge(e2, e1)
+
+        diagram.add_edge(e2, line)
+        points = diagram.calculate().array
+
+        if n > 3:
+            i = np.unravel_index(np.abs(points).argmax(), points.shape)
+            points = points[(slice(None), slice(None)) + i[2:]]
+
+        points = points.T
+        ind = Segment._contains(v1, v2, points)
+        return points[ind]
+
     def contains(self, other):
         """Tests whether a point is contained in the polygon.
 
@@ -296,7 +370,9 @@ class Polygon(Polytope):
             return False
 
         if other.isinf:
-            direction = Point([0]*self.dim + [1])
+            direction = Point([1] + [0]*self.dim)
+            if direction == other:
+                direction = Point([0, 1] + [0] * (self.dim-1))
         elif self.dim == 2:
             direction = Point([1, 0, 0])
         else:
@@ -307,7 +383,8 @@ class Polygon(Polytope):
                 direction = Point([a[1], -a[0]] + [0]*(self.dim-1))
 
         ray = Segment(other, direction)
-        intersections = [p for s in self.edges for p in s.intersect(ray)]
+        intersections = self._intersect_coplanar_line(ray._line)
+        intersections = intersections[Segment._contains(*ray.array, intersections)]
 
         return len(intersections) % 2 == 1
 
@@ -341,7 +418,13 @@ class Polygon(Polytope):
                 i = other.intersect(self._plane)
                 return i if i and self.contains(i[0]) else []
 
-        return list(distinct(x for f in self.edges for x in f.intersect(other)))
+        if isinstance(other, Segment):
+            intersections = self._intersect_coplanar_line(other._line)
+            intersections = intersections[Segment._contains(*other.array, intersections)]
+        else:
+            intersections = self._intersect_coplanar_line(other)
+
+        return list(distinct(Point(x) for x in intersections))
 
     @property
     def area(self):

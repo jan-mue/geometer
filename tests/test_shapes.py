@@ -5,13 +5,43 @@ import numpy as np
 class TestSegment:
 
     def test_contains(self):
+        # both points finite
         p = Point(0, 0)
         q = Point(2, 1)
         s = Segment(p, q)
         assert s.contains(p)
         assert s.contains(q)
+        assert s.contains(0.5 * (p + q))
+        assert not s.contains(p - q)
+        assert not s.contains(Point([2, 1, 0]))
+
+        # first point at infinity
+        p = Point([-2, -1, 0])
+        q = Point(2, 1)
+        s = Segment(p, q)
+        assert s.contains(p)
+        assert s.contains(q)
+        assert s.contains(0.5*q)
+        assert not s.contains(2*q)
+
+        # second point at infinity
+        p = Point(0, 0)
+        q = Point([2, 1, 0])
+        s = Segment(p, q)
+        assert s.contains(p)
+        assert s.contains(q)
+        assert s.contains(Point(2, 1))
+        assert not s.contains(Point(-2, -1))
+
+        # both points  at infinity
+        p = Point([-2, 1, 0])
+        q = Point([2, 1, 0])
+        s = Segment(p, q)
+        assert s.contains(p)
+        assert s.contains(q)
         assert s.contains(0.5*(p+q))
         assert not s.contains(p-q)
+        assert not s.contains(Point(0, 0))
 
     def test_intersect(self):
         a = Point(0, 0)
