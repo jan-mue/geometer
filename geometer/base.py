@@ -7,6 +7,13 @@ import sympy
 from .utils import is_multiple
 from .exceptions import TensorComputationError
 
+try:
+    import tensorflow as tf
+    tf.enable_v2_behavior()
+    import tensornetwork
+except ImportError:
+    print("tensorflow backend not available")
+
 
 _symbol_cache = []
 
@@ -244,12 +251,18 @@ class TensorDiagram:
 
     """
 
-    def __init__(self, *edges):
+    def __init__(self, *edges, backend="numpy"):
+        self._backend = backend
         self._nodes = []
         self._free_indices = []
         self._node_positions = []
-        self._contraction_list = []
         self._index_count = 0
+
+        if backend == "tensorflow":
+            self._tf_net = tensornetwork.TensorNetwork()
+            self._tf_nodes = []
+        else:
+            self._contraction_list = []
 
         for e in edges:
             self.add_edge(*e)
@@ -266,6 +279,10 @@ class TensorDiagram:
             The node to add.
 
         """
+        if self._backend == "tensorflow":
+            n = self._tf_net.add_node(node.array)
+            self._tf_nodes.append(n)
+
         self._nodes.append(node)
         self._node_positions.append(self._index_count)
         self._index_count += node.array.ndim
@@ -321,7 +338,11 @@ class TensorDiagram:
                 "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
                     str(source.array.shape[i]), str(target.array.shape[j])))
 
-        self._contraction_list.append((source_index, target_index, i, j))
+        if self._backend == "tensorflow":
+            n1, n2 = self._tf_nodes[source_index], self._tf_nodes[target_index]
+            self._tf_net.connect(n1[i], n2[j])
+        else:
+            self._contraction_list.append((source_index, target_index, i, j))
 
     def calculate(self):
         """Calculates the result of the diagram.
@@ -332,24 +353,34 @@ class TensorDiagram:
             The tensor resulting from the specified tensor diagram.
 
         """
-        # Build the list of indices for einsum
-        indices = list(range(self._index_count))
-        for source_index, target_index, i, j in self._contraction_list:
-            i = self._node_positions[source_index] + i
-            j = self._node_positions[target_index] + j
-            indices[max(i, j)] = min(i, j)
 
-        # Split the indices and insert the arrays
-        args = []
+        # Split the indices
         result_indices = ([], [])
-        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
+        for ind, offset in zip(self._free_indices, self._node_positions):
             result_indices[0].extend(offset + x for x in ind[0])
             result_indices[1].extend(offset + x for x in ind[1])
-            args.append(node.array)
-            s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
-            args.append(indices[s])
 
-        temp = np.einsum(*args, result_indices[0] + result_indices[1])
+        if self._backend == "tensorflow":
+            tensornetwork.contractors.naive(self._tf_net)
+            temp = self._tf_net.get_final_node().tensor.numpy()
+
+        else:
+            args = []
+            # Build the list of indices for einsum
+            indices = list(range(self._index_count))
+            for source_index, target_index, i, j in self._contraction_list:
+                i = self._node_positions[source_index] + i
+                j = self._node_positions[target_index] + j
+                indices[max(i, j)] = min(i, j)
+
+            # Build argument list of einsum
+            for i, node in enumerate(self._nodes):
+                args.append(node.array)
+                start = self._node_positions[i]
+                end = self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None
+                args.append(indices[slice(start, end)])
+
+            temp = np.einsum(*args, result_indices[0] + result_indices[1])
 
         return Tensor(temp, covariant=range(len(result_indices[0])))
 
