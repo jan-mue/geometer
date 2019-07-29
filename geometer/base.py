@@ -434,7 +434,7 @@ class TensorDiagram:
         result._nodes = self._nodes.copy()
         result._free_indices = self._free_indices.copy()
         result._node_positions = self._node_positions.copy()
-        result._contractions = self._contractions.copy()
+        result._contraction_list = self._contraction_list.copy()
         result._index_count = self._index_count
         return result
 
