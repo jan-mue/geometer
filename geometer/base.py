@@ -1,5 +1,6 @@
 from abc import ABC
 from itertools import permutations
+import warnings
 
 import numpy as np
 import sympy
@@ -9,10 +10,9 @@ from .exceptions import TensorComputationError
 
 try:
     import tensorflow as tf
-    tf.enable_v2_behavior()
-    import tensornetwork
+    tf.compat.v1.enable_v2_behavior()
 except ImportError:
-    print("tensorflow backend not available")
+    warnings.warn("could not import tensorflow", ImportWarning)
 
 
 _symbol_cache = []
@@ -251,18 +251,12 @@ class TensorDiagram:
 
     """
 
-    def __init__(self, *edges, backend="numpy"):
-        self._backend = backend
+    def __init__(self, *edges):
         self._nodes = []
         self._free_indices = []
         self._node_positions = []
+        self._contraction_list = []
         self._index_count = 0
-
-        if backend == "tensorflow":
-            self._tf_net = tensornetwork.TensorNetwork()
-            self._tf_nodes = []
-        else:
-            self._contraction_list = []
 
         for e in edges:
             self.add_edge(*e)
@@ -279,10 +273,6 @@ class TensorDiagram:
             The node to add.
 
         """
-        if self._backend == "tensorflow":
-            n = self._tf_net.add_node(node.array)
-            self._tf_nodes.append(n)
-
         self._nodes.append(node)
         self._node_positions.append(self._index_count)
         self._index_count += node.array.ndim
@@ -338,14 +328,18 @@ class TensorDiagram:
                 "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
                     str(source.array.shape[i]), str(target.array.shape[j])))
 
-        if self._backend == "tensorflow":
-            n1, n2 = self._tf_nodes[source_index], self._tf_nodes[target_index]
-            self._tf_net.connect(n1[i], n2[j])
-        else:
+        if target_index <= source_index:
             self._contraction_list.append((source_index, target_index, i, j))
+        else:
+            self._contraction_list.append((target_index, source_index, j, i))
 
-    def calculate(self):
+    def calculate(self, backend="numpy"):
         """Calculates the result of the diagram.
+
+        Parameters
+        ----------
+        backend : str, optional
+            Select a backend for the calculation, either 'tensorflow' or 'numpy'. Default is 'numpy'.
 
         Returns
         -------
@@ -353,43 +347,94 @@ class TensorDiagram:
             The tensor resulting from the specified tensor diagram.
 
         """
-
-        # Split the indices
-        result_indices = ([], [])
-        for ind, offset in zip(self._free_indices, self._node_positions):
-            result_indices[0].extend(offset + x for x in ind[0])
-            result_indices[1].extend(offset + x for x in ind[1])
-
-        if self._backend == "tensorflow":
-            tensornetwork.contractors.naive(self._tf_net)
-            temp = self._tf_net.get_final_node().tensor.numpy()
-
-        else:
-            args = []
+        if backend == "numpy":
             # Build the list of indices for einsum
             indices = list(range(self._index_count))
             for source_index, target_index, i, j in self._contraction_list:
-                i = self._node_positions[source_index] + i
-                j = self._node_positions[target_index] + j
-                indices[max(i, j)] = min(i, j)
+                i += self._node_positions[source_index]
+                j += self._node_positions[target_index]
+                indices[i] = j
 
-            # Build argument list of einsum
-            for i, node in enumerate(self._nodes):
+            # Build argument list of einsum and collect free indices
+            args = []
+            result_indices = ([], [])
+            for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
+                result_indices[0].extend(offset + x for x in ind[0])
+                result_indices[1].extend(offset + x for x in ind[1])
                 args.append(node.array)
                 start = self._node_positions[i]
                 end = self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None
                 args.append(indices[slice(start, end)])
 
-            temp = np.einsum(*args, result_indices[0] + result_indices[1])
+            result = np.einsum(*args, result_indices[0] + result_indices[1])
 
-        return Tensor(temp, covariant=range(len(result_indices[0])))
+        elif backend == "tensorflow":
+            t = np.find_common_type([np.int32], [node.array.dtype for node in self._nodes])
+            operators = [tf.cast(node.array, t) for node in self._nodes]
+
+            @tf.function
+            def calc(tensors, contraction_list, node_positions, index_count):
+                index_mapping = np.split(np.arange(index_count), node_positions[1:])
+                contractions = np.array(contraction_list)
+
+                temp = tensors[0]
+                for source_index, tensor in enumerate(tensors[1:], 1):
+                    if len(contractions) == 0:
+                        source_contractions = contractions
+                    else:
+                        source_contractions = contractions[contractions[:, 0] == source_index, 1:]
+
+                    if len(source_contractions) == 0:
+                        temp = tf.tensordot(temp, tensor, 0)
+                        continue
+
+                    for target_index in np.unique(source_contractions[:, 0]):
+                        i, j = source_contractions[source_contractions[:, 0] == target_index, 1:].T
+
+                        # Multiply and sum over axes i and j and add the remaining axes of node to the end of temp
+                        temp = tf.tensordot(temp, tensor, axes=[index_mapping[target_index][j], i])
+
+                        index_update = np.zeros((len(i), index_count), dtype=int)
+                        contract_indices = zip(node_positions[target_index] + j, node_positions[source_index] + i)
+                        for c, (a, b) in enumerate(contract_indices):
+                            index_update[c, a:b] = -1
+                            index_update[c, b:] = -2
+                        index_update = np.sum(index_update, axis=0)
+                        index_update = np.split(index_update, node_positions[1:])
+
+                        index_mapping = [a + b for a, b in zip(index_mapping, index_update)]
+
+                return temp
+
+            # calculate using the compiled function
+            result = calc(operators, self._contraction_list, self._node_positions, self._index_count)
+
+            # To bring the contracted axes in the right order (covariant in front), build index list
+            index_count = 0
+            result_indices = ([], [])
+            for ind in self._free_indices:
+                result_indices[0].extend(range(index_count, index_count + len(ind[0])))
+                index_count += len(ind[0])
+                result_indices[1].extend(range(index_count, index_count + len(ind[1])))
+                index_count += len(ind[1])
+
+            if len(result.shape) > 1:
+                # Reorder the axes
+                result = tf.transpose(result, perm=result_indices[0] + result_indices[1])
+
+            result = result.numpy()
+
+        else:
+            raise ValueError("unknown backend '%s'" % str(backend))
+
+        return Tensor(result, covariant=range(len(result_indices[0])))
 
     def copy(self):
         result = TensorDiagram()
         result._nodes = self._nodes.copy()
         result._free_indices = self._free_indices.copy()
         result._node_positions = self._node_positions.copy()
-        result._contraction_list = self._contraction_list.copy()
+        result._contractions = self._contractions.copy()
         result._index_count = self._index_count
         return result
 
