@@ -138,7 +138,10 @@ class Point(ProjectiveElement):
         return Point(result)
 
     def __sub__(self, other):
-        return self + (-other)
+        a, b = self.normalized_array, other.normalized_array
+        result = a[:-1] - b[:-1]
+        result = np.append(result, min(a[-1], b[-1]))
+        return Point(result)
 
     def __mul__(self, other):
         if not np.isscalar(other):
@@ -146,14 +149,6 @@ class Point(ProjectiveElement):
         result = self.array[:-1] * other
         result = np.append(result, self.array[-1])
         return Point(result)
-
-    def __rmul__(self, other):
-        if not np.isscalar(other):
-            return super(Point, self).__rmul__(other)
-        return self * other
-
-    def __neg__(self):
-        return (-1) * self
 
     def __repr__(self):
         return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if self.isinf else "")
@@ -213,6 +208,13 @@ class Subspace(ProjectiveElement):
     def __init__(self, *args):
         super(Subspace, self).__init__(*args, covariant=False)
 
+    def __add__(self, other):
+        from .transformation import translation
+        return translation(other) * self
+
+    def __sub__(self, other):
+        return -other + self
+
     def polynomials(self, symbols=None):
         """Returns a list of polynomials, to use for symbolic calculations.
 
@@ -233,9 +235,12 @@ class Subspace(ProjectiveElement):
             f = sum(x * s for x, s in zip(row, symbols))
             return sympy.poly(f, symbols)
 
-        if self.dim == 2:
+        if self.array.ndim == 1:
             return [p(self.array)]
-        return np.apply_along_axis(p, axis=1, arr=self.array[np.any(self.array, axis=1)])
+
+        x = self.array.reshape((-1, self.array.shape[-1]))
+        x = x[np.any(x, axis=1)]
+        return np.apply_along_axis(p, axis=1, arr=x)
 
     @property
     def basis_matrix(self):
@@ -351,13 +356,6 @@ class Subspace(ProjectiveElement):
         """
         x = self.meet(other)
         return infty_hyperplane(self.dim).contains(x)
-
-    def __add__(self, point):
-        from .transformation import translation
-        return translation(point) * self
-
-    def __radd__(self, other):
-        return self + other
 
 
 class Line(Subspace):

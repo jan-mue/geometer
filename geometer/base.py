@@ -132,16 +132,29 @@ class Tensor:
         return self.copy()
 
     def __mul__(self, other):
+        if np.isscalar(other):
+            return Tensor(other * self.array, covariant=self._covariant_indices)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other):
+        if np.isscalar(other):
+            return self * other
         return TensorDiagram((self, other)).calculate()
 
     def __add__(self, other):
         return Tensor(self.array + other.array, covariant=self._covariant_indices)
 
+    def __radd__(self, other):
+        return self + other
+
     def __sub__(self, other):
         return Tensor(self.array - other.array, covariant=self._covariant_indices)
+
+    def __rsub__(self, other):
+        return -self + other
+
+    def __neg__(self):
+        return self*(-1)
 
     def __eq__(self, other):
         if isinstance(other, Tensor):
