@@ -77,7 +77,7 @@ def null_space(A):
 
     Returns
     -------
-    numpyy.ndarray
+    numpy.ndarray
         Orthonormal basis for the null space of A (as column vectors in the returned matrix).
 
     """

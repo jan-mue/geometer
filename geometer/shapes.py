@@ -9,6 +9,138 @@ from .operators import dist, angle, harmonic_set
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
+def _segment_contains(vertex1, vertex2, points):
+    # allow multiple points for one vertex
+    if points.ndim != vertex1.ndim:
+        new_shape = vertex1.shape[:-1] + (1,) * (points.ndim - vertex1.ndim) + vertex1.shape[-1:]
+        reps = [x // y for x, y in zip(points.shape, new_shape)]
+        vertex1 = np.tile(vertex1.reshape(new_shape), reps)
+        vertex2 = np.tile(vertex2.reshape(new_shape), reps)
+
+    v1inf = np.isclose(vertex1.T[-1], 0).T
+    v2inf = np.isclose(vertex2.T[-1], 0).T
+    pinf = np.isclose(points.T[-1], 0).T
+
+    d1 = np.empty(pinf.shape)
+    d2 = np.empty(pinf.shape)
+
+    direction = np.empty(vertex1.shape, np.common_type(vertex1, vertex2))
+    result = np.empty(pinf.shape, dtype=bool)
+
+    # when possible, we will use a finite point as start point of a ray/segment
+    start = vertex1.copy()
+
+    # only vertex1 at infinity
+    ind1 = v1inf & (~v2inf)
+    if np.sum(ind1) > 0:
+        direction[ind1] = vertex1[ind1]
+        start[ind1] = (vertex2[ind1].T / vertex2[ind1, -1]).T
+        d2[ind1] = np.inf
+        ind1 &= pinf
+        result[ind1] = is_multiple(vertex1[ind1], points[ind1], axis=-1)
+
+    # only vertex2 at infinity
+    ind2 = v2inf & (~v1inf)
+    if np.sum(ind2) > 0:
+        direction[ind2] = vertex2[ind2]
+        start[ind2] = (vertex1[ind2].T / vertex1[ind2, -1]).T
+        d2[ind2] = np.inf
+        ind2 &= pinf
+        result[ind2] = is_multiple(vertex2[ind2], points[ind2], axis=-1)
+
+    # both vertices finite
+    ind3 = ~v1inf & ~v2inf
+    if np.sum(ind3) > 0:
+        v1 = vertex1[ind3].T / vertex1[ind3, -1]
+        v2 = vertex2[ind3].T / vertex2[ind3, -1]
+        direction[ind3] = (v2 - v1).T
+        start[ind3] = v1.T
+        d2[ind3] = np.sum(direction[ind3] ** 2, axis=-1)
+        ind3 &= pinf
+        result[ind3] = False
+
+    # both vertices at infinity
+    ind4 = v1inf & v2inf
+    if np.sum(ind4) > 0:
+        direction[ind4] = vertex2[ind4] - vertex1[ind4]
+        d2[ind4] = np.sum(direction[ind4] ** 2, axis=-1)
+        ind4 &= ~pinf
+        result[ind4] = False
+
+    # normalize finite points
+    ind = ~pinf & ~ind4
+    points = points.copy()
+    points[ind] = (points[ind].T / points[ind, -1]).T
+
+    # calculate result for remaining cases
+    ind = ~(ind1 | ind2 | ind3 | ind4)
+    d1[ind] = np.sum((points[ind] - start[ind]) * direction[ind], axis=-1)
+    result[ind] = (0 <= d1[ind]) & (d1[ind] <= d2[ind])
+
+    return result
+
+
+def _outer_product(*args, axes=(0,)):
+
+    einsum_args = []
+    index_count = len(axes)
+    for arr in args:
+        einsum_args.append(arr)
+        einsum_args.append(list(axes) + list(range(index_count, index_count+arr.ndim-len(axes))))
+        index_count += arr.ndim - len(axes)
+
+    result_indices = list(range(index_count))
+
+    return np.einsum(*einsum_args, result_indices)
+
+
+def _join_points(*args):
+
+    n = args[0].shape[-1]
+    e = LeviCivitaTensor(n, False)
+
+    free_indices = list(range(args[0].ndim - 1))
+
+    points = _outer_product(*args, axes=free_indices)
+    points = Tensor(points, covariant=range(len(free_indices), len(free_indices)+len(args)))
+    diagram = TensorDiagram(*[(points, e)]*len(args))
+
+    return diagram.calculate().array
+
+
+def _meet_planes_lines(planes, lines):
+
+    n = planes.shape[-1]
+    e = LeviCivitaTensor(n)
+
+    x = Tensor(_outer_product(planes, lines), covariant=[0])
+
+    diagram = TensorDiagram((e, x), *[(e, x)]*(n-2))
+    return diagram.calculate().array.T
+
+
+def _meet_coplanar_lines(lines1, lines2):
+
+    n = lines1.shape[-1]
+    e = LeviCivitaTensor(n)
+
+    x = Tensor(_outer_product(lines1, lines2), covariant=range(lines1.ndim + lines2.ndim - 2*n + 3))
+    free_indices = list(range(1, lines1.ndim + lines2.ndim - 2*n + 4))
+
+    diagram = TensorDiagram(*[(e, x)]*(n-2), (e, x))
+    points = diagram.calculate().array
+
+    points = points.transpose(free_indices + [0] + list(range(len(free_indices)+1, points.ndim)))
+
+    if n > 3:
+        max_ind = np.abs(points).reshape((np.prod(points.shape[:len(free_indices)]), -1)).argmax(1)
+        i = np.unravel_index(max_ind, points.shape[len(free_indices):])
+        indices = tuple(x.flatten() for x in np.indices(points.shape[:len(free_indices)]))
+        points = points[indices + (slice(None),) + i[1:]].reshape(points.shape[:len(free_indices)+1])
+
+    return points
+
+
 class Polytope:
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
@@ -116,75 +248,6 @@ class Segment(Polytope):
         super(Segment, self).__init__(*args)
         self._line = Line(Point(self.array[0]), Point(self.array[1]))
 
-    @staticmethod
-    def _contains(vertex1, vertex2, points):
-
-        # allow multiple points for one vertex
-        if points.ndim != vertex1.ndim:
-            vertex1 = np.tile(vertex1, (len(points), 1))
-            vertex2 = np.tile(vertex2, (len(points), 1))
-
-        v1inf = np.isclose(vertex1.T[-1], 0)
-        v2inf = np.isclose(vertex2.T[-1], 0)
-        pinf = np.isclose(points.T[-1], 0)
-
-        d1 = np.empty(pinf.shape)
-        d2 = np.empty(pinf.shape)
-
-        direction = np.empty(vertex1.shape, np.common_type(vertex1, vertex2))
-        result = np.empty(pinf.shape, dtype=bool)
-
-        # when possible, we will use a finite point as start point of a ray/segment
-        start = vertex1.copy()
-
-        # normalize finite points
-        ind = ~pinf
-        points[ind] = (points[ind].T / points[ind, -1]).T
-
-        # only vertex1 at infinity
-        ind1 = v1inf & (~v2inf)
-        if np.sum(ind1) > 0:
-            direction[ind1] = vertex1[ind1]
-            start[ind1] = (vertex2[ind1].T / vertex2[ind1, -1]).T
-            d2[ind1] = np.inf
-            ind1 &= pinf
-            result[ind1] = is_multiple(vertex1[ind1], points[ind1], axis=-1)
-
-        # only vertex2 at infinity
-        ind2 = v2inf & (~v1inf)
-        if np.sum(ind2) > 0:
-            direction[ind2] = vertex2[ind2]
-            start[ind2] = (vertex1[ind2].T / vertex1[ind2, -1]).T
-            d2[ind2] = np.inf
-            ind2 &= pinf
-            result[ind2] = is_multiple(vertex2[ind2], points[ind2], axis=-1)
-
-        # both vertices finite
-        ind3 = ~v1inf & ~v2inf
-        if np.sum(ind3) > 0:
-            v1 = vertex1[ind3].T / vertex1[ind3, -1]
-            v2 = vertex2[ind3].T / vertex2[ind3, -1]
-            direction[ind3] = (v2 - v1).T
-            start[ind3] = v1.T
-            d2[ind3] = np.sum(direction[ind3] ** 2, axis=-1)
-            ind3 &= pinf
-            result[ind3] = False
-
-        # both vertices at infinity
-        ind4 = v1inf & v2inf
-        if np.sum(ind4) > 0:
-            direction[ind4] = vertex2[ind4] - vertex1[ind4]
-            d2[ind4] = np.sum(direction[ind4] ** 2, axis=-1)
-            ind4 &= ~pinf
-            result[ind4] = False
-
-        # calculate result for remaining cases
-        ind = ~(ind1 | ind2 | ind3 | ind4)
-        d1[ind] = np.sum((points[ind] - start[ind]) * direction[ind], axis=-1)
-        result[ind] = (0 <= d1[ind]) & (d1[ind] <= d2[ind])
-
-        return result
-
     def contains(self, other):
         """Tests whether a point is contained in the segment.
 
@@ -202,7 +265,7 @@ class Segment(Polytope):
         if not self._line.contains(other):
             return False
 
-        return self._contains(*self.array, other.array)
+        return _segment_contains(*self.array, other.array)
 
     def intersect(self, other):
         """Intersect the line segment with another object.
@@ -259,16 +322,15 @@ class Simplex(Polytope):
 
     """
 
-    def __new__(cls, *args, **kwargs):
-        if len(args) == 2 and all(isinstance(x, Point) for x in args):
+    def __new__(cls, *args):
+        if len(args) == 2:
             return Segment(*args)
 
         return super(Polytope, cls).__new__(cls)
 
     def __init__(self, *args):
-        if all(isinstance(x, Point) for x in args):
+        if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args)-1)]
-
         super(Simplex, self).__init__(*args)
 
     @property
@@ -305,14 +367,13 @@ class Polygon(Polytope):
 
     def __init__(self, *args):
         if all(isinstance(x, Segment) for x in args):
-            args = [s.vertices[0] for s in args]
+            args = (np.array([s.array[0] for s in args]),)
         super(Polygon, self).__init__(*args)
-        self._plane = None
-        if self.dim > 2:
-            self._plane = join(*self.vertices[:self.dim])
-            for s in self.vertices[self.dim:]:
-                if not self._plane.contains(s):
-                    raise NotCoplanar("The vertices of a polygon must be coplanar!")
+        self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
+
+    @property
+    def vertices(self):
+        return [Point(x) for x in self.array]
 
     @property
     def facets(self):
@@ -326,29 +387,13 @@ class Polygon(Polytope):
         return self.facets
 
     def _intersect_coplanar_line(self, line):
-        n = self.array.shape[-1]
-
-        e1 = LeviCivitaTensor(n, False)
         v1 = self.array
         v2 = np.roll(self.array, -1, axis=0)
 
-        vertices = Tensor(np.einsum('ij,ik->ijk', v1, v2), covariant=[1, 2])
-        diagram = TensorDiagram((vertices, e1), (vertices, e1))
+        edges = _join_points(v1, v2)
+        points = _meet_coplanar_lines(edges, np.array([line.array]))
 
-        e2 = LeviCivitaTensor(n)
-
-        for i in range(n-2):
-            diagram.add_edge(e2, e1)
-
-        diagram.add_edge(e2, line)
-        points = diagram.calculate().array
-
-        if n > 3:
-            i = np.unravel_index(np.abs(points).argmax(), points.shape)
-            points = points[(slice(None), slice(None)) + i[2:]]
-
-        points = points.T
-        ind = Segment._contains(v1, v2, points)
+        ind = _segment_contains(v1, v2, points)
         return points[ind]
 
     def contains(self, other):
@@ -384,7 +429,7 @@ class Polygon(Polytope):
 
         ray = Segment(other, direction)
         intersections = self._intersect_coplanar_line(ray._line)
-        intersection_count = np.sum(Segment._contains(*ray.array, intersections))
+        intersection_count = np.sum(_segment_contains(*ray.array, intersections))
 
         return intersection_count % 2 == 1
 
@@ -420,7 +465,7 @@ class Polygon(Polytope):
 
         if isinstance(other, Segment):
             intersections = self._intersect_coplanar_line(other._line)
-            intersections = intersections[Segment._contains(*other.array, intersections)]
+            intersections = intersections[_segment_contains(*other.array, intersections)]
         else:
             intersections = self._intersect_coplanar_line(other)
 
@@ -493,9 +538,7 @@ class Triangle(Polygon, Simplex):
     c : Point
 
     """
-
-    def __init__(self, *args):
-        super(Triangle, self).__init__(*args)
+    pass
 
 
 class Rectangle(Polygon):
@@ -509,9 +552,7 @@ class Rectangle(Polygon):
     d : Point
 
     """
-
-    def __init__(self, *args):
-        super(Rectangle, self).__init__(*args)
+    pass
 
 
 class Polyhedron(Polytope):
@@ -533,43 +574,35 @@ class Polyhedron(Polytope):
         return sum(s.area for s in self.faces)
 
     def _intersect_line(self, line):
-        n = self.array.shape[-1]
-
-        e = LeviCivitaTensor(n, False)
         v1 = self.array[:, 0, :]
         v2 = self.array[:, 1, :]
         v3 = self.array[:, 2, :]
 
-        vertices = Tensor(np.einsum('ij,ik,il->ijkl', v1, v2, v3), covariant=[1, 2, 3])
-        diagram = TensorDiagram((vertices, e), (vertices, e), (vertices, e))
+        # intersect line with planes that the faces lie in
+        planes = _join_points(v1, v2, v3)
+        points = _meet_planes_lines(planes, np.array([line.array]))
 
-        planes = diagram.calculate().array
-
-        e = LeviCivitaTensor(n)
-        diagram = TensorDiagram((e, Tensor(planes, covariant=[0])), (e, line), (e, line))
-        points = diagram.calculate().array.T
-
-        # filter points actually contained in the faces
+        # build array of directions for point in polygon problem
         direction = np.zeros(points.shape, planes.dtype)
+        ind = np.isclose(planes[:, 0], 0)
+        direction[ind, 0] = 1
+        direction[~ind, 0] = planes[~ind, 1]
+        direction[~ind, 1] = -planes[~ind, 0]
+
         isinf = np.isclose(points[:, -1], 0)
         direction[isinf, 0] = 1
         ind = is_multiple(direction[isinf], points[isinf], axis=-1)
         direction[isinf, 1] = ind.astype(int)
 
-        direction[~isinf, 3] = 1
-        direction[~isinf & np.isclose(planes[:, 0], 0), 0] = 1
-        ind = ~isinf & ~np.isclose(planes[:, 0], 0)
-        direction[ind, 0] = planes[ind, 1]
-        direction[ind, 1] = -planes[ind, 0]
+        # intersect rays with edges of the polygons
+        v1 = self.array
+        v2 = np.roll(self.array, -1, axis=1)
 
-        ind = np.empty(points.shape[0], dtype=bool)
-
-        # TODO: replace this for loop
-        for i, (v, pt, d) in enumerate(zip(self.array, points, direction)):
-            ray = Segment([pt, d])
-            intersections = Polygon(v)._intersect_coplanar_line(ray._line)
-            intersection_count = np.sum(Segment._contains(pt, d, intersections))
-            ind[i] = intersection_count % 2 == 1
+        edges = _join_points(v1, v2)
+        rays = _join_points(points, direction)
+        intersections = _meet_coplanar_lines(edges, rays)
+        ind = _segment_contains(v1, v2, intersections) & _segment_contains(points, direction, intersections)
+        ind = np.sum(ind, axis=1) % 2 == 1
 
         return points[ind]
 
@@ -589,7 +622,7 @@ class Polyhedron(Polytope):
         """
         if isinstance(other, Segment):
             intersections = self._intersect_line(other._line)
-            intersections = intersections[Segment._contains(*other.array, intersections)]
+            intersections = intersections[_segment_contains(*other.array, intersections)]
         else:
             intersections = self._intersect_line(other)
 
