@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 sympy = ">=1.3,<=1.4"
-numpy = ">=1.15,<1.17"
+numpy = ">=1.15,<1.18"
 
 [dev-packages]
 twine = "*"
