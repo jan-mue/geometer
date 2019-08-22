@@ -1,4 +1,5 @@
 import math
+from itertools import combinations
 
 import sympy
 import numpy as np
@@ -6,19 +7,19 @@ from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J
-from .base import ProjectiveElement, Tensor, _symbols
+from .base import ProjectiveElement, Tensor, TensorDiagram, LeviCivitaTensor, _symbols
 from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix
 
 
-class AlgebraicHypersurface(ProjectiveElement):
-    """A general algebraic hypersurface, i.e. a hypersurface defined by the zero set of a homogeneous polynomial.
+class AlgebraicCurve(ProjectiveElement):
+    """A plane algebraic curve, defined by the zero set of a homogeneous polynomial in 3 variables.
 
     Parameters
     ----------
     poly : sympy.Expr or numpy.ndarray
-        The polynomial defining the hypersurface. It is automatically homogenized.
+        The polynomial defining the curve. It is automatically homogenized.
     symbols : tuple` of sympy.Symbol, optional
-        The symbols that are used in the polynomial. By default the symbols (x1, ..., xn) will be used.
+        The symbols that are used in the polynomial. By default the symbols (x0, x1, x2) will be used.
 
     Attributes
     ----------
@@ -30,12 +31,15 @@ class AlgebraicHypersurface(ProjectiveElement):
     def __init__(self, poly, symbols=None):
 
         if isinstance(poly, np.ndarray):
-            self.symbols = symbols or _symbols(poly.ndim)
-            super(AlgebraicHypersurface, self).__init__(poly, covariant=False)
+            if poly.ndim != 3:
+                raise ValueError("Expected a polynomial in 3 variables.")
+
+            self.symbols = symbols or _symbols(3)
+            super(AlgebraicCurve, self).__init__(poly, covariant=False)
             return
 
         if not isinstance(poly, sympy.Expr):
-            raise ValueError("poly must be ndarray or sympy expression")
+            raise ValueError("poly must be ndarray or sympy expression.")
 
         if symbols is None:
             symbols = poly.free_symbols
@@ -46,15 +50,15 @@ class AlgebraicHypersurface(ProjectiveElement):
 
         poly = poly.homogenize(symbols[-1])
 
-        super(AlgebraicHypersurface, self).__init__(poly_to_np_array(poly, symbols), covariant=False)
+        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols), covariant=False)
 
     @property
     def polynomial(self):
-        """sympy.Poly: The polynomial defining this hypersurface."""
+        """sympy.Poly: The polynomial defining this curve."""
         return np_array_to_poly(self.array, self.symbols)
 
     def tangent(self, at):
-        """Calculates the tangent space of the surface at a given point.
+        """Calculates the tangent of the curve at a given point.
 
         Parameters
         ----------
@@ -64,13 +68,11 @@ class AlgebraicHypersurface(ProjectiveElement):
         Returns
         -------
         Subspace
-            The tangent space.
+            The tangent line.
 
         """
         dx = [polyval(at.array, pl.polyder(self.array, axis=i)) for i in range(self.dim + 1)]
-        if self.dim == 2:
-            return Line(dx)
-        return Plane(dx)
+        return Line(dx)
 
     def contains(self, pt, tol=1e-8):
         """Tests if a given point lies on the hypersurface.
@@ -91,7 +93,7 @@ class AlgebraicHypersurface(ProjectiveElement):
         return np.isclose(polyval(pt.array, self.array), 0, atol=tol)
 
     def intersect(self, other):
-        """Calculates points of intersection with the hypersurface.
+        """Calculates points of intersection with the algebraic curve.
 
         Parameters
         ----------
@@ -126,17 +128,6 @@ class AlgebraicHypersurface(ProjectiveElement):
 
         return [Point(np.real_if_close(x)) for x in sol if Tensor(x) != 0]
 
-
-class AlgebraicCurve(AlgebraicHypersurface):
-    """A plane algebraic curve, defined by the zero set of a homogeneous polynomial in 3 variables.
-
-    """
-
-    def __init__(self, poly, symbols=None):
-        super(AlgebraicCurve, self).__init__(poly, symbols)
-        if len(self.symbols) != 3:
-            raise AttributeError("Expected a polynomial in 3 variables.")
-
     @property
     def degree(self):
         """int: The degree of the curve, i.e. the homogeneous order of the defining polynomial."""
@@ -163,7 +154,7 @@ class AlgebraicCurve(AlgebraicHypersurface):
         return len(self.intersect(line)) < self.degree
     
     
-class Quadric(AlgebraicHypersurface):
+class Quadric(ProjectiveElement):
     """Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
     The quadric is defined by a symmetric matrix of size n+1 where n is the dimension of the space.
@@ -171,13 +162,40 @@ class Quadric(AlgebraicHypersurface):
     Parameters
     ----------
     matrix : array_like or Tensor
-        The array defining a (n+1)x(n+1) symmetric matrix.
+        A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
+    is_dual : bool, optional
+        If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
+
+    Attributes
+    ----------
+    symbols : tuple of sympy.Symbol
+        The symbols used in the polynomial defining the hypersurface.
 
     """
 
-    def __init__(self, matrix):
+    def __init__(self, matrix, is_dual=False):
+        self.is_dual = is_dual
         matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        super(Quadric, self).__init__(matrix, symbols=_symbols(matrix.shape[0]))
+        self.symbols = _symbols(matrix.shape[0])
+        super(Quadric, self).__init__(matrix, covariant=False)
+
+    @classmethod
+    def from_planes(cls, e, f):
+        """Construct a degenerate quadric from two hyperplanes.
+
+        Parameters
+        ----------
+        e, f : Plane
+            The two planes the quadric consists of.
+
+        Returns
+        -------
+        Quadric
+            The resulting quadric.
+
+        """
+        m = np.outer(e.array, f.array)
+        return cls(m + m.T)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -195,13 +213,29 @@ class Quadric(AlgebraicHypersurface):
         """
         return Plane(self.array.dot(at.array))
 
-    def contains(self, pt, tol=1e-8):
+    def is_tangent(self, plane):
+        """Tests if a given hyperplane is tangent to the quadric.
+
+        Parameters
+        ----------
+        plane : Subspace
+            The hyperplane to test.
+
+        Returns
+        -------
+        bool
+            True if the given hyperplane is tangent to the quadric.
+
+        """
+        return self.dual.contains(plane)
+
+    def contains(self, other, tol=1e-8):
         """Tests if a given point lies on the quadric.
 
         Parameters
         ----------
-        pt : Point
-            The point to test.
+        other : Point or Subspace
+            The point or hyperplane to test.
         tol : float, optional
             The accepted tolerance.
 
@@ -211,7 +245,7 @@ class Quadric(AlgebraicHypersurface):
             True if the quadric contains the point.
 
         """
-        return np.isclose(pt.array.dot(self.array.dot(pt.array)), 0, atol=tol)
+        return np.isclose(other.array.dot(self.array.dot(other.array)), 0, atol=tol)
 
     @property
     def polynomial(self):
@@ -223,22 +257,94 @@ class Quadric(AlgebraicHypersurface):
         """bool: True if the quadric is degenerate."""
         return np.isclose(np.linalg.det(self.array), 0)
 
+    @property
+    def components(self):
+        """list of ProjectiveElement: The components of a degenerate quadric."""
+        # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
+        n = self.array.shape[0]
 
-class Conic(Quadric, AlgebraicCurve):
+        # TODO: handle cones
+
+        x = []
+        for ind in combinations(range(n), n-2):
+            # calculate all principal minors of order 2
+            row_ind = [[j] for j in range(n) if j not in ind]
+            col_ind = [j for j in range(n) if j not in ind]
+            x.append(csqrt(-np.linalg.det(self.array[row_ind, col_ind])))
+
+        # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
+        m = hat_matrix(x)
+        t = self.array + m
+
+        # components are in the non-zero rows and columns (up to scalar multiple)
+        i = np.unravel_index(np.abs(t).argmax(), t.shape)
+        if self.is_dual:
+            return [Point(t[i[0]]), Point(t[:, i[1]])]
+        elif n == 3:
+            return [Line(t[i[0]]), Line(t[:, i[1]])]
+        return [Plane(t[i[0]]), Plane(t[:, i[1]])]
+
+    def intersect(self, other):
+        """Calculates points of intersection with the quadric.
+
+        Parameters
+        ----------
+        other: Line or Quadric
+            The object to intersect this quadric with.
+
+        Returns
+        -------
+        list of Point
+            The points of intersection
+
+        """
+        # TODO: intersect with plane -> Conic
+
+        if isinstance(other, Line):
+            if self.is_degenerate:
+                e, f = self.components
+                if self.is_dual:
+                    p, q = e.join(other), f.join(other)
+                else:
+                    p, q = e.meet(other), f.meet(other)
+            else:
+                n = self.array.shape[0]
+                e = LeviCivitaTensor(n)
+                diagram = TensorDiagram(*[(e, other)]*(n - 2))
+                m = diagram.calculate().array
+                b = m.T.dot(self.array).dot(m)
+                p, q = Quadric(b, is_dual=not self.is_dual).components
+
+            if p == q:
+                return [p]
+
+            return [p, q]
+
+        if isinstance(other, Quadric):
+            if other.is_degenerate:
+                e, f = other.components
+
+            else:
+                x = _symbols(1)
+                m = sympy.Matrix(self.array + x * other.array)
+                f = sympy.poly(m.det(), x)
+                roots = np.roots(f.coeffs())
+                c = Quadric(self.array + roots[0] * other.array, is_dual=self.is_dual)
+                e, f = c.components
+
+            result = self.intersect(e)
+            result += [x for x in self.intersect(f) if x not in result]
+            return result
+
+    @property
+    def dual(self):
+        """Conic: The dual conic."""
+        return type(self)(np.linalg.inv(self.array), is_dual=not self.is_dual)
+
+
+class Conic(Quadric):
     """A two-dimensional conic.
-
-    Parameters
-    ----------
-    matrix : array_like or Tensor
-        A two dimensional array that defines the symmetric 3x3 matrix of the conic.
-    is_dual : bool, optional
-        If true, the conic represents a dual conic, i.e. all lines tangent to the non-dual conic.
-
     """
-
-    def __init__(self, matrix, is_dual=False):
-        self.is_dual = is_dual
-        super(Conic, self).__init__(matrix)
 
     @classmethod
     def from_points(cls, a, b, c, d, e):
@@ -380,70 +486,6 @@ class Conic(Quadric, AlgebraicCurve):
         matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
         return cls(matrix + matrix.T)
 
-    @property
-    def components(self):
-        """list of ProjectiveElement: The components of a degenerate conic."""
-        # Algorithm from Perspectives on Projective Geometry, Section 11.1
-        a = csqrt(-np.linalg.det(self.array[[[1], [2]], [1, 2]]))
-        b = csqrt(-np.linalg.det(self.array[[[0], [2]], [0, 2]]))
-        c = csqrt(-np.linalg.det(self.array[[[0], [1]], [0, 1]]))
-        m = hat_matrix(a, b, c)
-        t = self.array + m
-        i = np.unravel_index(np.abs(t).argmax(), t.shape)
-        if self.is_dual:
-            return [Point(t[i[0]]), Point(t[:, i[1]])]
-        return [Line(t[i[0]]), Line(t[:, i[1]])]
-
-    def intersect(self, other):
-        """Calculates points of intersection with the conic.
-
-        Parameters
-        ----------
-        other: Line or Conic
-            The object to intersect this curve with.
-
-        Returns
-        -------
-        list of Point
-            The points of intersection
-
-        """
-        if isinstance(other, (Line, Point)):
-            if self.is_degenerate:
-                g, h = self.components
-                if self.is_dual:
-                    p, q = g.join(other), h.join(other)
-                else:
-                    p, q = g.meet(other), h.meet(other)
-            else:
-                x, y, z = other.array
-                m = hat_matrix(x, y, z)
-                b = m.T.dot(self.array).dot(m)
-                p, q = Conic(b, is_dual=not self.is_dual).components
-
-            if p == q:
-                return [p]
-
-            return [p, q]
-
-        if isinstance(other, Conic):
-            if other.is_degenerate:
-                g, h = other.components
-
-            else:
-                x = _symbols(1)
-                m = sympy.Matrix(self.array + x * other.array)
-                f = sympy.poly(m.det(), x)
-                roots = np.roots(f.coeffs())
-                c = Conic(self.array + roots[0]*other.array, is_dual=self.is_dual)
-                g, h = c.components
-
-            result = self.intersect(g)
-            result += [x for x in self.intersect(h) if x not in result]
-            return result
-
-        return super(Conic, self).intersect(other)
-
     def tangent(self, at):
         """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
 
@@ -488,11 +530,6 @@ class Conic(Quadric, AlgebraicCurve):
             return i.meet(j),
         intersections = [i[0].meet(j[0]), i[1].meet(j[1]), i[0].meet(j[1]), i[1].meet(j[0])]
         return tuple(p for p in intersections if np.all(np.isreal(p.normalized_array)))
-
-    @property
-    def dual(self):
-        """Conic: The dual conic."""
-        return Conic(np.linalg.inv(self.array), is_dual=not self.is_dual)
 
 
 absolute_conic = Conic(np.eye(3))

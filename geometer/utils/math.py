@@ -40,8 +40,8 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
     return np.isclose(ab*ab.conj(), np.sum(a*a.conj(), axis=axis)*np.sum(b*b.conj(), axis=axis), rtol, atol)
 
 
-def hat_matrix(a, b, c):
-    r"""Builds a 3x3 antisymmetric matrix with the given scalars in the positions shown below.
+def hat_matrix(*args):
+    r"""Builds a skew symmetric matrix with the given scalars in the positions shown below.
 
     .. math::
 
@@ -62,9 +62,26 @@ def hat_matrix(a, b, c):
         The resulting antisymmetric matrix.
 
     """
-    return np.array([[0, c, -b],
-                     [-c, 0, a],
-                     [b, -a, 0]])
+    if len(args) == 1:
+        x = np.array(args[0])
+    else:
+        x = np.array(args)
+
+    n = int(1+np.sqrt(1+8*len(x)))//2
+
+    if n == 3:
+        a, b, c = x
+        return np.array([[0, c, -b],
+                         [-c, 0, a],
+                         [b, -a, 0]])
+
+    result = np.zeros((n, n), x.dtype)
+    i, j = np.triu_indices(n, 1)
+    i, j = i[::-1], j[::-1]
+    result[j, i] = -x
+    result[i, j] = x
+
+    return result
 
 
 def null_space(A):

@@ -140,9 +140,19 @@ class TestQuadric:
         assert q.contains(Point(1, 0, 0))
         assert q.tangent(at=Point(1, 0, 0)) == Plane(Point(1, 0, 0), Point(1, 0, 1), Point(1, 1, 0))
 
+    def test_components(self):
+        e = Plane(1, 2, 3, 4)
+        f = Plane(4, 3, 2, 1)
+
+        q = Quadric.from_planes(e, f)
+        assert q.components == [e, f]
+
     def test_intersection(self):
         s = Sphere(Point(0, 0, 2), 2)
         l = Line(Point(-1, 0, 2), Point(1, 0, 2))
+
+        # TODO: test other quadrics
+
         assert s.contains(Point(0, 0, 0))
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
 
