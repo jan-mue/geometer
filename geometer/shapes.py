@@ -4,7 +4,7 @@ import numpy as np
 
 from .base import TensorDiagram, Tensor, LeviCivitaTensor
 from .utils import distinct, is_multiple
-from .point import Line, Plane, Point, join, infty_hyperplane
+from .point import Line, Plane, Point, infty_hyperplane
 from .operators import dist, angle, harmonic_set
 from .exceptions import NotCoplanar, LinearDependenceError
 
@@ -117,6 +117,23 @@ def _meet_planes_lines(planes, lines):
 
     diagram = TensorDiagram((e, x), *[(e, x)]*(n-2))
     return diagram.calculate().array.T
+
+
+def _general_direction(points, planes):
+    # build array of directions for point in polygon problem
+
+    direction = np.zeros(points.shape, planes.dtype)
+    ind = np.isclose(planes.T[0], 0)
+    direction[ind, 0] = 1
+    direction[~ind, 0] = planes[~ind, 1]
+    direction[~ind, 1] = -planes[~ind, 0]
+
+    isinf = np.isclose(points.T[-1], 0)
+    direction[isinf, 0] = 1
+    ind = is_multiple(direction[isinf], points[isinf], axis=-1)
+    direction[isinf, 1] = ind.astype(int)
+
+    return direction
 
 
 def _meet_coplanar_lines(lines1, lines2):
@@ -414,20 +431,12 @@ class Polygon(Polytope):
         if self.dim > 2 and not self._plane.contains(other):
             return False
 
-        if other.isinf:
-            direction = Point([1] + [0]*self.dim)
-            if direction == other:
-                direction = Point([0, 1] + [0] * (self.dim-1))
-        elif self.dim == 2:
-            direction = Point([1, 0, 0])
+        if self.dim == 2:
+            direction = [1, 0, 0]
         else:
-            a = self._plane.array
-            if np.isclose(a[0], 0):
-                direction = Point([1] + [0]*self.dim)
-            else:
-                direction = Point([a[1], -a[0]] + [0]*(self.dim-1))
+            direction = _general_direction(other.array, self._plane.array)
 
-        ray = Segment(other, direction)
+        ray = Segment(other, Point(direction))
         intersections = self._intersect_coplanar_line(ray._line)
         intersection_count = np.sum(_segment_contains(*ray.array, intersections))
 
@@ -582,19 +591,8 @@ class Polyhedron(Polytope):
         planes = _join_points(v1, v2, v3)
         points = _meet_planes_lines(planes, np.array([line.array]))
 
-        # build array of directions for point in polygon problem
-        direction = np.zeros(points.shape, planes.dtype)
-        ind = np.isclose(planes[:, 0], 0)
-        direction[ind, 0] = 1
-        direction[~ind, 0] = planes[~ind, 1]
-        direction[~ind, 1] = -planes[~ind, 0]
-
-        isinf = np.isclose(points[:, -1], 0)
-        direction[isinf, 0] = 1
-        ind = is_multiple(direction[isinf], points[isinf], axis=-1)
-        direction[isinf, 1] = ind.astype(int)
-
         # intersect rays with edges of the polygons
+        direction = _general_direction(points, planes)
         v1 = self.array
         v2 = np.roll(self.array, -1, axis=1)
 
