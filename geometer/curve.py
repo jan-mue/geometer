@@ -7,7 +7,7 @@ from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J
-from .base import ProjectiveElement, Tensor, TensorDiagram, LeviCivitaTensor, _symbols
+from .base import ProjectiveElement, Tensor, TensorDiagram, LeviCivitaTensor, _symbols, EQ_TOL_ABS
 from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix
 
 
@@ -255,7 +255,7 @@ class Quadric(ProjectiveElement):
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return np.isclose(np.linalg.det(self.array), 0)
+        return np.isclose(np.linalg.det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
     def components(self):

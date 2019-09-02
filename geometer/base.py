@@ -8,6 +8,9 @@ from .utils import is_multiple
 from .exceptions import TensorComputationError
 
 
+EQ_TOL_REL = 1e-15
+EQ_TOL_ABS = 1e-8
+
 _symbol_cache = []
 
 
@@ -390,7 +393,7 @@ class ProjectiveElement(Tensor, ABC):
             if self.array.shape != other.array.shape:
                 return False
 
-            return is_multiple(self.array, other.array)
+            return is_multiple(self.array, other.array, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
         return super(ProjectiveElement, self).__eq__(other)
 

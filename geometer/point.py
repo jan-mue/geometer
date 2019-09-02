@@ -3,7 +3,7 @@ from collections import Iterable
 import numpy as np
 import sympy
 
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, _symbols
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, _symbols, EQ_TOL_ABS
 from .exceptions import LinearDependenceError, NotCoplanar
 from .utils import null_space
 
@@ -188,7 +188,7 @@ class Point(ProjectiveElement):
 
     @property
     def isinf(self):
-        return np.isclose(self.array[-1], 0)
+        return np.isclose(self.array[-1], 0, atol=EQ_TOL_ABS)
 
 
 I = Point([-1j, 1, 0])
@@ -261,13 +261,15 @@ class Subspace(ProjectiveElement):
             if not self.contains(p):
                 return p
 
-    def contains(self, other):
+    def contains(self, other, tol=1e-8):
         """Tests whether a given point or line lies in the subspace.
 
         Parameters
         ----------
         other : Point or Line
             The object to test.
+        tol : float, optional
+            The accepted tolerance.
 
         Returns
         -------
@@ -276,12 +278,16 @@ class Subspace(ProjectiveElement):
 
         """
         if isinstance(other, Point):
-            return self * other == 0
-
-        # TODO: test subspace
+            result = self * other
 
         elif isinstance(other, Line):
-            return self * other.covariant_tensor == 0
+            result = self * other.covariant_tensor
+
+        else:
+            # TODO: test subspace
+            raise ValueError("argument of type %s not supported" % str(type(other)))
+
+        return np.allclose(result.array, 0, atol=tol)
 
     def meet(self, *others):
         """Intersect the subspace with other objects.
@@ -480,10 +486,10 @@ class Line(Subspace):
         if self.dim > 2:
             return Point(self.basis_matrix[0, :])
 
-        if np.isclose(self.array[2], 0):
+        if np.isclose(self.array[2], 0, atol=EQ_TOL_ABS):
             return Point(0, 0)
 
-        if not np.isclose(self.array[1], 0):
+        if not np.isclose(self.array[1], 0, atol=EQ_TOL_ABS):
             return Point([0, -self.array[2], self.array[1]])
 
         return Point([self.array[2], 0, -self.array[0]])
@@ -494,7 +500,7 @@ class Line(Subspace):
         if self.dim > 2:
             base = self.basis_matrix
             return Point(base[0, :]) - Point(base[1, :])
-        if np.isclose(self.array[0], 0) and np.isclose(self.array[1], 0):
+        if np.isclose(self.array[0], 0, atol=EQ_TOL_ABS) and np.isclose(self.array[1], 0, atol=EQ_TOL_ABS):
             return Point([0, 1, 0])
         return Point(self.array[1], -self.array[0])
 
