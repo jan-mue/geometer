@@ -80,8 +80,8 @@ class Transformation(ProjectiveElement):
         """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in
         general position.
 
-        For two dimensional transformations, 4 pairs of points are required.
-        For three dimensional transformations, 5 pairs of points are required.
+        For two dimensional transformations, 4 pairs of points are required, of which no three points are collinear.
+        For three dimensional transformations, 5 pairs of points are required, of which no four points are coplanar.
 
         Parameters
         ----------
@@ -93,12 +93,20 @@ class Transformation(ProjectiveElement):
         Transformation
             The transformation mapping each of the given points to the specified points.
 
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Proof of Theorem 3.4
+
         """
         a = [x.array for x, y in args]
         b = [y.array for x, y in args]
-        m1 = np.array(b[:-1]).T.dot(np.diag(b[-1]))
-        m2 = np.array(a[:-1]).T.dot(np.diag(a[-1]))
-        return cls(m1.dot(np.linalg.inv(m2)))
+        m1 = np.column_stack(a[:-1])
+        m2 = np.column_stack(b[:-1])
+        d1 = np.linalg.solve(m1, a[-1])
+        d2 = np.linalg.solve(m2, b[-1])
+        t1 = m1.dot(np.diag(d1))
+        t2 = m2.dot(np.diag(d2))
+        return cls(t2.dot(np.linalg.inv(t1)))
 
     def apply(self, other):
         """Apply the transformation to another object.

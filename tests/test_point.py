@@ -20,7 +20,7 @@ class Test2D:
 
         p = Point([1, 0, 0])
         q = Point(0, 1)
-        assert 2*p + 3*q == Point([2, 3, 0])
+        assert 2*p + 3*q == Point(2, 3)
 
     def test_parallel(self):
         p = Point(0, 1)

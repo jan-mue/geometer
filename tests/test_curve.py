@@ -1,6 +1,6 @@
 import numpy as np
 from sympy.abc import x, y, z
-from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, AlgebraicCurve, crossratio
+from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, Cone, Cylinder, AlgebraicCurve, crossratio
 
 
 class TestAlgebraicCurve:
@@ -169,3 +169,35 @@ class TestQuadric:
         assert np.isclose(s3.radius, 5)
         assert np.isclose(s3.volume(), 1/2 * np.pi**2 * 5**4)
         assert np.isclose(s3.area(), 2 * np.pi**2 * 5**3)
+
+    def test_cone(self):
+        c = Cone(vertex=Point(1, 0, 0), base_center=Point(2, 0, 0), radius=4)
+
+        assert c.contains(Point(1, 0, 0))
+        assert c.contains(Point(2, 4, 0))
+        assert c.contains(Point(2, 0, 4))
+        assert c.contains(Point(0, 0, -4))
+
+        c = Cone(vertex=Point(1, 1, 1), base_center=Point(2, 2, 2), radius=2)
+
+        s = np.sqrt(2)
+        assert c.contains(Point(1, 1, 1))
+        assert c.contains(Point(2+s, 2-s, 2))
+        assert c.contains(Point(2, 2-s, 2+s))
+        assert c.contains(Point(s, 0, -s))
+
+    def test_cylinder(self):
+        c = Cylinder(center=Point(1, 0, 0), direction=Point(1, 0, 0), radius=4)
+
+        assert c.contains(Point(1, 0, 4))
+        assert c.contains(Point(2, 4, 0))
+        assert c.contains(Point(2, 0, 4))
+        assert c.contains(Point(-1, 0, -4))
+
+        c = Cylinder(direction=Point(1, 1, 1), radius=2)
+
+        s = np.sqrt(2)
+        assert c.contains(Point(2 + s, 2 - s, 2))
+        assert c.contains(Point(2, 2 - s, 2 + s))
+        assert c.contains(Point(s, 0, -s))
+        assert c.contains(Point(42+s, 42, 42-s))

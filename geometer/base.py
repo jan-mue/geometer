@@ -53,6 +53,8 @@ class Tensor:
         else:
             self.array = np.array(args)
 
+        self.array = np.real_if_close(self.array)
+
         if covariant is True:
             self._covariant_indices = set(range(self.array.ndim))
         else:

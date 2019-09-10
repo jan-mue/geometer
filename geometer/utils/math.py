@@ -104,3 +104,25 @@ def null_space(A):
     dim = np.sum(s > tol, dtype=int)
     Q = vh[dim:, :].T.conj()
     return Q
+
+
+def orth(A):
+    """Constructs an orthonormal basis for the range of A using SVD.
+
+    Parameters
+    ----------
+    A : ndarray
+        The input matrix.
+
+    Returns
+    -------
+    numpy.ndarray
+        Orthonormal basis for the range of A (as column vectors in the returned matrix).
+
+    """
+    u, s, vh = np.linalg.svd(A, full_matrices=False)
+    cond = np.finfo(s.dtype).eps * max(vh.shape)
+    tol = np.amax(s) * cond
+    dim = np.sum(s > tol, dtype=int)
+    Q = u[:, :dim]
+    return Q

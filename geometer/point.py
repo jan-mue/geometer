@@ -118,6 +118,9 @@ class Point(ProjectiveElement):
     If the coordinates are given as arguments (not in a single iterable), the coordinates will automatically be
     transformed into homogeneous coordinates, i.e. a one added as an additional coordinate.
 
+    Addition and subtraction of finite and infinite points will always give a finite result if one of the points
+    was finite beforehand.
+
     Parameters
     ----------
     *args
@@ -132,15 +135,19 @@ class Point(ProjectiveElement):
             super(Point, self).__init__(*args, 1)
 
     def __add__(self, other):
+        if not isinstance(other, Point):
+            return NotImplemented
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] + b[:-1]
-        result = np.append(result, min(a[-1], b[-1]))
+        result = np.append(result, max(a[-1], b[-1]))
         return Point(result)
 
     def __sub__(self, other):
+        if not isinstance(other, Point):
+            return NotImplemented
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] - b[:-1]
-        result = np.append(result, min(a[-1], b[-1]))
+        result = np.append(result, max(a[-1], b[-1]))
         return Point(result)
 
     def __mul__(self, other):
@@ -213,7 +220,7 @@ class Subspace(ProjectiveElement):
         return translation(other) * self
 
     def __sub__(self, other):
-        return -other + self
+        return self + (-other)
 
     def polynomials(self, symbols=None):
         """Returns a list of polynomials, to use for symbolic calculations.

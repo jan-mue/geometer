@@ -6,9 +6,9 @@ import numpy as np
 from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
-from .point import Point, Line, Plane, I, J
+from .point import Point, Line, Plane, I, J, infty_plane
 from .base import ProjectiveElement, Tensor, TensorDiagram, LeviCivitaTensor, _symbols, EQ_TOL_ABS
-from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix
+from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, orth
 
 
 class AlgebraicCurve(ProjectiveElement):
@@ -688,8 +688,71 @@ class Sphere(Quadric):
 
 
 class Cone(Quadric):
-    pass
+    """A quadric that forms a circular double cone in 3D.
+
+    Parameters
+    ----------
+    vertex : Point, optional
+        The vertex or apex of the cone. Default is (0, 0, 0).
+    base_center : Point, optional
+        The center of the circle that forms the base of the conic. Default is (0, 0, 1)
+    radius : float, optional
+        The radius of the circle forming the base of the cone. Default is 1.
+
+    """
+
+    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1):
+        from .operators import dist
+        from .transformation import Transformation
+
+        h = dist(vertex, base_center)
+        c = (radius / h)**2
+
+        if np.isinf(h):
+            # cone with vertex at infinity is a cylinder with the center of the base as center
+            v = base_center.normalized_array
+        else:
+            v = vertex.normalized_array
+
+        # first build a cone with axis parallel to the z-axis
+        m = np.eye(4)
+        m[-1, :] = -v
+        m[:, -1] = -v
+
+        if np.isinf(c):
+            # if h == 0 the quadric becomes a circle
+            m[3, 3] = v[:3].dot(v[:3]) - radius ** 2
+        else:
+            m[2:, 2:] *= -c
+            m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2]**2 * c)
+
+        # rotate the axis of the cone
+        axis = Line(vertex, base_center)
+        x, y = orth(axis.array.T).T
+        v, x, y = Point(v), Point(x), Point(y)
+        z = base_center.normalized_array[:3] - vertex.normalized_array[:3]
+        z = Point(*z/np.linalg.norm(z))
+        a = [v, v + Point(1, 0, 0), v + Point(0, 1, 0), v + Point(1, 0, 1), v + Point(0, -1, 1)]
+        b = [v, v + x, v + y, v + z + x, v + z - y]
+        t = Transformation.from_points(*zip(a, b)).inverse()
+
+        super(Cone, self).__init__(t.array.T.dot(m).dot(t.array))
 
 
-class Cylinder(Quadric):
-    pass
+class Cylinder(Cone):
+    """A circular cylinder in 3D.
+
+    Parameters
+    ----------
+    center : Point, optional
+        The center of the cylinder. Default is (0, 0, 0).
+    direction : Point
+        The direction of the axis of the cylinder. Default is (0, 0, 1).
+    radius : float, optional
+        The radius of the cylinder. Default is 1.
+
+    """
+
+    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1):
+        vertex = infty_plane.meet(Line(center, center+direction))
+        super(Cylinder, self).__init__(vertex, center, radius)
