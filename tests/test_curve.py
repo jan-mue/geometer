@@ -165,13 +165,13 @@ class TestQuadric:
 
         assert s2.center == Point(0, 0, 0)
         assert np.isclose(s2.radius, 1)
-        assert np.isclose(s2.volume(), 4/3*np.pi)
-        assert np.isclose(s2.area(), 4*np.pi)
+        assert np.isclose(s2.volume, 4/3*np.pi)
+        assert np.isclose(s2.area, 4*np.pi)
 
         assert s3.center == Point(1, 2, 3, 4)
         assert np.isclose(s3.radius, 5)
-        assert np.isclose(s3.volume(), 1/2 * np.pi**2 * 5**4)
-        assert np.isclose(s3.area(), 2 * np.pi**2 * 5**3)
+        assert np.isclose(s3.volume, 1/2 * np.pi**2 * 5**4)
+        assert np.isclose(s3.area, 2 * np.pi**2 * 5**3)
 
     def test_cone(self):
         c = Cone(vertex=Point(1, 0, 0), base_center=Point(2, 0, 0), radius=4)

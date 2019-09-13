@@ -84,6 +84,14 @@ class TestPolygon:
         s = Segment(a, c)
         assert r.intersect(s) == [a, c]
 
+    def test_edges(self):
+        a = Point(0, 0)
+        b = Point(0, 2)
+        c = Point(2, 2)
+        d = Point(2, 0)
+        r = Rectangle(a, b, c, d)
+        assert r.edges == [Segment(a, b), Segment(b, c), Segment(c, d), Segment(d, a)]
+
     def test_contains(self):
         a = Point(0, 0)
         b = Point(0, 2)

@@ -284,6 +284,7 @@ class Polygon(Polytope):
 
     @property
     def edges(self):
+        """list of Segment: The edges of the polygon."""
         return self.facets
 
     def contains(self, other):

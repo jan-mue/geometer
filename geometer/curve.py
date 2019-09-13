@@ -644,15 +644,9 @@ class Circle(Ellipse):
 
         return np.arccos(np.vdot(p1, p2))
 
+    @property
     def area(self):
-        """Calculate the area of the circle.
-
-        Returns
-        -------
-        float
-            The area of the circle.
-
-        """
+        """float: The area of the circle."""
         return 2*np.pi*self.radius**2
 
 
@@ -691,26 +685,15 @@ class Sphere(Quadric):
     def _alpha(n):
         return math.pi**(n/2) / math.gamma(n/2 + 1)
 
+    @property
     def volume(self):
-        """Calculate the volume of the sphere.
+        """float: The volume of the sphere."""
+        n = self.dim
+        return self._alpha(n)*self.radius**n
 
-        Returns
-        -------
-        float
-            The volume of the sphere.
-
-        """
-        return self._alpha(self.dim)*self.radius**self.dim
-
+    @property
     def area(self):
-        """Calculate the surface area of the sphere.
-
-        Returns
-        -------
-        float
-            The surface area of the sphere.
-
-        """
+        """float: The surface area of the sphere."""
         n = self.dim
         return n*self._alpha(n)*self.radius**(n-1)
 
