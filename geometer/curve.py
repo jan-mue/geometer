@@ -25,7 +25,7 @@ class AlgebraicCurve(ProjectiveElement):
     Attributes
     ----------
     symbols : tuple of sympy.Symbol
-        The symbols used in the polynomial defining the hypersurface.
+        The symbols used in the polynomial defining the curve.
 
     """
 
@@ -68,12 +68,37 @@ class AlgebraicCurve(ProjectiveElement):
 
         Returns
         -------
-        Subspace
+        Line
             The tangent line.
 
         """
         dx = [polyval(at.array, pl.polyder(self.array, axis=i)) for i in range(self.dim + 1)]
         return Line(dx)
+
+    @property
+    def degree(self):
+        """int: The degree of the curve, i.e. the homogeneous order of the defining polynomial."""
+        return self.polynomial.homogeneous_order()
+
+    def is_tangent(self, line):
+        """Tests if a given line is tangent to the curve.
+
+        The method compares the number of intersections to the degree of the algebraic curve. If the line is tangent
+        to the curve it will have at least a double intersection and using Bezout's theorem we know that otherwise the
+        number of intersections (counted without multiplicity) is equal to the degree of the curve.
+
+        Parameters
+        ----------
+        line : Line
+            The line to test.
+
+        Returns
+        -------
+        bool
+            True if the given line is tangent to the algebraic curve.
+
+        """
+        return len(self.intersect(line)) < self.degree
 
     def contains(self, pt, tol=1e-8):
         """Tests if a given point lies on the hypersurface.
@@ -128,31 +153,6 @@ class AlgebraicCurve(ProjectiveElement):
                 continue
 
         return [Point(np.real_if_close(x)) for x in sol if Tensor(x) != 0]
-
-    @property
-    def degree(self):
-        """int: The degree of the curve, i.e. the homogeneous order of the defining polynomial."""
-        return self.polynomial.homogeneous_order()
-
-    def is_tangent(self, line):
-        """Tests if a given line is tangent to the curve.
-
-        The method compares the number of intersections to the degree of the algebraic curve. If the line is tangent
-        to the curve it will have at least a double intersection and using Bezout's theorem we know that otherwise the
-        number of intersections (counted without multiplicity) is equal to the degree of the curve.
-
-        Parameters
-        ----------
-        line : Line
-            The line to test.
-
-        Returns
-        -------
-        bool
-            True if the given line is tangent to the algebraic curve.
-
-        """
-        return len(self.intersect(line)) < self.degree
     
     
 class Quadric(ProjectiveElement):
@@ -310,13 +310,18 @@ class Quadric(ProjectiveElement):
             try:
                 e, f = self.components
             except NotDegenerate:
-                i = np.where(other.array != 0)[0][0]
-                m = Plane(other.array[i]).basis_matrix
-                c = Conic(m.dot(self.array).dot(m.T))
-                line_base = other.basis_matrix.T
-                l = Line(*[Point(x) for x in m.dot(line_base).T])
-                intersections = [Point(m.T.dot(p.array)) for p in c.intersect(l)]
-                p, q = intersections
+                if self.dim > 2:
+                    arr = other.array.reshape((-1, self.dim+1))
+                    i = np.where(arr != 0)[0][0]
+                    m = Plane(arr[i]).basis_matrix
+                    conic = Conic(m.dot(self.array).dot(m.T))
+                    line_base = other.basis_matrix.T
+                    line = Line(*[Point(x) for x in m.dot(line_base).T])
+                    p, q = [Point(m.T.dot(p.array)) for p in conic.intersect(line)]
+                else:
+                    m = hat_matrix(other.array)
+                    b = m.T.dot(self.array).dot(m)
+                    p, q = Conic(b, is_dual=not self.is_dual).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)
@@ -489,28 +494,9 @@ class Conic(Quadric):
         Returns
         -------
         list of Point
-            The points of intersection
+            The points of intersection.
 
         """
-        if isinstance(other, (Line, Point)):
-            try:
-                g, h = self.components
-            except NotDegenerate:
-                x, y, z = other.array
-                m = hat_matrix(x, y, z)
-                b = m.T.dot(self.array).dot(m)
-                p, q = Conic(b, is_dual=not self.is_dual).components
-            else:
-                if self.is_dual:
-                    p, q = g.join(other), h.join(other)
-                else:
-                    p, q = g.meet(other), h.meet(other)
-
-            if p == q:
-                return [p]
-
-            return [p, q]
-
         if isinstance(other, Conic):
             try:
                 g, h = other.components
@@ -525,6 +511,8 @@ class Conic(Quadric):
             result = self.intersect(g)
             result += [x for x in self.intersect(h) if x not in result]
             return result
+
+        return super(Conic, self).intersect(other)
 
     def tangent(self, at):
         """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
