@@ -64,7 +64,7 @@ class AlgebraicCurve(ProjectiveElement):
         Parameters
         ----------
         at : Point
-            The point to calculate the tangent space at.
+            The point to calculate the tangent line at.
 
         Returns
         -------
@@ -101,7 +101,7 @@ class AlgebraicCurve(ProjectiveElement):
         return len(self.intersect(line)) < self.degree
 
     def contains(self, pt, tol=1e-8):
-        """Tests if a given point lies on the hypersurface.
+        """Tests if a given point lies on the algebraic curve.
 
         Parameters
         ----------
@@ -124,7 +124,7 @@ class AlgebraicCurve(ProjectiveElement):
         Parameters
         ----------
         other : Line or AlgebraicCurve
-            The object to intersect this surface with.
+            The object to intersect this curve with.
 
         Returns
         -------

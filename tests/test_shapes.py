@@ -92,13 +92,14 @@ class TestPolygon:
         r = Rectangle(a, b, c, d)
         assert r.contains(Point(1, 1))
 
-        a = Point(0, 0)
-        b = Point(1, 3)
-        c = Point(2, 0)
-        d = Point(1, 1)
+        a = Point(0, 0, 1)
+        b = Point(1, 3, 1)
+        c = Point(2, 0, 1)
+        d = Point(1, 1, 1)
         p = Polygon(a, b, c, d)
 
-        assert p.contains(Point(0.5, 1))
+        assert p.contains(Point(0.5, 1, 1))
+        assert not p.contains(Point(0.5, 1, 0))
 
     def test_area(self):
         a = Point(0, 0)
@@ -127,6 +128,7 @@ class TestPolygon:
         assert len(p.vertices) == 6
         assert np.isclose(dist(a, p.vertices[0]), 1)
         assert all(np.isclose(s.length, d) for s in p.edges[1:])
+        assert np.allclose(p.angles, np.pi/3)
         
         
 class TestPolytope:

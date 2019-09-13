@@ -393,6 +393,8 @@ class RegularPolygon(Polygon):
         The center of the polygon.
     radius : float
         The distance from the center to the vertices of the polygon.
+    n : int
+        The number of vertices of the regular polygon.
     axis : Point, optional
         If constructed in higher-dimensional spaces, an axis vector is required to orient the polygon.
 
