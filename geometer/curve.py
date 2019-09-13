@@ -8,6 +8,7 @@ from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J, infty_plane
 from .base import ProjectiveElement, Tensor, _symbols, EQ_TOL_REL, EQ_TOL_ABS
+from .exceptions import NotDegenerate
 from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, orth, is_multiple
 
 
@@ -262,7 +263,7 @@ class Quadric(ProjectiveElement):
         """list of ProjectiveElement: The components of a degenerate quadric."""
 
         if not self.is_degenerate:
-            raise ValueError("Quadric is not degenerate.")
+            raise NotDegenerate("Quadric is not degenerate.")
 
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
         n = self.array.shape[0]
@@ -283,7 +284,7 @@ class Quadric(ProjectiveElement):
         p, q = t[i[0]], t[:, i[1]]
 
         if self.dim > 2 and not is_multiple(np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
-            raise ValueError("Quadric has no decomposition in 2 components.")
+            raise NotDegenerate("Quadric has no decomposition in 2 components.")
 
         if self.is_dual:
             return [Point(p), Point(q)]
@@ -308,7 +309,7 @@ class Quadric(ProjectiveElement):
         if isinstance(other, Line):
             try:
                 e, f = self.components
-            except ValueError:
+            except NotDegenerate:
                 i = np.where(other.array != 0)[0][0]
                 m = Plane(other.array[i]).basis_matrix
                 c = Conic(m.dot(self.array).dot(m.T))
@@ -494,7 +495,7 @@ class Conic(Quadric):
         if isinstance(other, (Line, Point)):
             try:
                 g, h = self.components
-            except ValueError:
+            except NotDegenerate:
                 x, y, z = other.array
                 m = hat_matrix(x, y, z)
                 b = m.T.dot(self.array).dot(m)
@@ -513,7 +514,7 @@ class Conic(Quadric):
         if isinstance(other, Conic):
             try:
                 g, h = other.components
-            except ValueError:
+            except NotDegenerate:
                 x = _symbols(1)
                 m = sympy.Matrix(self.array + x * other.array)
                 f = sympy.poly(m.det(), x)

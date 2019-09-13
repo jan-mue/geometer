@@ -21,4 +21,8 @@ class IncidenceError(GeometryException, ValueError):
 
 
 class LinearDependenceError(GeometryException, ValueError):
-    """The given values were linearly dependent, making the computation impossible,"""
+    """The given values were linearly dependent, making the computation impossible."""
+
+
+class NotDegenerate(GeometryException, ValueError):
+    """The given geometric object is not degenerate."""
