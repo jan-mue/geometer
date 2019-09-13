@@ -7,8 +7,8 @@ from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J, infty_plane
-from .base import ProjectiveElement, Tensor, TensorDiagram, LeviCivitaTensor, _symbols, EQ_TOL_ABS
-from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, orth
+from .base import ProjectiveElement, Tensor, _symbols, EQ_TOL_REL, EQ_TOL_ABS
+from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, orth, is_multiple
 
 
 class AlgebraicCurve(ProjectiveElement):
@@ -203,7 +203,7 @@ class Quadric(ProjectiveElement):
         Parameters
         ----------
         at : Point
-            The point at which the tangent space is calculated.
+            A point on the quadric at which the tangent plane is calculated.
 
         Returns
         -------
@@ -260,10 +260,12 @@ class Quadric(ProjectiveElement):
     @property
     def components(self):
         """list of ProjectiveElement: The components of a degenerate quadric."""
+
+        if not self.is_degenerate:
+            raise ValueError("Quadric is not degenerate.")
+
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
         n = self.array.shape[0]
-
-        # TODO: handle cones
 
         x = []
         for ind in combinations(range(n), n-2):
@@ -278,19 +280,24 @@ class Quadric(ProjectiveElement):
 
         # components are in the non-zero rows and columns (up to scalar multiple)
         i = np.unravel_index(np.abs(t).argmax(), t.shape)
+        p, q = t[i[0]], t[:, i[1]]
+
+        if self.dim > 2 and not is_multiple(np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
+            raise ValueError("Quadric has no decomposition in 2 components.")
+
         if self.is_dual:
-            return [Point(t[i[0]]), Point(t[:, i[1]])]
+            return [Point(p), Point(q)]
         elif n == 3:
-            return [Line(t[i[0]]), Line(t[:, i[1]])]
-        return [Plane(t[i[0]]), Plane(t[:, i[1]])]
+            return [Line(p), Line(q)]
+        return [Plane(p), Plane(q)]
 
     def intersect(self, other):
-        """Calculates points of intersection with the quadric.
+        """Calculates points of intersection of a line with the quadric.
 
         Parameters
         ----------
-        other: Line or Quadric
-            The object to intersect this quadric with.
+        other: Line
+            The line to intersect this quadric with.
 
         Returns
         -------
@@ -298,43 +305,27 @@ class Quadric(ProjectiveElement):
             The points of intersection
 
         """
-        # TODO: intersect with plane -> Conic
-
         if isinstance(other, Line):
-            if self.is_degenerate:
+            try:
                 e, f = self.components
+            except ValueError:
+                i = np.where(other.array != 0)[0][0]
+                m = Plane(other.array[i]).basis_matrix
+                c = Conic(m.dot(self.array).dot(m.T))
+                line_base = other.basis_matrix.T
+                l = Line(*[Point(x) for x in m.dot(line_base).T])
+                intersections = [Point(m.T.dot(p.array)) for p in c.intersect(l)]
+                p, q = intersections
+            else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)
                 else:
                     p, q = e.meet(other), f.meet(other)
-            else:
-                n = self.array.shape[0]
-                e = LeviCivitaTensor(n)
-                diagram = TensorDiagram(*[(e, other)]*(n - 2))
-                m = diagram.calculate().array
-                b = m.T.dot(self.array).dot(m)
-                p, q = Quadric(b, is_dual=not self.is_dual).components
 
             if p == q:
                 return [p]
 
             return [p, q]
-
-        if isinstance(other, Quadric):
-            if other.is_degenerate:
-                e, f = other.components
-
-            else:
-                x = _symbols(1)
-                m = sympy.Matrix(self.array + x * other.array)
-                f = sympy.poly(m.det(), x)
-                roots = np.roots(f.coeffs())
-                c = Quadric(self.array + roots[0] * other.array, is_dual=self.is_dual)
-                e, f = c.components
-
-            result = self.intersect(e)
-            result += [x for x in self.intersect(f) if x not in result]
-            return result
 
     @property
     def dual(self):
@@ -367,7 +358,7 @@ class Conic(Quadric):
         ade = np.linalg.det([a, d, e])
         bce = np.linalg.det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return cls(np.real_if_close(m+m.T))
+        return cls(m+m.T)
 
     @classmethod
     def from_lines(cls, g, h):
@@ -485,6 +476,54 @@ class Conic(Quadric):
         ind = np.triu_indices(3)
         matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
         return cls(matrix + matrix.T)
+
+    def intersect(self, other):
+        """Calculates points of intersection with the conic.
+
+        Parameters
+        ----------
+        other: Line or Conic
+            The object to intersect this conic with.
+
+        Returns
+        -------
+        list of Point
+            The points of intersection
+
+        """
+        if isinstance(other, (Line, Point)):
+            try:
+                g, h = self.components
+            except ValueError:
+                x, y, z = other.array
+                m = hat_matrix(x, y, z)
+                b = m.T.dot(self.array).dot(m)
+                p, q = Conic(b, is_dual=not self.is_dual).components
+            else:
+                if self.is_dual:
+                    p, q = g.join(other), h.join(other)
+                else:
+                    p, q = g.meet(other), h.meet(other)
+
+            if p == q:
+                return [p]
+
+            return [p, q]
+
+        if isinstance(other, Conic):
+            try:
+                g, h = other.components
+            except ValueError:
+                x = _symbols(1)
+                m = sympy.Matrix(self.array + x * other.array)
+                f = sympy.poly(m.det(), x)
+                roots = np.roots(f.coeffs())
+                c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)
+                g, h = c.components
+
+            result = self.intersect(g)
+            result += [x for x in self.intersect(h) if x not in result]
+            return result
 
     def tangent(self, at):
         """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
