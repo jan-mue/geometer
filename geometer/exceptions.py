@@ -24,5 +24,5 @@ class LinearDependenceError(GeometryException, ValueError):
     """The given values were linearly dependent, making the computation impossible."""
 
 
-class NotDegenerate(GeometryException, ValueError):
-    """The given geometric object is not degenerate."""
+class NotReducible(GeometryException, ValueError):
+    """The given geometric object is not reducible."""
