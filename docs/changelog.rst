@@ -10,20 +10,26 @@ New Features
 
 - New shapes module that implements line segments, polygons and general polytopes
 - Tensor has a new tensor_product method to calculate the tensor product with another tensor
-- AlgebraicCurve is now a subclass of the new class AlgebraicHypersurface
 - A new sphere class (a subclass of Quadric) that works in any dimension
+- New classes representing a cone and a cylinder in 3D.
 - Ellipse class that constructs a conic from center and radius
 - Added Conic.foci and Conic.polar
 - Construct a conic from its focal points, using a tangent line or a cross ratio
 - Refactored & documented the code for calculation of tensor diagrams
 - New KroneckerDelta tensor
+- TensorDiagram calculates results differently, using free indices from front to back
+- New method TensorDiagram.add_node to add tensors without edge to the diagram
 - Added Circle.intersection_angle to calculate the angle of intersection of two circles
 - is_perpendicular now works with two planes
+- New function is_multiple in utils module
 
 Bug fixes
 ---------
 
-- Plane.perpendicular now also works for points tha lie on the plane
+- Plane.perpendicular now also works for points that lie on the plane
+- Addition/Subtraction of subspaces and points works in more cases
+- Globally accessible tolerance parameters to avoid inaccurate calculations
+- Fixed Transformation.from_points
 
 
 0.1.2 - released (24.2.2019)
