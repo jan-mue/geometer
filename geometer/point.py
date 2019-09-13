@@ -1,5 +1,3 @@
-from collections import Iterable
-
 import numpy as np
 import sympy
 
@@ -129,10 +127,10 @@ class Point(ProjectiveElement):
     """
 
     def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], (Iterable, Tensor)):
-            super(Point, self).__init__(*args)
-        else:
+        if np.isscalar(args[0]):
             super(Point, self).__init__(*args, 1)
+        else:
+            super(Point, self).__init__(*args)
 
     def __add__(self, other):
         if not isinstance(other, Point):
