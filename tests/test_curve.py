@@ -159,6 +159,12 @@ class TestQuadric:
         l = Line(Point(0, 4, 2), Point(4, 0, 2))
         assert c.intersect(l) == [Point(2-a, 2+a, 2), Point(2+a, 2-a, 2)]
 
+        s = Sphere(Point(0, 0, 0, 2), 2)
+        l = Line(Point(-1, 0, 0, 2), Point(1, 0, 0, 2))
+
+        assert s.contains(Point(0, 0, 0, 0))
+        assert s.intersect(l) == [Point(2, 0, 0, 2), Point(-2, 0, 0, 2)]
+
     def test_sphere(self):
         s2 = Sphere()
         s3 = Sphere(Point(1, 2, 3, 4), 5)

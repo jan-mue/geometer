@@ -315,10 +315,10 @@ class Quadric(ProjectiveElement):
                     arr = other.array.reshape((-1, self.dim + 1))
                     i = np.where(arr != 0)[0][0]
                     m = Plane(arr[i]).basis_matrix
-                    conic = Conic(m.dot(self.array).dot(m.T))
+                    q = Quadric(m.dot(self.array).dot(m.T))
                     line_base = other.basis_matrix.T
                     line = Line(*[Point(x) for x in m.dot(line_base).T])
-                    p, q = [Point(m.T.dot(p.array)) for p in conic.intersect(line)]
+                    p, q = [Point(m.T.dot(p.array)) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
                     b = m.T.dot(self.array).dot(m)
@@ -336,8 +336,8 @@ class Quadric(ProjectiveElement):
 
     @property
     def dual(self):
-        """Conic: The dual conic."""
-        return type(self)(np.linalg.inv(self.array), is_dual=not self.is_dual)
+        """Quadric: The dual quadric."""
+        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual)
 
 
 class Conic(Quadric):
@@ -707,7 +707,7 @@ class Cone(Quadric):
     vertex : Point, optional
         The vertex or apex of the cone. Default is (0, 0, 0).
     base_center : Point, optional
-        The center of the circle that forms the base of the conic. Default is (0, 0, 1)
+        The center of the circle that forms the base of the cone. Default is (0, 0, 1)
     radius : float, optional
         The radius of the circle forming the base of the cone. Default is 1.
 
