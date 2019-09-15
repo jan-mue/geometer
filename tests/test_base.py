@@ -1,6 +1,24 @@
 from geometer.base import TensorDiagram, Tensor, LeviCivitaTensor, KroneckerDelta
 
 
+class TestTensor:
+
+    def test_arithmetic(self):
+        a = Tensor(2, 3)
+        b = Tensor(5, 4)
+
+        # vector operations
+        assert a + b == Tensor(7, 7)
+        assert a - b == Tensor(-3, -1)
+        assert -a == Tensor(-2, -3)
+
+        # scalar operations
+        assert a + 6 == Tensor(8, 9)
+        assert a - 6 == Tensor(-4, -3)
+        assert a * 6 == Tensor(12, 18)
+        assert a / 6 == Tensor(1/3, 0.5)
+
+
 class TestTensorDiagram:
 
     def test_add_edge(self):

@@ -19,7 +19,7 @@ class AlgebraicCurve(ProjectiveElement):
     ----------
     poly : sympy.Expr or numpy.ndarray
         The polynomial defining the curve. It is automatically homogenized.
-    symbols : tuple` of sympy.Symbol, optional
+    symbols : iterable of sympy.Symbol, optional
         The symbols that are used in the polynomial. By default the symbols (x0, x1, x2) will be used.
 
     Attributes
@@ -35,7 +35,7 @@ class AlgebraicCurve(ProjectiveElement):
             if poly.ndim != 3:
                 raise ValueError("Expected a polynomial in 3 variables.")
 
-            self.symbols = symbols or _symbols(3)
+            self.symbols = _symbols(3) if symbols is None else tuple(symbols)
             super(AlgebraicCurve, self).__init__(poly, covariant=False)
             return
 
