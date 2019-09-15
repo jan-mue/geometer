@@ -2,19 +2,20 @@
 Changelog
 =========
 
-0.2 - unreleased
-----------------
+0.2 - released (15.9.2019)
+--------------------------
 
 New Features
 ------------
 
 - New shapes module that implements line segments, polygons and general polytopes
+- New Sphere class (a subclass of Quadric) that works in any dimension
+- New classes representing a cone and a cylinder in 3D
 - Tensor has a new tensor_product method to calculate the tensor product with another tensor
-- A new sphere class (a subclass of Quadric) that works in any dimension
-- New classes representing a cone and a cylinder in 3D.
 - Ellipse class that constructs a conic from center and radius
 - Added Conic.foci and Conic.polar
 - Construct a conic from its focal points, using a tangent line or a cross ratio
+- Faster and more general intersect method for quadrics
 - Refactored & documented the code for calculation of tensor diagrams
 - New KroneckerDelta tensor
 - TensorDiagram calculates results differently, using free indices from front to back
@@ -28,6 +29,7 @@ Bug fixes
 
 - Plane.perpendicular now also works for points that lie on the plane
 - Addition/Subtraction of subspaces and points works in more cases
+- Adding a point at infinity to another point will give a finite point moved in that direction
 - Globally accessible tolerance parameters to avoid inaccurate calculations
 - Fixed Transformation.from_points
 
