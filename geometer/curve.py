@@ -553,12 +553,21 @@ class Conic(Quadric):
     @property
     def foci(self):
         """tuple of Point: The foci of the conic."""
+        # Algorithm from Perspectives on Projective Geometry, Section 19.4
         i = self.tangent(at=I)
         j = self.tangent(at=J)
+
         if isinstance(i, Line) and isinstance(j, Line):
             return i.meet(j),
-        intersections = [i[0].meet(j[0]), i[1].meet(j[1]), i[0].meet(j[1]), i[1].meet(j[0])]
-        return tuple(p for p in intersections if np.all(np.isreal(p.normalized_array)))
+
+        i1, i2 = i
+        j1, j2 = j
+        f1, f2 = i1.meet(j1), i2.meet(j2)
+        g1, g2 = i1.meet(j2), i2.meet(j1)
+
+        if np.all(np.isreal(f1.normalized_array)):
+            return f1, f2
+        return g1, g2
 
 
 absolute_conic = Conic(np.eye(3))
@@ -581,10 +590,12 @@ class Ellipse(Conic):
     def __init__(self, center=Point(0, 0), hradius=1, vradius=1):
         r = np.array([vradius ** 2, hradius ** 2, 1])
         c = -center.normalized_array
-        m = np.diag(r)
-        m[2, :] = c * r
-        m[:, 2] = c * r
-        m[2, 2] = r.dot(c ** 2) - (r[0] * r[1] + 1)
+        d = c * r
+        m = np.eye(3, dtype=d.dtype)
+        m[[0, 1], [0, 1]] = r[:2]
+        m[2, :] = d
+        m[:, 2] = d
+        m[2, 2] = d.dot(c) - (r[0] * r[1] + 1)
         super(Ellipse, self).__init__(m)
 
 
@@ -664,8 +675,8 @@ class Sphere(Quadric):
     """
 
     def __init__(self, center=Point(0, 0, 0), radius=1):
-        m = np.eye(center.array.shape[0])
         c = -center.normalized_array
+        m = np.eye(center.array.shape[0], dtype=(radius*c).dtype)
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
@@ -727,7 +738,7 @@ class Cone(Quadric):
             v = vertex.normalized_array
 
         # first build a cone with axis parallel to the z-axis
-        m = np.eye(4)
+        m = np.eye(4, dtype=(c*v).dtype)
         m[-1, :] = -v
         m[:, -1] = -v
 

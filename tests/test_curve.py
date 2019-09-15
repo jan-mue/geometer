@@ -100,16 +100,21 @@ class TestConic:
         assert c.contains(Point(1, 0))
 
     def test_foci(self):
+        e = Ellipse(Point(0, 0), 3, 2)
+        f = e.foci
+        f1 = Point(np.sqrt(5), 0)
+        f2 = Point(np.sqrt(5), 0)
+
+        assert len(f) == 2
+        assert f1 in f and f2 in f
+
+    def test_from_foci(self):
         f1 = Point(0, np.sqrt(5))
         f2 = Point(0, -np.sqrt(5))
         b = Point(0, 3)
-
         conic = Conic.from_foci(f1, f2, b)
-        f = conic.foci
 
-        assert conic.contains(b)
-        assert len(f) == 2
-        assert f1 in f and f2 in f
+        assert conic == Ellipse(Point(0, 0), 2, 3)
 
 
 class TestCircle:
