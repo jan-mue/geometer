@@ -5,7 +5,7 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
     """Returns a boolean array where two arrays are scalar multiples of each other along a given axis.
 
     This function compares the absolute value of the scalar product and the product of the norm of the arrays (along
-    an axis). The Cauchy-Schwarz inequality guarantees in its border case that this equality holds if and only if one
+    an axis). The Cauchy-Schwarz inequality guarantees in its edge case that this equality holds if and only if one
     of the vectors is a scalar multiple of the other.
 
     For documentation of the tolerance parameters see :func:`numpy.isclose`.

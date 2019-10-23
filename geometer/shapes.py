@@ -448,10 +448,12 @@ class Polyhedron(Polytope):
 
     @property
     def faces(self):
+        """list of Polygon: The faces of the polyhedron."""
         return self.facets
 
     @property
     def edges(self):
+        """list of Segment: The edges of the polyhedron."""
         return list(distinct(s for f in self.faces for s in f.edges))
 
     @property
