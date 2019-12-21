@@ -128,7 +128,7 @@ class Transformation(ProjectiveElement):
             return type(other)(other*self.inverse())
         if isinstance(other, Quadric):
             inv = self.inverse()
-            return type(other)(TensorDiagram((inv, other), (other, inv)).calculate())
+            return type(other)(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
         if isinstance(other, Polytope):
             return type(other)(other.array.dot(self.array.T))
         return NotImplemented
