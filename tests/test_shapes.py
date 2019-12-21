@@ -122,7 +122,7 @@ class TestPolygon:
         c = Point(2, 1)
         d = Point(2, 0)
         r = Rectangle(a, b, c, d)
-        r2 = rotation(np.pi/2)*r
+        r2 = rotation(np.pi/2).apply(r)
 
         assert r.area == r2.area
         assert r2.contains(Point(-0.5, 1.5))

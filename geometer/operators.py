@@ -100,7 +100,7 @@ def harmonic_set(a, b, c):
 
     m = Line(o, c)
     p = o + 1/2*m.direction
-    result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
+    result = l.meet(join(meet(join(o, a), join(p, b)), meet(join(o, b), join(p, a))))
 
     if n > 3:
         return Point(basis.T.dot(result.array))
@@ -364,7 +364,7 @@ def is_coplanar(*args, tol=1.e-8):
     diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n-1]])
     tensor = diagram.calculate()
     for t in args[n:]:
-        x = t*tensor if covariant else tensor*t
+        x = t@tensor if covariant else tensor@t
         if not np.isclose(x.array, 0, atol=tol):
             return False
     return True

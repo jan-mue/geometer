@@ -27,9 +27,9 @@ def _join_meet_duality(*args, intersect_lines=True):
             e = LeviCivitaTensor(n)
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
         elif isinstance(a, Subspace) and isinstance(b, Point):
-            result = a * b
+            result = a @ b
         elif isinstance(a, Point) and isinstance(b, Subspace):
-            result = b * a
+            result = b @ a
         elif isinstance(a, Line) and isinstance(b, Line):
             # can assume that n >= 4, because for n = 3 lines are 1-tensors
             e = LeviCivitaTensor(n)
@@ -134,19 +134,28 @@ class Point(ProjectiveElement):
 
     def __add__(self, other):
         if not isinstance(other, Point):
-            return NotImplemented
+            return super(Point, self).__add__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] + b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
         return Point(result)
 
+    def __radd__(self, other):
+        return self + other
+
     def __sub__(self, other):
         if not isinstance(other, Point):
-            return NotImplemented
+            return super(Point, self).__sub__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] - b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
         return Point(result)
+
+    def __rsub__(self, other):
+        return -self + other
+
+    def __neg__(self):
+        return (-1) * self
 
     def __mul__(self, other):
         if not np.isscalar(other):
@@ -154,6 +163,9 @@ class Point(ProjectiveElement):
         result = self.array[:-1] * other
         result = np.append(result, self.array[-1])
         return Point(result)
+
+    def __rmul__(self, other):
+        return self * other
 
     def __repr__(self):
         return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if self.isinf else "")
@@ -215,7 +227,7 @@ class Subspace(ProjectiveElement):
 
     def __add__(self, other):
         from .transformation import translation
-        return translation(other) * self
+        return translation(other).apply(self)
 
     def __sub__(self, other):
         return self + (-other)
@@ -282,15 +294,12 @@ class Subspace(ProjectiveElement):
             True, if the given point/line lies in the subspace.
 
         """
-        if isinstance(other, Point):
-            result = self * other
-
-        elif isinstance(other, Line):
-            result = self * other.covariant_tensor
+        if isinstance(other, Line) and self.dim == 3:
+            result = self @ other.covariant_tensor
 
         else:
             # TODO: test subspace
-            raise ValueError("argument of type %s not supported" % str(type(other)))
+            result = self @ other
 
         return np.allclose(result.array, 0, atol=tol)
 
@@ -382,8 +391,7 @@ class Line(Subspace):
 
     def __init__(self, *args):
         if len(args) == 2:
-            pt1, pt2 = args
-            super(Line, self).__init__(pt1.join(pt2))
+            super(Line, self).__init__(join(*args))
         else:
             super(Line, self).__init__(*args)
 

@@ -63,7 +63,7 @@ class Transformation(ProjectiveElement):
 
     The underlying array is the matrix representation of the projective transformation. The matrix must be
     a nonsingular square matrix of size n+1 when n is the dimension of the projective space.
-    The transformation can be applied to a point or another object by multiplication.
+    The transformation can be applied to a point by matrix multiplication or by using the method `apply`.
 
     Parameters
     ----------
@@ -122,22 +122,19 @@ class Transformation(ProjectiveElement):
             The result of applying this transformation to the supplied object.
 
         """
-        if isinstance(other, (Point, Transformation)):
-            return type(other)(super(Transformation, self).__mul__(other))
+        if isinstance(other, Point):
+            return type(other)(self @ other)
+        if isinstance(other, Transformation):
+            return type(other)(self.inverse() @ other @ self)
         if isinstance(other, Subspace):
-            return type(other)(other*self.inverse())
+            return type(other)(other @ self.inverse())
         if isinstance(other, Quadric):
             inv = self.inverse()
-            return type(other)(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
+            # TODO: use right subtype (e.g. circle)
+            return Quadric(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
         if isinstance(other, Polytope):
             return type(other)(other.array.dot(self.array.T))
         return NotImplemented
-
-    def __mul__(self, other):
-        return self.apply(other)
-
-    def __pow__(self, power, modulo=None):
-        return type(self)(pow(self.array, power, modulo))
 
     def inverse(self):
         """Calculates the inverse projective transformation.

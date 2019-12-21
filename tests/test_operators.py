@@ -86,7 +86,7 @@ def test_is_cocircular():
     p = Point(0, 1)
     t = rotation(np.pi/3)
 
-    assert is_cocircular(p, t*p, t*t*p, t*t*t*p)
+    assert is_cocircular(p, t@p, t@t@p, t@t@t@p)
 
 
 def test_is_coplanar():
@@ -135,8 +135,8 @@ def test_cp1():
     p = Point(1+0j)
     q = Point(0+1j)
     m = Transformation([[np.e**(np.pi/2*1j), 0], [0, 1]])
-    assert m*p == q
-    c = crossratio(p, q, m*q, m*m*q)
+    assert m@p == q
+    c = crossratio(p, q, m@q, m@m@q)
     assert np.isclose(np.real(c), c)
 
 

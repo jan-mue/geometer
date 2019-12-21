@@ -2,14 +2,14 @@ from itertools import combinations
 
 import numpy as np
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL
+from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
 from .utils import distinct, is_multiple
 from .point import Line, Plane, Point, infty_hyperplane
 from .operators import dist, angle, harmonic_set
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
-class Polytope:
+class Polytope(Tensor):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
     line segments.
@@ -27,10 +27,9 @@ class Polytope:
     """
 
     def __init__(self, *args):
-        if len(args) == 1:
-            self.array = np.array(args[0])
-        else:
-            self.array = np.array([a.array for a in args])
+        if len(args) > 1:
+            args = tuple(a.array for a in args)
+        super(Polytope, self).__init__(*args)
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
@@ -81,12 +80,12 @@ class Polytope:
 
             return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
 
-        return NotImplemented
+        return super(Polytope, self).__eq__(other)
 
     def __add__(self, other):
         if isinstance(other, Point):
             return type(self)(*[f + other for f in self.facets])
-        return NotImplemented
+        return super(Polytope, self).__add__(other)
 
     def __radd__(self, other):
         return self + other
@@ -411,7 +410,7 @@ class RegularPolygon(Polygon):
         vertex = center + radius*p
 
         from .transformation import rotation
-        super(RegularPolygon, self).__init__(*[rotation(2*i*np.pi/n, axis=axis)*vertex for i in range(n)])
+        super(RegularPolygon, self).__init__(*[rotation(2*i*np.pi/n, axis=axis)@vertex for i in range(n)])
 
 
 class Triangle(Polygon, Simplex):

@@ -1,3 +1,4 @@
+import numpy as np
 from geometer.base import TensorDiagram, Tensor, LeviCivitaTensor, KroneckerDelta
 
 
@@ -17,6 +18,14 @@ class TestTensor:
         assert a - 6 == Tensor(-4, -3)
         assert a * 6 == Tensor(12, 18)
         assert a / 6 == Tensor(1/3, 0.5)
+        assert a ** 2 == Tensor(4, 9)
+        assert a // 2 == Tensor(1, 1)
+        assert a % 2 == Tensor(0, 1)
+
+        # ufuncs
+        assert np.sqrt(a) == Tensor(np.sqrt(2), np.sqrt(3))
+        assert np.max(a) == 3
+        assert np.all(a > 1)
 
 
 class TestTensorDiagram:
@@ -42,7 +51,7 @@ class TestTensorDiagram:
 
         m = a.tensor_product(b)
         e = e1.tensor_product(e2)
-        assert TensorDiagram((e, m), (e, m)).calculate() == (a * e1).tensor_product(b * e2)
+        assert TensorDiagram((e, m), (e, m)).calculate() == (a @ e1).tensor_product(b @ e2)
 
         d = TensorDiagram()
         d.add_node(a)

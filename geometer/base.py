@@ -1,4 +1,5 @@
 from abc import ABC
+import numbers
 from itertools import permutations
 
 import numpy as np
@@ -20,7 +21,7 @@ def _symbols(n):
     return _symbol_cache[0] if n == 1 else _symbol_cache[:n]
 
 
-class Tensor:
+class Tensor(np.lib.mixins.NDArrayOperatorsMixin):
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
     Parameters
@@ -61,6 +62,37 @@ class Tensor:
             self._covariant_indices = set(covariant) if covariant else set()
 
         self._contravariant_indices = set(range(self.array.ndim)) - self._covariant_indices
+
+    def __array__(self, **kwargs):
+        return np.asarray(self.array, **kwargs)
+
+    _HANDLED_TYPES = (np.ndarray, numbers.Number, list)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        out = kwargs.get('out', ())
+        for x in inputs + out:
+            # Only support operations with instances of _HANDLED_TYPES.
+            # Use ArrayLike instead of type(self) for isinstance to
+            # allow subclasses that don't override __array_ufunc__ to
+            # handle Tensor objects.
+            if not isinstance(x, self._HANDLED_TYPES + (Tensor,)):
+                return NotImplemented
+
+        # Defer to the implementation of the ufunc on unwrapped values.
+        inputs = tuple(x.array if isinstance(x, Tensor) else x for x in inputs)
+        if out:
+            kwargs['out'] = tuple(x.array if isinstance(x, Tensor) else x for x in out)
+        result = getattr(ufunc, method)(*inputs, **kwargs)
+
+        if type(result) is tuple:
+            # multiple return values
+            return tuple(Tensor(x) for x in result)
+        elif method == 'at':
+            # no return value
+            return None
+        else:
+            # one return value
+            return Tensor(result, covariant=self._covariant_indices)
 
     @property
     def tensor_shape(self):
@@ -136,44 +168,21 @@ class Tensor:
     def __copy__(self):
         return self.copy()
 
-    def __mul__(self, other):
-        if np.isscalar(other):
-            return Tensor(self.array * other, covariant=self._covariant_indices)
+    def __matmul__(self, other):
         other = Tensor(other)
         return TensorDiagram((other, self)).calculate()
 
-    def __rmul__(self, other):
-        if np.isscalar(other):
-            return self * other
+    def __rmatmul__(self, other):
         other = Tensor(other)
         return TensorDiagram((self, other)).calculate()
-
-    def __truediv__(self, other):
-        if np.isscalar(other):
-            return Tensor(self.array / other, covariant=self._covariant_indices)
-        return NotImplemented
-
-    def __add__(self, other):
-        other = Tensor(other)
-        return Tensor(self.array + other.array, covariant=self._covariant_indices)
-
-    def __radd__(self, other):
-        return self + other
-
-    def __sub__(self, other):
-        other = Tensor(other)
-        return Tensor(self.array - other.array, covariant=self._covariant_indices)
-
-    def __rsub__(self, other):
-        return -self + other
-
-    def __neg__(self):
-        return self*(-1)
 
     def __eq__(self, other):
         if isinstance(other, Tensor):
             other = other.array
-        return np.allclose(self.array, other)
+        return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+
+    def __ne__(self, other):
+        return not self == other
 
 
 class LeviCivitaTensor(Tensor):
