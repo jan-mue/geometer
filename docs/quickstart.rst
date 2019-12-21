@@ -57,7 +57,7 @@ Projective transformations can be easily created using the methods :obj:`~transf
     t3 = Transformation([[0, 1, 0],
                          [1, 0, 0],
                          [0, 0, 1]])
-    t1*t2*p
+    t1@t2@p
 
 Geometer also includes tools to work with conics. They can be created using the classes :obj:`~curve.Conic` or
 :obj:`~curve.Circle`:
@@ -77,7 +77,7 @@ To calculate cross ratios of points or lines, the function :func:`~operators.cro
 .. code-block:: python
 
     t = rotation(np.pi/16)
-    crossratio(q, t*q, t**2 * q, t**3 * q, p)
+    crossratio(q, t @ q, t @ t @ q, t @ t @ t @ q, p)
 
 Other interesting operators are :func:`~operators.harmonic_set`, :func:`~operators.angle_bisectors`,
 :func:`~operators.is_cocircular` and :func:`~operators.is_collinear`.

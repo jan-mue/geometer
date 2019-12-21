@@ -65,7 +65,7 @@ p + 2*dist(p, q)*Point(np.cos(a), np.sin(a))
 # Transformations
 t1 = translation(0, -1)
 t2 = rotation(-np.pi)
-t1*t2*p
+t1@t2@p
 # Point(-2, -5)
 
 # Ellipses/Quadratic forms
@@ -106,7 +106,7 @@ c.area
 
 # Cross ratios
 t = rotation(np.pi/16)
-crossratio(q, t*q, t**2 * q, t**3 * q, p)
+crossratio(q, t @ q, t @ t @ q, t @ t @ t @ q, p)
 # 2.093706208978352
 
 # Higher dimensions
