@@ -5,6 +5,7 @@
 [![image](https://img.shields.io/pypi/pyversions/geometer.svg)](https://pypi.org/project/geometer/)
 [![Build Status](https://travis-ci.org/jan-mue/geometer.svg?branch=master)](https://travis-ci.org/jan-mue/geometer)
 [![codecov](https://codecov.io/github/jan-mue/geometer/coverage.svg?branch=master)](https://codecov.io/github/jan-mue/geometer)
+[![Downloads](https://pepy.tech/badge/geometer)](https://pepy.tech/project/geometer)
 
 Geometer is a geometry library for Python 3 that uses projective geometry and numpy for fast geometric computation.
 In projective geometry every point in 2D is represented by a three-dimensional vector and every point in 3D
