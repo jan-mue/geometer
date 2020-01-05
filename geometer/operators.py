@@ -35,15 +35,15 @@ def crossratio(a, b, c, d, from_point=None):
 
     if isinstance(a, Plane):
         l = a.meet(b)
-        e = Plane(l.direction.array)
+        e = Plane(l.direction)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
-        from_point = Point(m.dot(p.array))
-        a = Point(m.dot((p + a.direction).array))
-        b = Point(m.dot((p + b.direction).array))
-        c = Point(m.dot((p + c.direction).array))
-        d = Point(m.dot((p + d.direction).array))
+        from_point = Point(m.dot(p))
+        a = Point(m.dot((p + a.direction)))
+        b = Point(m.dot((p + b.direction)))
+        c = Point(m.dot((p + c.direction)))
+        d = Point(m.dot((p + d.direction)))
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
@@ -52,16 +52,16 @@ def crossratio(a, b, c, d, from_point=None):
 
         l = a.join(b)
         basis = l.basis_matrix
-        a = Point(basis.dot(a.array))
-        b = Point(basis.dot(b.array))
-        c = Point(basis.dot(c.array))
-        d = Point(basis.dot(d.array))
+        a = Point(basis.dot(a))
+        b = Point(basis.dot(b))
+        c = Point(basis.dot(c))
+        d = Point(basis.dot(d))
 
-    o = (from_point or []) and [from_point.array]
-    ac = np.linalg.det(o + [a.array, c.array])
-    bd = np.linalg.det(o + [b.array, d.array])
-    ad = np.linalg.det(o + [a.array, d.array])
-    bc = np.linalg.det(o + [b.array, c.array])
+    o = [from_point] if from_point is not None else []
+    ac = np.linalg.det(o + [a, c])
+    bd = np.linalg.det(o + [b, d])
+    ad = np.linalg.det(o + [a, d])
+    bc = np.linalg.det(o + [b, c])
 
     with np.errstate(divide="ignore"):
         return ac * bd / (ad * bc)
@@ -92,10 +92,10 @@ def harmonic_set(a, b, c):
     if n > 3:
         e = join(l, o)
         basis = e.basis_matrix
-        a = Point(basis.dot(a.array))
-        b = Point(basis.dot(b.array))
-        c = Point(basis.dot(c.array))
-        o = Point(basis.dot(o.array))
+        a = Point(basis.dot(a))
+        b = Point(basis.dot(b))
+        c = Point(basis.dot(c))
+        o = Point(basis.dot(o))
         l = Line(a, b)
 
     m = Line(o, c)
@@ -103,7 +103,7 @@ def harmonic_set(a, b, c):
     result = l.meet(join(meet(join(o, a), join(p, b)), meet(join(o, b), join(p, a))))
 
     if n > 3:
-        return Point(basis.T.dot(result.array))
+        return Point(basis.T.dot(result))
 
     return result
 
@@ -135,7 +135,7 @@ def angle(*args):
         if a.dim > 2:
             e = join(*args)
             basis = e.basis_matrix
-            a, b, c = Point(basis.dot(a.array)), Point(basis.dot(b.array)), Point(basis.dot(c.array))
+            a, b, c = Point(basis.dot(a)), Point(basis.dot(b)), Point(basis.dot(c))
 
     elif len(args) == 2:
         x, y = args
@@ -143,9 +143,9 @@ def angle(*args):
         if isinstance(x, Plane) and isinstance(y, Plane):
             l = x.meet(y)
             p = l.meet(infty_plane)
-            polar = Line(p.array[:-1])
+            polar = Line(p[:-1])
             tangent_points = absolute_conic.intersect(polar)
-            tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+            tangent_points = [Point(np.append(p, 0)) for p in tangent_points]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
             return 1/2j*np.log(crossratio(x, y, i, j))
@@ -162,9 +162,9 @@ def angle(*args):
         if a.dim > 2:
             e = join(x, y)
             basis = e.basis_matrix
-            a = Point(basis.dot(a.array))
-            b = Point(basis.dot(x.meet(infty_plane).array))
-            c = Point(basis.dot(y.meet(infty_plane).array))
+            a = Point(basis.dot(a))
+            b = Point(basis.dot(x.meet(infty_plane)))
+            c = Point(basis.dot(y.meet(infty_plane)))
         else:
             b = x.meet(infty)
             c = y.meet(infty)
@@ -193,22 +193,22 @@ def angle_bisectors(l, m):
     if o.dim > 2:
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array))
-        M = Point(basis.dot(m.meet(infty_plane).array))
+        L = Point(basis.dot(l.meet(infty_plane)))
+        M = Point(basis.dot(m.meet(infty_plane)))
 
     else:
         L, M = l.meet(infty), m.meet(infty)
 
     p = Point(0, 0)
-    li = np.linalg.det([p.array, L.array, I.array])
-    lj = np.linalg.det([p.array, L.array, J.array])
-    mi = np.linalg.det([p.array, M.array, I.array])
-    mj = np.linalg.det([p.array, M.array, J.array])
+    li = np.linalg.det([p, L, I])
+    lj = np.linalg.det([p, L, J])
+    mi = np.linalg.det([p, M, I])
+    mj = np.linalg.det([p, M, J])
     a, b = np.sqrt(lj*mj), np.sqrt(li*mi)
     r, s = a*I+b*J, a*I-b*J
 
     if o.dim > 2:
-        r, s = Point(basis.T.dot(r.array)), Point(basis.T.dot(s.array))
+        r, s = Point(basis.T.dot(r)), Point(basis.T.dot(s))
 
     return Line(o, r), Line(o, s)
 
@@ -248,10 +248,10 @@ def dist(p, q):
         x = np.append(x, [z], axis=0).T
         p, q = Point(x[0]), Point(x[1])
 
-    pqi = np.linalg.det([p.array, q.array, I.array])
-    pqj = np.linalg.det([p.array, q.array, J.array])
-    pij = np.linalg.det([p.array, I.array, J.array])
-    qij = np.linalg.det([q.array, I.array, J.array])
+    pqi = np.linalg.det([p, q, I])
+    pqj = np.linalg.det([p, q, J])
+    pij = np.linalg.det([p, I, J])
+    qij = np.linalg.det([q, I, J])
 
     with np.errstate(divide="ignore", invalid="ignore"):
         return 4*abs(np.sqrt(pqi * pqj)/(pij*qij))
@@ -281,10 +281,10 @@ def is_cocircular(a, b, c, d, rtol=1.e-5, atol=1.e-8):
     elif a.dim > 2:
         e = join(a, b, c)
         basis = e.basis_matrix
-        a = Point(basis.dot(a.array))
-        b = Point(basis.dot(b.array))
-        c = Point(basis.dot(c.array))
-        d = Point(basis.dot(d.array))
+        a = Point(basis.dot(a))
+        b = Point(basis.dot(b))
+        c = Point(basis.dot(c))
+        d = Point(basis.dot(d))
 
     i = crossratio(a, b, c, d, I)
     j = crossratio(a, b, c, d, J)
@@ -316,15 +316,15 @@ def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
     elif isinstance(l, Line) and isinstance(m, Line):
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array))
-        M = Point(basis.dot(m.meet(infty_plane).array))
+        L = Point(basis.dot(l.meet(infty_plane)))
+        M = Point(basis.dot(m.meet(infty_plane)))
 
     elif isinstance(l, Plane) and isinstance(m, Plane):
         x = l.meet(m)
         p = x.meet(infty_plane)
-        polar = Line(p.array[:-1])
+        polar = Line(p[:-1])
         tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+        tangent_points = [Point(np.append(p, 0)) for p in tangent_points]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
         return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)
@@ -355,7 +355,7 @@ def is_coplanar(*args, tol=1.e-8):
 
     """
     n = args[0].dim + 1
-    if not np.isclose(np.linalg.det([a.array for a in args[:n]]), 0, atol=tol):
+    if not np.isclose(np.linalg.det([a for a in args[:n]]), 0, atol=tol):
         return False
     if len(args) == n:
         return True
@@ -365,7 +365,7 @@ def is_coplanar(*args, tol=1.e-8):
     tensor = diagram.calculate()
     for t in args[n:]:
         x = t@tensor if covariant else tensor@t
-        if not np.isclose(x.array, 0, atol=tol):
+        if not np.isclose(x, 0, atol=tol):
             return False
     return True
 

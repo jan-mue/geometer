@@ -40,7 +40,7 @@ def _join_meet_duality(*args, intersect_lines=True):
             if result == 0:
                 # this part is inspired by Jim Blinn, Lines in Space: A Tale of Two Lines
                 diagram = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b))
-                array = diagram.calculate().array
+                array = diagram.calculate()
                 i = np.unravel_index(np.abs(array).argmax(), array.shape)
                 if not intersect_lines:
                     # extract the common subspace
@@ -68,7 +68,7 @@ def _join_meet_duality(*args, intersect_lines=True):
     if result.tensor_shape == (1, 0):
         return Point(result)
     if result.tensor_shape == (2, 0):
-        return Line(result).contravariant_tensor
+        return Line(result, covariant=True).contravariant_tensor
     if result.tensor_shape == (0, n-2):
         return Line(result)
 
@@ -126,11 +126,11 @@ class Point(ProjectiveElement):
 
     """
 
-    def __init__(self, *args):
+    def __new__(cls, *args, **kwargs):
+        kwargs.update(covariant=True)
         if np.isscalar(args[0]):
-            super(Point, self).__init__(*args, 1)
-        else:
-            super(Point, self).__init__(*args)
+            return super(Point, cls).__new__(cls, *args, 1, **kwargs)
+        return super(Point, cls).__new__(cls, *args, **kwargs)
 
     def __add__(self, other):
         if not isinstance(other, Point):
@@ -160,8 +160,8 @@ class Point(ProjectiveElement):
     def __mul__(self, other):
         if not np.isscalar(other):
             return super(Point, self).__mul__(other)
-        result = self.array[:-1] * other
-        result = np.append(result, self.array[-1])
+        result = self.normalized_array[:-1] * other
+        result = np.append(result, self[-1])
         return Point(result)
 
     def __rmul__(self, other):
@@ -173,9 +173,10 @@ class Point(ProjectiveElement):
     @property
     def normalized_array(self):
         """numpy.ndarray: The normalized coordinates as array."""
+        array = self.view(np.ndarray)
         if self.isinf:
-            return np.real_if_close(self.array)
-        return np.real_if_close(self.array / self.array[-1])
+            return np.real_if_close(array)
+        return np.real_if_close(array / array[-1])
 
     @property
     def lie_coordinates(self):
@@ -205,7 +206,7 @@ class Point(ProjectiveElement):
 
     @property
     def isinf(self):
-        return np.isclose(self.array[-1], 0, atol=EQ_TOL_ABS)
+        return np.isclose(self[-1], 0, atol=EQ_TOL_ABS)
 
 
 I = Point([-1j, 1, 0])
@@ -222,10 +223,14 @@ class Subspace(ProjectiveElement):
 
     """
 
-    def __init__(self, *args):
-        super(Subspace, self).__init__(*args, covariant=False)
+    def __new__(cls, *args, **kwargs):
+        kwargs.setdefault('covariant', False)
+        return super(Subspace, cls).__new__(cls, *args, **kwargs)
 
     def __add__(self, other):
+        if not isinstance(other, Point):
+            return super(Subspace, self).__add__(other)
+
         from .transformation import translation
         return translation(other).apply(self)
 
@@ -246,25 +251,25 @@ class Subspace(ProjectiveElement):
             The polynomials describing the subspace.
 
         """
-        symbols = symbols or _symbols(self.array.shape[0])
+        symbols = symbols or _symbols(self.shape[0])
 
         def p(row):
             f = sum(x * s for x, s in zip(row, symbols))
             return sympy.poly(f, symbols)
 
-        if self.array.ndim == 1:
-            return [p(self.array)]
+        if self.ndim == 1:
+            return [p(self)]
 
-        x = self.array.reshape((-1, self.array.shape[-1]))
+        x = self.reshape((-1, self.shape[-1]))
         x = x[np.any(x, axis=1)]
         return np.apply_along_axis(p, axis=1, arr=x)
 
     @property
     def basis_matrix(self):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
-        x = self.array
+        x = self
         if x.ndim > 2:
-            x = self.array.reshape((x.shape[0]**(x.ndim-1), x.shape[-1]))
+            x = self.reshape((x.shape[0]**(x.ndim-1), x.shape[-1]))
         return null_space(x).T
 
     @property
@@ -301,7 +306,7 @@ class Subspace(ProjectiveElement):
             # TODO: test subspace
             result = self @ other
 
-        return np.allclose(result.array, 0, atol=tol)
+        return np.allclose(result, 0, atol=tol)
 
     def meet(self, *others):
         """Intersect the subspace with other objects.
@@ -389,11 +394,10 @@ class Line(Subspace):
 
     """
 
-    def __init__(self, *args):
+    def __new__(cls, *args, **kwargs):
         if len(args) == 2:
-            super(Line, self).__init__(join(*args))
-        else:
-            super(Line, self).__init__(*args)
+            return super(Line, cls).__new__(cls, join(*args), **kwargs)
+        return super(Line, cls).__new__(cls, *args, **kwargs)
 
     @property
     def covariant_tensor(self):
@@ -402,7 +406,7 @@ class Line(Subspace):
             return self
         e = LeviCivitaTensor(4)
         diagram = TensorDiagram((e, self), (e, self))
-        return Line(diagram.calculate())
+        return Line(diagram.calculate(), covariant=True)
 
     @property
     def contravariant_tensor(self):
@@ -470,7 +474,7 @@ class Line(Subspace):
             q = harmonic_set(I, J, p)
 
             if n > 3:
-                q = Point(basis.T.dot(q.array))
+                q = Point(basis.T.dot(q))
 
             return Line(through, q)
 
@@ -499,13 +503,13 @@ class Line(Subspace):
         if self.dim > 2:
             return Point(self.basis_matrix[0, :])
 
-        if np.isclose(self.array[2], 0, atol=EQ_TOL_ABS):
+        if np.isclose(self[2], 0, atol=EQ_TOL_ABS):
             return Point(0, 0)
 
-        if not np.isclose(self.array[1], 0, atol=EQ_TOL_ABS):
-            return Point([0, -self.array[2], self.array[1]])
+        if not np.isclose(self[1], 0, atol=EQ_TOL_ABS):
+            return Point([0, -self[2], self[1]])
 
-        return Point([self.array[2], 0, -self.array[0]])
+        return Point([self[2], 0, -self[0]])
 
     @property
     def direction(self):
@@ -513,23 +517,23 @@ class Line(Subspace):
         if self.dim > 2:
             base = self.basis_matrix
             return Point(base[0, :]) - Point(base[1, :])
-        if np.isclose(self.array[0], 0, atol=EQ_TOL_ABS) and np.isclose(self.array[1], 0, atol=EQ_TOL_ABS):
+        if np.isclose(self[0], 0, atol=EQ_TOL_ABS) and np.isclose(self[1], 0, atol=EQ_TOL_ABS):
             return Point([0, 1, 0])
-        return Point(self.array[1], -self.array[0])
+        return Point(self[1], -self[0])
 
     @property
     def basis_matrix(self):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         if self.dim == 2:
-            a = self.base_point.array
-            b = np.cross(self.array, a)
+            a = self.base_point
+            b = np.cross(self, a)
             return np.array([a / np.linalg.norm(a), b / np.linalg.norm(b)])
         return super(Line, self).basis_matrix
 
     @property
     def lie_coordinates(self):
         """Point: The Lie coordinates of a line in 2D."""
-        g = self.array
+        g = self
         return Point([-g[2], g[2], g[0], g[1], np.sqrt(g[:2].dot(g[:2]))])
 
     def mirror(self, pt):
@@ -554,8 +558,8 @@ class Line(Subspace):
         if self.dim >= 3:
             e = join(self, pt)
             m = e.basis_matrix
-            m = m[np.argsort(np.abs(m.dot(pt.array)))]
-            pt = Point(m.dot(pt.array))
+            m = m[np.argsort(np.abs(m.dot(pt)))]
+            pt = Point(m.dot(pt))
             a, b = m.dot(self.basis_matrix.T).T
             l = Line(Point(a), Point(b))
         l1 = I.join(pt)
@@ -566,7 +570,7 @@ class Line(Subspace):
         m2 = p2.join(I)
         result = m1.meet(m2)
         if self.dim >= 3:
-            return Point(m.T.dot(result.array))
+            return Point(m.T.dot(result))
         return result
 
 
@@ -575,21 +579,20 @@ infty = Line(0, 0, 1)
 
 class Plane(Subspace):
 
-    def __init__(self, *args):
-        if all(isinstance(o, (Line, Point)) for o in args):
-            super(Plane, self).__init__(join(*args))
-        else:
-            super(Plane, self).__init__(*args)
+    def __new__(cls, *args, **kwargs):
+        if len(args) > 1 and all(isinstance(o, (Line, Point)) for o in args):
+            return super(Plane, cls).__new__(cls, join(*args), **kwargs)
+        return super(Plane, cls).__new__(cls, *args, **kwargs)
 
     @property
     def basis_matrix(self):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         n = self.dim + 1
-        i = np.where(self.array != 0)[0][0]
-        result = np.zeros((n, n - 1), dtype=self.array.dtype)
+        i = np.where(self.view(np.ndarray) != 0)[0][0]
+        result = np.zeros((n, n - 1), dtype=self.dtype)
         a = [j for j in range(n) if j != i]
-        result[i, :] = self.array[a]
-        result[a, range(n - 1)] = -self.array[i]
+        result[i, :] = self[a]
+        result[a, range(n - 1)] = -self[i]
         q, r = np.linalg.qr(result)
         return q.T
 
@@ -599,7 +602,7 @@ class Plane(Subspace):
         return super(Plane, self).polynomials()[0]
 
     def __repr__(self):
-        return "Plane({})".format(",".join(self.array.astype(str)))
+        return "Plane({})".format(",".join(self.astype(str)))
 
     def mirror(self, pt):
         """Construct the reflection of a point at this plane.
@@ -620,11 +623,11 @@ class Plane(Subspace):
         l = self.meet(infty_plane)
         l = Line(np.cross(*l.basis_matrix[:, :-1]))
         p = l.base_point
-        polar = Line(p.array)
+        polar = Line(p)
 
         from .curve import absolute_conic
         tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+        tangent_points = [Point(np.append(p, 0)) for p in tangent_points]
 
         l1 = tangent_points[0].join(pt)
         l2 = tangent_points[1].join(pt)
@@ -673,8 +676,8 @@ class Plane(Subspace):
             l = self.meet(infty_plane)
             l = Line(np.cross(*l.basis_matrix[:, :-1]))
             p1, p2 = [Point(a) for a in l.basis_matrix]
-            polar1 = Line(p1.array)
-            polar2 = Line(p2.array)
+            polar1 = Line(p1)
+            polar2 = Line(p2)
 
             from .curve import absolute_conic
             tangent_points1 = absolute_conic.intersect(polar1)
@@ -685,7 +688,7 @@ class Plane(Subspace):
             m1, m2 = p1.join(q1), p2.join(q2)
 
             p = m1.meet(m2)
-            p = Point(np.append(p.array, 0))
+            p = Point(np.append(p, 0))
 
             return through.join(p)
 

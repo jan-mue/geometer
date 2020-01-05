@@ -26,23 +26,18 @@ class Polytope(Tensor):
 
     """
 
-    def __init__(self, *args):
-        if len(args) > 1:
-            args = tuple(a.array for a in args)
-        super(Polytope, self).__init__(*args)
-
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
 
     @property
     def dim(self):
         """int: The dimension of the space that the polytope lives in."""
-        return self.array.shape[-1] - 1
+        return self.shape[-1] - 1
 
     @property
     def vertices(self):
         """list of Point: The vertices of the polytope."""
-        vertices = self.array.reshape(-1, self.array.shape[-1])
+        vertices = self.reshape(-1, self.shape[-1])
         return list(distinct(Point(x) for x in vertices))
 
     @property
@@ -66,19 +61,19 @@ class Polytope(Tensor):
             except NotCoplanar:
                 return Polytope(array)
 
-        return [poly(x) for x in self.array]
+        return [poly(x) for x in self]
 
     def __eq__(self, other):
         if isinstance(other, Polytope):
 
-            if self.array.shape != other.array.shape:
+            if self.shape != other.shape:
                 return False
 
-            if self.array.ndim > 2:
+            if self.ndim > 2:
                 # facets equal up to reordering
                 return all(f in other.facets for f in self.facets) and all(f in self.facets for f in other.facets)
 
-            return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+            return np.all(is_multiple(self, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
 
         return super(Polytope, self).__eq__(other)
 
@@ -111,9 +106,10 @@ class Segment(Polytope):
 
     """
 
-    def __init__(self, *args):
-        super(Segment, self).__init__(*args)
-        self._line = Line(Point(self.array[0]), Point(self.array[1]))
+    def __new__(cls, *args, **kwargs):
+        obj = super(Segment, cls).__new__(cls, *args, **kwargs)
+        obj._line = Line(Point(obj[0]), Point(obj[1]))
+        return obj
 
     def contains(self, other, tol=1e-8):
         """Tests whether a point is contained in the segment.
@@ -227,15 +223,15 @@ class Simplex(Polytope):
 
         return super(Polytope, cls).__new__(cls)
 
-    def __init__(self, *args):
+    def __new__(cls, *args):
         if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args)-1)]
-        super(Simplex, self).__init__(*args)
+        return super(Simplex, cls).__new__(cls, *args)
 
     @property
     def volume(self):
         """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
-        points = np.concatenate([v.array.reshape((1, v.array.shape[0])) for v in self.vertices], axis=0)
+        points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
         points = (points.T / points[:, -1]).T
         n, k = points.shape
 
@@ -264,21 +260,22 @@ class Polygon(Polytope):
 
     """
 
-    def __init__(self, *args):
+    def __new__(cls, *args):
         if all(isinstance(x, Segment) for x in args):
             args = (np.array([s.array[0] for s in args]),)
-        super(Polygon, self).__init__(*args)
-        self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
+        obj = super(Polygon, cls).__new__(cls, *args)
+        obj._plane = Plane(*obj.vertices[:obj.dim]) if obj.dim > 2 else None
+        return obj
 
     @property
     def vertices(self):
-        return [Point(x) for x in self.array]
+        return [Point(x) for x in self]
 
     @property
     def facets(self):
         segments = []
-        for i in range(len(self.array)):
-            segments.append(Segment(self.array[[i, (i + 1) % len(self.array)]]))
+        for i in range(len(self)):
+            segments.append(Segment(self[[i, (i + 1) % len(self)]]))
         return segments
 
     @property
@@ -357,7 +354,7 @@ class Polygon(Polytope):
     @property
     def area(self):
         """float: The area of the polygon."""
-        points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
+        points = np.concatenate([v.array.reshape((v.shape[0], 1)) for v in self.vertices], axis=1)
 
         if self.dim > 2:
             e = self._plane
@@ -400,8 +397,7 @@ class RegularPolygon(Polygon):
 
     """
 
-    def __init__(self, center, radius, n, axis=None):
-        self.center = center
+    def __new__(cls, center, radius, n, axis=None):
         if axis is None:
             p = Point(1, 0)
         else:
@@ -410,7 +406,9 @@ class RegularPolygon(Polygon):
         vertex = center + radius*p
 
         from .transformation import rotation
-        super(RegularPolygon, self).__init__(*[rotation(2*i*np.pi/n, axis=axis)@vertex for i in range(n)])
+        obj = super(RegularPolygon, cls).__new__(cls, *[rotation(2*i*np.pi/n, axis=axis)@vertex for i in range(n)])
+        obj.center = center
+        return obj
 
 
 class Triangle(Polygon, Simplex):
@@ -493,9 +491,9 @@ class Cuboid(Polyhedron):
 
     """
 
-    def __init__(self, a, b, c, d):
+    def __new__(cls, a, b, c, d):
         x, y, z = b-a, c-a, d-a
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)
         xy = Rectangle(a, a + x, a + x + y, a + y)
-        super(Cuboid, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z)
+        return super(Cuboid, cls).__new__(cls, yz, xz, xy, yz + x, xz + y, xy + z)

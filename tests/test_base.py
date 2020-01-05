@@ -70,6 +70,6 @@ class TestTensorDiagram:
 
     def test_kronecker_delta(self):
         d = KroneckerDelta(4, 3)
-        assert d.array.shape == (4,)*6
-        assert d.array[0, 1, 2, 0, 1, 2] == 1
-        assert d.array[0, 2, 1, 0, 1, 2] == -1
+        assert d.shape == (4,)*6
+        assert d[0, 1, 2, 0, 1, 2] == 1
+        assert d[0, 2, 1, 0, 1, 2] == -1

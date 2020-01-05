@@ -31,7 +31,7 @@ def rotation(angle, axis=None):
     a = axis.normalized_array[:-1]
     a = a / np.linalg.norm(a)
     d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
-    u = d.calculate().array
+    u = d.calculate()
     v = np.outer(a, a)
     result = np.eye(dimension+1)
     result[:dimension, :dimension] = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v
@@ -72,8 +72,8 @@ class Transformation(ProjectiveElement):
 
     """
 
-    def __init__(self, *args):
-        super(Transformation, self).__init__(*args, covariant=[0])
+    def __new__(cls, *args):
+        return super(Transformation, cls).__new__(cls, *args, covariant=[0])
 
     @classmethod
     def from_points(cls, *args):
@@ -98,8 +98,8 @@ class Transformation(ProjectiveElement):
         .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Proof of Theorem 3.4
 
         """
-        a = [x.array for x, y in args]
-        b = [y.array for x, y in args]
+        a = [x for x, y in args]
+        b = [y for x, y in args]
         m1 = np.column_stack(a[:-1])
         m2 = np.column_stack(b[:-1])
         d1 = np.linalg.solve(m1, a[-1])
@@ -133,7 +133,7 @@ class Transformation(ProjectiveElement):
             # TODO: use right subtype (e.g. circle)
             return Quadric(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
         if isinstance(other, Polytope):
-            return type(other)(other.array.dot(self.array.T))
+            return type(other)(other.dot(self.T))
         return NotImplemented
 
     def inverse(self):
@@ -145,4 +145,4 @@ class Transformation(ProjectiveElement):
             The inverse transformation.
 
         """
-        return Transformation(np.linalg.inv(self.array))
+        return Transformation(np.linalg.inv(self))

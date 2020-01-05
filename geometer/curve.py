@@ -29,15 +29,16 @@ class AlgebraicCurve(ProjectiveElement):
 
     """
 
-    def __init__(self, poly, symbols=None):
+    def __new__(cls, poly, symbols=None):
 
         if isinstance(poly, np.ndarray):
             if poly.ndim != 3:
                 raise ValueError("Expected a polynomial in 3 variables.")
 
-            self.symbols = _symbols(3) if symbols is None else tuple(symbols)
-            super(AlgebraicCurve, self).__init__(poly, covariant=False)
-            return
+            obj = super(AlgebraicCurve, cls).__new__(cls, poly, covariant=False)
+            obj.symbols = _symbols(3) if symbols is None else tuple(symbols)
+
+            return obj
 
         if not isinstance(poly, sympy.Expr):
             raise ValueError("poly must be ndarray or sympy expression.")
@@ -46,17 +47,17 @@ class AlgebraicCurve(ProjectiveElement):
             symbols = poly.free_symbols
 
         poly = sympy.poly(poly, *symbols)
-
-        self.symbols = symbols
-
         poly = poly.homogenize(symbols[-1])
 
-        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols), covariant=False)
+        obj = super(AlgebraicCurve, cls).__new__(cls, poly_to_np_array(poly, symbols), covariant=False)
+        obj.symbols = symbols
+
+        return obj
 
     @property
     def polynomial(self):
         """sympy.Poly: The polynomial defining this curve."""
-        return np_array_to_poly(self.array, self.symbols)
+        return np_array_to_poly(self, self.symbols)
 
     def tangent(self, at):
         """Calculates the tangent of the curve at a given point.
@@ -72,7 +73,7 @@ class AlgebraicCurve(ProjectiveElement):
             The tangent line.
 
         """
-        dx = [polyval(at.array, pl.polyder(self.array, axis=i)) for i in range(self.dim + 1)]
+        dx = [polyval(at, pl.polyder(self, axis=i)) for i in range(self.dim + 1)]
         return Line(dx)
 
     @property
@@ -116,7 +117,7 @@ class AlgebraicCurve(ProjectiveElement):
             True if the curve contains the point.
 
         """
-        return np.isclose(polyval(pt.array, self.array), 0, atol=tol)
+        return np.isclose(polyval(pt, self), 0, atol=tol)
 
     def intersect(self, other):
         """Calculates points of intersection with the algebraic curve.
@@ -174,11 +175,11 @@ class Quadric(ProjectiveElement):
 
     """
 
-    def __init__(self, matrix, is_dual=False):
-        self.is_dual = is_dual
-        matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        self.symbols = _symbols(matrix.shape[0])
-        super(Quadric, self).__init__(matrix, covariant=False)
+    def __new__(cls, matrix, is_dual=False):
+        obj = super(Quadric, cls).__new__(cls, matrix, covariant=False)
+        obj.is_dual = is_dual
+        obj.symbols = _symbols(obj.shape[0])
+        return obj
 
     @classmethod
     def from_planes(cls, e, f):
@@ -195,7 +196,7 @@ class Quadric(ProjectiveElement):
             The resulting quadric.
 
         """
-        m = np.outer(e.array, f.array)
+        m = np.outer(e, f)
         return cls(m + m.T)
 
     def tangent(self, at):
@@ -212,7 +213,7 @@ class Quadric(ProjectiveElement):
             The tangent plane at the given point.
 
         """
-        return Plane(self.array.dot(at.array))
+        return Plane(self.dot(at))
 
     def is_tangent(self, plane):
         """Tests if a given hyperplane is tangent to the quadric.
@@ -246,34 +247,34 @@ class Quadric(ProjectiveElement):
             True if the quadric contains the point.
 
         """
-        return np.isclose(other.array.dot(self.array.dot(other.array)), 0, atol=tol)
+        return np.isclose(other.dot(self.dot(other)), 0, atol=tol)
 
     @property
     def polynomial(self):
         """sympy.Poly: The polynomial defining this quadric."""
-        return sympy.poly(self.array.dot(self.symbols).dot(self.symbols), self.symbols)
+        return sympy.poly(self.dot(self.symbols).dot(self.symbols), self.symbols)
 
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return np.isclose(np.linalg.det(self.array), 0, atol=EQ_TOL_ABS)
+        return np.isclose(np.linalg.det(self), 0, atol=EQ_TOL_ABS)
 
     @property
     def components(self):
         """list of ProjectiveElement: The components of a degenerate quadric."""
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
-        n = self.array.shape[0]
+        n = self.shape[0]
 
         x = []
         for ind in combinations(range(n), n-2):
             # calculate all principal minors of order 2
             row_ind = [[j] for j in range(n) if j not in ind]
             col_ind = [j for j in range(n) if j not in ind]
-            x.append(csqrt(-np.linalg.det(self.array[row_ind, col_ind])))
+            x.append(csqrt(-np.linalg.det(self[row_ind, col_ind])))
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
         m = hat_matrix(x)
-        t = self.array + m
+        t = self + m
 
         # components are in the non-zero rows and columns (up to scalar multiple)
         i = np.unravel_index(np.abs(t).argmax(), t.shape)
@@ -312,16 +313,16 @@ class Quadric(ProjectiveElement):
 
             if not reducible:
                 if self.dim > 2:
-                    arr = other.array.reshape((-1, self.dim + 1))
+                    arr = other.reshape((-1, self.dim + 1))
                     i = np.where(arr != 0)[0][0]
                     m = Plane(arr[i]).basis_matrix
-                    q = Quadric(m.dot(self.array).dot(m.T))
+                    q = Quadric(m.dot(self).dot(m.T))
                     line_base = other.basis_matrix.T
                     line = Line(*[Point(x) for x in m.dot(line_base).T])
-                    p, q = [Point(m.T.dot(p.array)) for p in q.intersect(line)]
+                    p, q = [Point(m.T.dot(p)) for p in q.intersect(line)]
                 else:
-                    m = hat_matrix(other.array)
-                    b = m.T.dot(self.array).dot(m)
+                    m = hat_matrix(other)
+                    b = m.T.dot(self).dot(m)
                     p, q = Conic(b, is_dual=not self.is_dual).components
             else:
                 if self.is_dual:
@@ -337,7 +338,7 @@ class Quadric(ProjectiveElement):
     @property
     def dual(self):
         """Quadric: The dual quadric."""
-        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual)
+        return Quadric(np.linalg.inv(self), is_dual=not self.is_dual)
 
 
 class Conic(Quadric):
@@ -382,7 +383,7 @@ class Conic(Quadric):
             The resulting conic.
 
         """
-        m = np.outer(g.array, h.array)
+        m = np.outer(g, h)
         return cls(m + m.T)
 
     @classmethod
@@ -407,7 +408,7 @@ class Conic(Quadric):
         a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
         b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array
 
-        o = tangent.general_point.array
+        o = tangent.general_point
 
         a2b1 = np.linalg.det([o, a2, b1])
         a2b2 = np.linalg.det([o, a2, b2])
@@ -421,7 +422,7 @@ class Conic(Quadric):
         y = Point(c1 * a1 - c2 * a2)
 
         conic = cls.from_points(a, b, c, d, x)
-        if np.all(np.isreal(conic.array)):
+        if np.all(np.isreal(conic)):
             return conic
         return cls.from_points(a, b, c, d, y)
 
@@ -443,8 +444,8 @@ class Conic(Quadric):
 
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
-        c = cls.from_tangent(Line(bound.array), Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array))
-        return cls(np.linalg.inv(c.array))
+        c = cls.from_tangent(Line(bound), Point(t1), Point(t2), Point(t3), Point(t4))
+        return cls(np.linalg.inv(c))
 
     @classmethod
     def from_crossratio(cls, cr, a, b, c, d):
@@ -472,14 +473,14 @@ class Conic(Quadric):
 
         """
         p = np.array(_symbols(3))
-        ac = sympy.Matrix([p, a.array, c.array]).det()
-        bd = sympy.Matrix([p, b.array, d.array]).det()
-        ad = sympy.Matrix([p, a.array, d.array]).det()
-        bc = sympy.Matrix([p, b.array, c.array]).det()
+        ac = sympy.Matrix([p, a, c]).det()
+        bd = sympy.Matrix([p, b, d]).det()
+        ad = sympy.Matrix([p, a, d]).det()
+        bc = sympy.Matrix([p, b, c]).det()
 
         poly = sympy.poly(ac*bd - cr*ad*bc, _symbols(3))
 
-        matrix = np.zeros((3, 3), dtype=(cr*a.array).dtype)
+        matrix = np.zeros((3, 3), dtype=(cr*a).dtype)
         ind = np.triu_indices(3)
         matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
         return cls(matrix + matrix.T)
@@ -506,7 +507,7 @@ class Conic(Quadric):
                 m = sympy.Matrix(self.array + x * other.array)
                 f = sympy.poly(m.det(), x)
                 roots = np.roots(f.coeffs())
-                c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)
+                c = Conic(self + roots[0] * other, is_dual=self.is_dual)
                 g, h = c.components
 
             result = self.intersect(g)
@@ -548,7 +549,7 @@ class Conic(Quadric):
             The polar line.
 
         """
-        return Line(self.array.dot(pt.array))
+        return Line(self.dot(pt))
 
     @property
     def foci(self):
@@ -587,7 +588,7 @@ class Ellipse(Conic):
 
     """
 
-    def __init__(self, center=Point(0, 0), hradius=1, vradius=1):
+    def __new__(cls, center=Point(0, 0), hradius=1, vradius=1):
         r = np.array([vradius ** 2, hradius ** 2, 1])
         c = -center.normalized_array
         d = c * r
@@ -596,7 +597,7 @@ class Ellipse(Conic):
         m[2, :] = d
         m[:, 2] = d
         m[2, 2] = d.dot(c) - (r[0] * r[1] + 1)
-        super(Ellipse, self).__init__(m)
+        return super(Ellipse, cls).__new__(cls, m)
 
 
 class Circle(Ellipse):
@@ -611,8 +612,8 @@ class Circle(Ellipse):
 
     """
 
-    def __init__(self, center=Point(0, 0), radius=1):
-        super(Circle, self).__init__(center, radius, radius)
+    def __new__(cls, center=Point(0, 0), radius=1):
+        return super(Circle, cls).__new__(cls, center, radius, radius)
 
     @property
     def center(self):
@@ -622,8 +623,8 @@ class Circle(Ellipse):
     @property
     def radius(self):
         """float: The radius of the circle."""
-        c = self.array[:2, 2] / self.array[0, 0]
-        return np.sqrt(c.dot(c) - self.array[2, 2] / self.array[0, 0])
+        c = self[:2, 2] / self[0, 0]
+        return np.sqrt(c.dot(c) - self[2, 2] / self[0, 0])
 
     @property
     def lie_coordinates(self):
@@ -674,24 +675,24 @@ class Sphere(Quadric):
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), radius=1):
+    def __new__(cls, center=Point(0, 0, 0), radius=1):
         c = -center.normalized_array
-        m = np.eye(center.array.shape[0], dtype=(radius*c).dtype)
+        m = np.eye(center.shape[0], dtype=(radius*c).dtype)
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
-        super(Sphere, self).__init__(m)
+        return super(Sphere, cls).__new__(cls, m)
 
     @property
     def center(self):
         """Point: The center of the sphere."""
-        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]))
+        return Point(np.append(-self[:-1, -1], [self[0, 0]]))
 
     @property
     def radius(self):
         """float: The radius of the sphere."""
-        c = self.array[:-1, -1] / self.array[0, 0]
-        return np.sqrt(c.dot(c) - self.array[-1, -1] / self.array[0, 0])
+        c = self[:-1, -1] / self[0, 0]
+        return np.sqrt(c.dot(c) - self[-1, -1] / self[0, 0])
 
     @staticmethod
     def _alpha(n):
@@ -724,7 +725,7 @@ class Cone(Quadric):
 
     """
 
-    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1):
+    def __new__(cls, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1):
         from .operators import dist
         from .transformation import Transformation
 
@@ -751,7 +752,7 @@ class Cone(Quadric):
 
         # rotate the axis of the cone
         axis = Line(vertex, base_center)
-        x, y = orth(axis.array.T).T
+        x, y = orth(axis.T).T
         v, x, y = Point(v), Point(x), Point(y)
         z = base_center.normalized_array[:3] - vertex.normalized_array[:3]
         z = Point(*z/np.linalg.norm(z))
@@ -759,7 +760,7 @@ class Cone(Quadric):
         b = [v, v + x, v + y, v + z + x, v + z - y]
         t = Transformation.from_points(*zip(a, b)).inverse()
 
-        super(Cone, self).__init__(t.array.T.dot(m).dot(t.array))
+        return super(Cone, cls).__new__(cls, t.T.dot(m).dot(t))
 
 
 class Cylinder(Cone):
@@ -776,6 +777,6 @@ class Cylinder(Cone):
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1):
+    def __new__(cls, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1):
         vertex = infty_plane.meet(Line(center, center+direction))
-        super(Cylinder, self).__init__(vertex, center, radius)
+        return super(Cylinder, cls).__new__(cls, vertex, center, radius)
