@@ -1,7 +1,7 @@
 import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 from .point import Point, Subspace
-from .curve import Quadric
+from .curve import Quadric, Conic
 from .shapes import Polytope
 
 
@@ -56,6 +56,10 @@ def translation(*coordinates):
     m = np.eye(x.dim + 1)
     m[:-1, -1] = x.normalized_array[:-1]
     return Transformation(m)
+
+
+def identity(dim):
+    return Transformation(np.eye(dim+1))
 
 
 class Transformation(ProjectiveElement):
@@ -128,7 +132,8 @@ class Transformation(ProjectiveElement):
             return type(other)(other*self.inverse())
         if isinstance(other, Quadric):
             inv = self.inverse()
-            return type(other)(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
+            cls = Conic if isinstance(other, Conic) else Quadric
+            return cls(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
         if isinstance(other, Polytope):
             return type(other)(other.array.dot(self.array.T))
         return NotImplemented
@@ -137,7 +142,11 @@ class Transformation(ProjectiveElement):
         return self.apply(other)
 
     def __pow__(self, power, modulo=None):
-        return type(self)(pow(self.array, power, modulo))
+        if power == 0:
+            return identity(self.dim)
+        if power < 0:
+            return self.inverse().__pow__(-power, modulo)
+        return super(Transformation, self).__pow__(power, modulo)
 
     def inverse(self):
         """Calculates the inverse projective transformation.

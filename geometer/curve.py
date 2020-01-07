@@ -262,7 +262,7 @@ class Quadric(ProjectiveElement):
     def components(self):
         """list of ProjectiveElement: The components of a degenerate quadric."""
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
-        n = self.array.shape[0]
+        n = self.shape[0]
 
         x = []
         for ind in combinations(range(n), n-2):
@@ -676,7 +676,7 @@ class Sphere(Quadric):
 
     def __init__(self, center=Point(0, 0, 0), radius=1):
         c = -center.normalized_array
-        m = np.eye(center.array.shape[0], dtype=(radius*c).dtype)
+        m = np.eye(center.shape[0], dtype=(radius*c).dtype)
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1])-radius**2

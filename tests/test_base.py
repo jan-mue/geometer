@@ -18,6 +18,14 @@ class TestTensor:
         assert a * 6 == Tensor(12, 18)
         assert a / 6 == Tensor(1/3, 0.5)
 
+    def test_transpose(self):
+        a = Tensor([[1, 2],
+                    [3, 4]], covariant=[0])
+
+        assert a.transpose() == Tensor([[1, 3], [2, 4]])
+        assert a.T._covariant_indices == {1}
+        assert a.T.T == a
+
 
 class TestTensorDiagram:
 

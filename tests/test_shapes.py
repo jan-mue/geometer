@@ -137,6 +137,8 @@ class TestPolygon:
         assert np.isclose(dist(a, p.vertices[0]), 1)
         assert all(np.isclose(s.length, d) for s in p.edges[1:])
         assert np.allclose(p.angles, np.pi/3)
+        assert p.center == a
+        assert np.isclose(p.radius, 1)
         
         
 class TestPolytope:

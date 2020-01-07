@@ -56,17 +56,27 @@ class Tensor:
         self.array = np.real_if_close(self.array)
 
         if covariant is True:
-            self._covariant_indices = set(range(self.array.ndim))
+            self._covariant_indices = set(range(self.rank))
         else:
             self._covariant_indices = set(covariant) if covariant else set()
 
-        self._contravariant_indices = set(range(self.array.ndim)) - self._covariant_indices
+        self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
+
+    @property
+    def shape(self):
+        """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array."""
+        return self.array.shape
 
     @property
     def tensor_shape(self):
         """:obj:`tuple` of :obj:`int`: The shape or type of the tensor, the first number is the number of
         covariant indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
+
+    @property
+    def rank(self):
+        """int: The rank of the Tensor. (same as ndarray.ndim)"""
+        return self.array.ndim
 
     def tensor_product(self, other):
         """Return a new tensor that is the tensor product of this and the other tensor.
@@ -85,7 +95,7 @@ class Tensor:
             The tensor product.
 
         """
-        offset = self.array.ndim
+        offset = self.rank
         covariant = list(self._covariant_indices) + [offset + i for i in other._covariant_indices]
         contravariant = list(self._contravariant_indices) + [offset + i for i in other._contravariant_indices]
 
@@ -109,12 +119,12 @@ class Tensor:
 
         """
         if perm is None:
-            perm = reversed(range(self.array.ndim))
+            perm = reversed(range(self.rank))
 
         perm = list(perm)
 
-        if len(perm) < self.array.ndim:
-            a = list(range(self.array.ndim))
+        if len(perm) < self.rank:
+            a = list(range(self.rank))
             for ind in range(len(perm)):
                 i, j = perm[ind], perm[(ind + 1) % len(perm)]
                 a[i] = j
@@ -126,6 +136,10 @@ class Tensor:
                 covariant.append(i)
 
         return Tensor(np.transpose(self.array, perm), covariant=covariant)
+
+    @property
+    def T(self):
+        return self.transpose()
 
     def copy(self):
         return type(self)(self)
@@ -147,6 +161,22 @@ class Tensor:
             return self * other
         other = Tensor(other)
         return TensorDiagram((self, other)).calculate()
+
+    def __pow__(self, power, modulo=None):
+        if modulo is not None or not isinstance(power, int) or power < 0:
+            return NotImplemented
+
+        if power == 1:
+            return self.copy()
+
+        d = TensorDiagram()
+        prev = self
+        for _ in range(power-1):
+            cur = prev.copy()
+            d.add_edge(cur, prev)
+            prev = cur
+
+        return type(self)(d.calculate())
 
     def __truediv__(self, other):
         if np.isscalar(other):
@@ -173,7 +203,7 @@ class Tensor:
     def __eq__(self, other):
         if isinstance(other, Tensor):
             other = other.array
-        return np.allclose(self.array, other)
+        return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
 
 class LeviCivitaTensor(Tensor):
@@ -295,7 +325,7 @@ class TensorDiagram:
         """
         self._nodes.append(node)
         self._node_positions.append(self._index_count)
-        self._index_count += node.array.ndim
+        self._index_count += node.rank
         ind = (list(node._covariant_indices), list(node._contravariant_indices))
         self._free_indices.append(ind)
         return ind
@@ -343,10 +373,10 @@ class TensorDiagram:
         i = free_source.pop(0)
         j = free_target.pop(0)
 
-        if source.array.shape[i] != target.array.shape[j]:
+        if source.shape[i] != target.shape[j]:
             raise TensorComputationError(
                 "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
-                    str(source.array.shape[i]), str(target.array.shape[j])))
+                    str(source.shape[i]), str(target.shape[j])))
 
         self._contraction_list.append((source_index, target_index, i, j))
 
@@ -401,7 +431,7 @@ class ProjectiveElement(Tensor, ABC):
     def __eq__(self, other):
         if isinstance(other, Tensor):
 
-            if self.array.shape != other.array.shape:
+            if self.shape != other.shape:
                 return False
 
             return is_multiple(self.array, other.array, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
@@ -411,4 +441,4 @@ class ProjectiveElement(Tensor, ABC):
     @property
     def dim(self):
         """int: The dimension of the tensor."""
-        return self.array.shape[0] - 1
+        return self.shape[0] - 1

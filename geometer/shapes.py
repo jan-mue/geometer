@@ -2,14 +2,14 @@ from itertools import combinations
 
 import numpy as np
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL
+from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
 from .utils import distinct, is_multiple
 from .point import Line, Plane, Point, infty_hyperplane
 from .operators import dist, angle, harmonic_set
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
-class Polytope:
+class Polytope(Tensor):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
     line segments.
@@ -27,10 +27,9 @@ class Polytope:
     """
 
     def __init__(self, *args):
-        if len(args) == 1:
-            self.array = np.array(args[0])
-        else:
-            self.array = np.array([a.array for a in args])
+        if len(args) > 1:
+            args = tuple(a.array for a in args)
+        super(Polytope, self).__init__(*args)
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
@@ -38,12 +37,21 @@ class Polytope:
     @property
     def dim(self):
         """int: The dimension of the space that the polytope lives in."""
-        return self.array.shape[-1] - 1
+        return self.shape[-1] - 1
+
+    @property
+    def normalized_array(self):
+        """numpy.ndarray: Array containing only normalized vertex coordinates."""
+        result = self.array.T.astype(complex)
+        isinf = np.isclose(result[-1], 0, atol=EQ_TOL_ABS)
+        result[:, ~isinf] = result[:, ~isinf] / result[-1, ~isinf]
+        result = np.real_if_close(result)
+        return result.T
 
     @property
     def vertices(self):
         """list of Point: The vertices of the polytope."""
-        vertices = self.array.reshape(-1, self.array.shape[-1])
+        vertices = self.array.reshape(-1, self.shape[-1])
         return list(distinct(Point(x) for x in vertices))
 
     @property
@@ -72,10 +80,10 @@ class Polytope:
     def __eq__(self, other):
         if isinstance(other, Polytope):
 
-            if self.array.shape != other.array.shape:
+            if self.shape != other.shape:
                 return False
 
-            if self.array.ndim > 2:
+            if self.rank > 2:
                 # facets equal up to reordering
                 return all(f in other.facets for f in self.facets) and all(f in self.facets for f in other.facets)
 
@@ -236,7 +244,7 @@ class Simplex(Polytope):
     @property
     def volume(self):
         """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
-        points = np.concatenate([v.array.reshape((1, v.array.shape[0])) for v in self.vertices], axis=0)
+        points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
         points = (points.T / points[:, -1]).T
         n, k = points.shape
 
@@ -358,7 +366,7 @@ class Polygon(Polytope):
     @property
     def area(self):
         """float: The area of the polygon."""
-        points = np.concatenate([v.array.reshape((v.array.shape[0], 1)) for v in self.vertices], axis=1)
+        points = np.concatenate([v.array.reshape((v.shape[0], 1)) for v in self.vertices], axis=1)
 
         if self.dim > 2:
             e = self._plane
@@ -402,16 +410,33 @@ class RegularPolygon(Polygon):
     """
 
     def __init__(self, center, radius, n, axis=None):
-        self.center = center
+
+        # TODO: handle points at infinity
+
         if axis is None:
             p = Point(1, 0)
         else:
             e = Plane(np.append(axis.array[:-1], [0]))
             p = Point(*e.basis_matrix[0, :-1])
+
         vertex = center + radius*p
 
         from .transformation import rotation
-        super(RegularPolygon, self).__init__(*[rotation(2*i*np.pi/n, axis=axis)*vertex for i in range(n)])
+
+        vertices = []
+        for i in range(n):
+            r = rotation(2*np.pi*i / n, axis=axis)
+            vertices.append(r*vertex)
+
+        super(RegularPolygon, self).__init__(*vertices)
+
+    @property
+    def radius(self):
+        return dist(self.center, self.vertices[0])
+
+    @property
+    def center(self):
+        return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
 
 
 class Triangle(Polygon, Simplex):

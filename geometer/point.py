@@ -134,7 +134,7 @@ class Point(ProjectiveElement):
 
     def __add__(self, other):
         if not isinstance(other, Point):
-            return NotImplemented
+            return super(Point, self).__add__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] + b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
@@ -142,7 +142,7 @@ class Point(ProjectiveElement):
 
     def __sub__(self, other):
         if not isinstance(other, Point):
-            return NotImplemented
+            return super(Point, self).__sub__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] - b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
@@ -151,8 +151,8 @@ class Point(ProjectiveElement):
     def __mul__(self, other):
         if not np.isscalar(other):
             return super(Point, self).__mul__(other)
-        result = self.array[:-1] * other
-        result = np.append(result, self.array[-1])
+        result = self.normalized_array[:-1] * other
+        result = np.append(result, self.array[-1] and 1)
         return Point(result)
 
     def __repr__(self):
@@ -214,6 +214,9 @@ class Subspace(ProjectiveElement):
         super(Subspace, self).__init__(*args, covariant=False)
 
     def __add__(self, other):
+        if not isinstance(other, Point):
+            return super(Subspace, self).__add__(other)
+
         from .transformation import translation
         return translation(other) * self
 
@@ -234,16 +237,16 @@ class Subspace(ProjectiveElement):
             The polynomials describing the subspace.
 
         """
-        symbols = symbols or _symbols(self.array.shape[0])
+        symbols = symbols or _symbols(self.shape[0])
 
         def p(row):
             f = sum(x * s for x, s in zip(row, symbols))
             return sympy.poly(f, symbols)
 
-        if self.array.ndim == 1:
+        if self.rank == 1:
             return [p(self.array)]
 
-        x = self.array.reshape((-1, self.array.shape[-1]))
+        x = self.array.reshape((-1, self.shape[-1]))
         x = x[np.any(x, axis=1)]
         return np.apply_along_axis(p, axis=1, arr=x)
 

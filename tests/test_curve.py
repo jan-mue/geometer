@@ -1,6 +1,6 @@
 import numpy as np
 from sympy.abc import x, y, z
-from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, Cone, Cylinder, AlgebraicCurve, crossratio
+from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, Cone, Cylinder, AlgebraicCurve, crossratio, translation
 
 
 class TestAlgebraicCurve:
@@ -115,6 +115,12 @@ class TestConic:
         conic = Conic.from_foci(f1, f2, b)
 
         assert conic == Ellipse(Point(0, 0), 2, 3)
+
+    def test_transformation(self):
+        c = Circle()
+        t = translation(1, 1)
+
+        assert t*c == Circle(Point(1, 1))
 
 
 class TestCircle:

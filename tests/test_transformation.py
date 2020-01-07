@@ -28,6 +28,14 @@ def test_inverse():
     assert M.inverse()*M == E
 
 
+def test_pow():
+    t = translation(1, 2)
+
+    assert t**2 == translation(2, 4)
+    assert t**3 == translation(3, 6)
+    assert t**(-2) == translation(-2, -4)
+
+
 def test_rotation():
     p = Point(0, 1)
     t = rotation(-np.pi)
