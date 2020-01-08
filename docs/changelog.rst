@@ -2,6 +2,28 @@
 Changelog
 =========
 
+0.2.1 - unreleased
+------------------
+
+New Features
+------------
+
+- Added properties shape, rank and T to Tensor class
+- Tensor instances can be raised to an arbitrary positive power
+- Dynamic calculation of center and radius attributes of RegularPolygon instances
+- Polytope is now a subclass of Tensor
+- Added functions for generating transforms that perform scaling and reflections
+
+Bug fixes
+---------
+
+- Transformations are now applied correctly to quadrics and conics
+- Raising transformations to a power (other than 1) is calculated correctly
+- Tolerance parameters are correctly used in Tensor.__eq__
+- Scalar multiplication with Points is calculated correctly using normalized_array
+- Fixed copy method Tensor subclasses
+
+
 0.2 - released (15.9.2019)
 --------------------------
 
