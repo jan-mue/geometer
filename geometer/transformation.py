@@ -1,8 +1,58 @@
 import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
-from .point import Point, Subspace
+from .point import Point, Subspace, infty_hyperplane
 from .curve import Quadric, Conic
 from .shapes import Polytope
+
+
+def identity(dim):
+    """Returns the identity transformation.
+
+    Returns
+    -------
+    Transformation
+        The identity transformation.
+
+    """
+    return Transformation(np.eye(dim+1))
+
+
+def affine_transform(matrix=None, offset=0):
+    """Returns a projective transformation for the given affine transformation.
+
+    Parameters
+    ----------
+    matrix : array_like, optional
+        The transformation matrix.
+    offset : array_like or float, optional
+        The translation.
+
+    Returns
+    -------
+    Transformation
+        The projective transformation that represents the affine transformation.
+
+    """
+    n = 2
+    dtype = np.float32
+
+    if not np.isscalar(offset):
+        offset = np.array(offset)
+        n = offset.shape[0] + 1
+        dtype = offset.dtype
+
+    if matrix is not None:
+        matrix = np.array(matrix)
+        n = matrix.shape[0] + 1
+        dtype = np.find_common_type([dtype, matrix.dtype], [])
+
+    result = np.eye(n, dtype=dtype)
+
+    if matrix is not None:
+        result[:-1, :-1] = matrix
+
+    result[:-1, -1] = offset
+    return Transformation(result)
 
 
 def rotation(angle, axis=None):
@@ -20,11 +70,14 @@ def rotation(angle, axis=None):
     Transformation
         The rotation.
 
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle
+
     """
     if axis is None:
-        return Transformation([[np.cos(angle), - np.sin(angle), 0],
-                               [np.sin(angle), np.cos(angle), 0],
-                               [0, 0, 1]])
+        return affine_transform([[np.cos(angle), -np.sin(angle)],
+                                 [np.sin(angle), np.cos(angle)]])
 
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)
@@ -33,9 +86,9 @@ def rotation(angle, axis=None):
     d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = np.outer(a, a)
-    result = np.eye(dimension+1)
-    result[:dimension, :dimension] = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v
-    return Transformation(result)
+    result = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v
+
+    return affine_transform(result)
 
 
 def translation(*coordinates):
@@ -52,14 +105,61 @@ def translation(*coordinates):
         The translation.
 
     """
-    x = Point(*coordinates)
-    m = np.eye(x.dim + 1)
-    m[:-1, -1] = x.normalized_array[:-1]
-    return Transformation(m)
+    offset = Point(*coordinates)
+    return affine_transform(offset=offset.normalized_array[:-1])
 
 
-def identity(dim):
-    return Transformation(np.eye(dim+1))
+def scaling(*factors):
+    """Returns a projective transformation that represents general scaling by given factors in each dimension.
+
+    Parameters
+    ----------
+    *factors
+        The scaling factors by which each dimension is scaled.
+
+    Returns
+    -------
+    Transformation
+        The scaling transformation.
+
+    """
+    if len(factors) == 1:
+        factors = factors[0]
+    return affine_transform(np.diag(factors))
+
+
+def reflection(axis):
+    """Returns a projective transformation that represents a reflection at the given axis/hyperplane.
+
+    Parameters
+    ----------
+    axis : Subspace
+        The 2D-line or hyperplane to reflect points at.
+
+    Returns
+    -------
+    Transformation
+        The reflection.
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Householder_transformation
+
+    """
+    if axis == infty_hyperplane(axis.dim):
+        return identity(axis.dim)
+
+    v = axis.array[:-1]
+    v = v / np.linalg.norm(v)
+
+    p = affine_transform(np.eye(axis.dim) - 2*np.outer(v, v.conj()))
+
+    base = axis.basis_matrix
+    ind = np.where(base[:, -1] != 0)[0][0]
+    x = base[ind, :-1] / base[ind, -1]
+    x = Point(*x)
+
+    return translation(x) * p * translation(-x)
 
 
 class Transformation(ProjectiveElement):

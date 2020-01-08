@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Line, Transformation, translation, rotation, angle
+from geometer import Point, Line, Transformation, translation, rotation, angle, scaling, reflection
 
 
 def test_from_points():
@@ -49,3 +49,17 @@ def test_rotation():
     a = np.pi / 7
     t = rotation(a, axis=Point(1, 1, 2))
     assert np.isclose(angle(p, t * p), a)
+
+
+def test_scaling():
+    p = Point(1, 1, 2)
+    s = scaling(3, -4.5, 5)
+
+    assert s * p == Point(3, -4.5, 10)
+
+
+def test_reflection():
+    p = Point(-1, 1)
+    r = reflection(Line(1, -1, 1))
+
+    assert r * p == Point(0, 0)
