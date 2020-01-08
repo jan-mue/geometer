@@ -432,10 +432,12 @@ class RegularPolygon(Polygon):
 
     @property
     def radius(self):
+        """float: The Circumradius of the regular polygon."""
         return dist(self.center, self.vertices[0])
 
     @property
     def center(self):
+        """Point: The center of the polygon."""
         return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
 
 
