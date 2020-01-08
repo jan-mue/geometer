@@ -139,6 +139,25 @@ class TestPolygon:
         assert np.allclose(p.angles, np.pi/3)
         assert p.center == a
         assert np.isclose(p.radius, 1)
+
+    def test_copy(self):
+        a = Point(0, 0)
+        b = Point(0, 2)
+        c = Point(2, 2)
+        d = Point(2, 0)
+
+        r1 = Rectangle(a, b, c, d)
+        p1 = RegularPolygon(a, 1, 6)
+
+        r2 = r1.copy()
+        p2 = p1.copy()
+
+        assert r1 == r2
+        assert r1 is not r2
+        assert r1.vertices == r2.vertices
+        assert p1 == p2
+        assert p1 is not p2
+        assert p1.vertices == p2.vertices
         
         
 class TestPolytope:

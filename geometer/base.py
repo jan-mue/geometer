@@ -142,7 +142,10 @@ class Tensor:
         return self.transpose()
 
     def copy(self):
-        return type(self)(self)
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))

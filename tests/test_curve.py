@@ -139,6 +139,15 @@ class TestCircle:
         c2 = Circle(Point(1, 1), 1)
         assert np.isclose(c1.intersection_angle(c2), np.pi/2)
 
+    def test_copy(self):
+        c1 = Circle(Point(0, 1), 4.5)
+        c2 = c1.copy()
+
+        assert c1 == c2
+        assert c1 is not c2
+        assert c1.center == c2.center
+        assert c1.radius == c2.radius
+
 
 class TestQuadric:
 
