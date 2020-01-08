@@ -13,6 +13,7 @@ New Features
 - Dynamic calculation of center and radius attributes of RegularPolygon instances
 - Polytope is now a subclass of Tensor
 - Added functions for generating transforms that perform scaling and reflections
+- Updated dependencies to numpy 1.18
 
 Bug fixes
 ---------
