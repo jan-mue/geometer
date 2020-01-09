@@ -179,7 +179,7 @@ class Tensor:
             d.add_edge(cur, prev)
             prev = cur
 
-        return type(self)(d.calculate())
+        return Tensor(d.calculate())
 
     def __truediv__(self, other):
         if np.isscalar(other):

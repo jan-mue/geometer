@@ -39,14 +39,18 @@ class Polytope(Tensor):
         """int: The dimension of the space that the polytope lives in."""
         return self.shape[-1] - 1
 
+    @staticmethod
+    def _normalize_array(array):
+        array = array.T.astype(complex)
+        isinf = np.isclose(array[-1], 0, atol=EQ_TOL_ABS)
+        array[:, ~isinf] = array[:, ~isinf] / array[-1, ~isinf]
+        array = np.real_if_close(array)
+        return array.T
+
     @property
     def normalized_array(self):
         """numpy.ndarray: Array containing only normalized vertex coordinates."""
-        result = self.array.T.astype(complex)
-        isinf = np.isclose(result[-1], 0, atol=EQ_TOL_ABS)
-        result[:, ~isinf] = result[:, ~isinf] / result[-1, ~isinf]
-        result = np.real_if_close(result)
-        return result.T
+        return self._normalize_array(self.array)
 
     @property
     def vertices(self):
@@ -245,7 +249,7 @@ class Simplex(Polytope):
     def volume(self):
         """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
         points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
-        points = (points.T / points[:, -1]).T
+        points = self._normalize_array(points)
         n, k = points.shape
 
         if n == k:
@@ -363,10 +367,8 @@ class Polygon(Polytope):
 
         return list(distinct(x for f in self.edges for x in f.intersect(other)))
 
-    @property
-    def area(self):
-        """float: The area of the polygon."""
-        points = np.concatenate([v.array.reshape((v.shape[0], 1)) for v in self.vertices], axis=1)
+    def _normalized_projection(self):
+        points = self.array
 
         if self.dim > 2:
             e = self._plane
@@ -375,11 +377,24 @@ class Polygon(Polytope):
                 # use parallel hyperplane for projection to avoid rescaling
                 e = e.parallel(o)
             m = e.basis_matrix
-            points = m.dot(points)
+            points = points.dot(m.T)
 
-        points = (points / points[-1]).T
+        return self._normalize_array(points)
+
+    @property
+    def area(self):
+        """float: The area of the polygon."""
+        points = self._normalized_projection()
         a = sum(np.linalg.det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
         return 1/2 * abs(a)
+
+    @property
+    def centroid(self):
+        """Point: The centroid (center of mass) of the polygon."""
+        points = self._normalized_projection()
+        centroids = [np.average(points[[0, i, i + 1], :2], axis=0) for i in range(1, points.shape[0] - 1)]
+        weights = [np.linalg.det(points[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
+        return Point(*np.average(centroids, weights=weights, axis=0))
 
     @property
     def angles(self):

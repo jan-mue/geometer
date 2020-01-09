@@ -246,7 +246,9 @@ class Transformation(ProjectiveElement):
             return identity(self.dim)
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
-        return super(Transformation, self).__pow__(power, modulo)
+
+        result = super(Transformation, self).__pow__(power, modulo)
+        return Transformation(result)
 
     def inverse(self):
         """Calculates the inverse projective transformation.

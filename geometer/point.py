@@ -155,6 +155,13 @@ class Point(ProjectiveElement):
         result = np.append(result, self.array[-1] and 1)
         return Point(result)
 
+    def __truediv__(self, other):
+        if not np.isscalar(other):
+            return super(Point, self).__truediv__(other)
+        result = self.normalized_array[:-1] / other
+        result = np.append(result, self.array[-1] and 1)
+        return Point(result)
+
     def __repr__(self):
         return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if self.isinf else "")
 
@@ -255,7 +262,7 @@ class Subspace(ProjectiveElement):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         x = self.array
         if x.ndim > 2:
-            x = self.array.reshape((x.shape[0]**(x.ndim-1), x.shape[-1]))
+            x = self.array.reshape(-1, x.shape[-1])
         return null_space(x).T
 
     @property

@@ -158,6 +158,22 @@ class TestPolygon:
         assert p1 == p2
         assert p1 is not p2
         assert p1.vertices == p2.vertices
+
+    def test_centroid(self):
+        a = Point(0, 0)
+        b = Point(2, 0)
+        c = Point(2, 2)
+        d = Point(0, 2)
+        t = Triangle(a, b, c)
+        r = Rectangle(a, b, c, d)
+
+        s1, s2, s3 = t.edges
+        l1 = s1.midpoint.join(c)
+        l2 = s2.midpoint.join(a)
+
+        assert t.centroid == (a+b+c)/3
+        assert t.centroid == l1.meet(l2)
+        assert r.centroid == Point(1, 1)
         
         
 class TestPolytope:
