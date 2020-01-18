@@ -139,6 +139,7 @@ class TestPolygon:
         assert np.allclose(p.angles, np.pi/3)
         assert p.center == a
         assert np.isclose(p.radius, 1)
+        assert np.isclose(p.inradius, np.cos(np.pi/6))
 
     def test_copy(self):
         a = Point(0, 0)
@@ -160,10 +161,10 @@ class TestPolygon:
         assert p1.vertices == p2.vertices
 
     def test_centroid(self):
-        a = Point(0, 0)
-        b = Point(2, 0)
-        c = Point(2, 2)
-        d = Point(0, 2)
+        a = Point(0, 0, 1)
+        b = Point(2, 0, 1)
+        c = Point(2, 2, 1)
+        d = Point(0, 2, 1)
         t = Triangle(a, b, c)
         r = Rectangle(a, b, c, d)
 
@@ -173,7 +174,7 @@ class TestPolygon:
 
         assert t.centroid == (a+b+c)/3
         assert t.centroid == l1.meet(l2)
-        assert r.centroid == Point(1, 1)
+        assert r.centroid == Point(1, 1, 1)
         
         
 class TestPolytope:

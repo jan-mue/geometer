@@ -391,9 +391,9 @@ class Polygon(Polytope):
     @property
     def centroid(self):
         """Point: The centroid (center of mass) of the polygon."""
-        points = self._normalized_projection()
-        centroids = [np.average(points[[0, i, i + 1], :2], axis=0) for i in range(1, points.shape[0] - 1)]
-        weights = [np.linalg.det(points[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
+        points = self.normalized_array
+        centroids = [np.average(points[[0, i, i + 1], :-1], axis=0) for i in range(1, points.shape[0] - 1)]
+        weights = [np.linalg.det(self._normalized_projection()[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
         return Point(*np.average(centroids, weights=weights, axis=0))
 
     @property
@@ -454,6 +454,11 @@ class RegularPolygon(Polygon):
     def center(self):
         """Point: The center of the polygon."""
         return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
+
+    @property
+    def inradius(self):
+        """float: The inradius of the regular polygon."""
+        return dist(self.center, self.edges[0].midpoint)
 
 
 class Triangle(Polygon, Simplex):
