@@ -171,7 +171,8 @@ def angle(*args):
     else:
         raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
 
-    return 1/2j*np.log(crossratio(b, c, I, J, a))
+    result = 1/2j*np.log(crossratio(b, c, I, J, a))
+    return np.real_if_close(result)
 
 
 def angle_bisectors(l, m):

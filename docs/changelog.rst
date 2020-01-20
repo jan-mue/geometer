@@ -11,6 +11,7 @@ New Features
 - Added properties shape, rank and T to Tensor class
 - Tensor instances can be raised to an arbitrary positive power
 - Dynamic calculation of center and radius attributes of RegularPolygon instances
+- Added RegularPolygon.incircle
 - Polytope is now a subclass of Tensor
 - Added functions for generating transforms that perform scaling and reflections
 - Updated dependencies to numpy 1.18
@@ -23,6 +24,7 @@ Bug fixes
 - Tolerance parameters are correctly used in Tensor.__eq__
 - Scalar multiplication with Points is calculated correctly using normalized_array
 - Fixed copy method Tensor subclasses
+- Return real angles if possible
 
 
 0.2 - released (15.9.2019)
