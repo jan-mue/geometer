@@ -8,6 +8,11 @@ from .shapes import Polytope
 def identity(dim):
     """Returns the identity transformation.
 
+    Parameters
+    ----------
+    dim : int
+        The dimension of the projective space that the transformation acts on.
+
     Returns
     -------
     Transformation
