@@ -57,8 +57,18 @@ class Tensor:
 
         if covariant is True:
             self._covariant_indices = set(range(self.rank))
+        elif covariant is False:
+            self._covariant_indices = set()
         else:
-            self._covariant_indices = set(covariant) if covariant else set()
+            self._covariant_indices = set()
+            for idx in covariant:
+                if not isinstance(idx, int):
+                    raise TypeError("Tensor indices must be integer, not " + str(type(idx)))
+                if idx < 0:
+                    idx += self.array.ndim
+                if not 0 <= idx < self.array.ndim:
+                    raise IndexError("Index out of range")
+                self._covariant_indices.add(idx)
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
 

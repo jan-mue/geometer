@@ -29,7 +29,7 @@ class Polytope(Tensor):
     def __init__(self, *args):
         if len(args) > 1:
             args = tuple(a.array for a in args)
-        super(Polytope, self).__init__(*args)
+        super(Polytope, self).__init__(*args, covariant=[-1])
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
