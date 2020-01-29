@@ -93,15 +93,12 @@ class Polytope(Tensor):
 
             return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
 
-        return NotImplemented
+        return super(Polytope, self).__eq__(other)
 
     def __add__(self, other):
         if isinstance(other, Point):
             return type(self)(*[f + other for f in self.facets])
-        return NotImplemented
-
-    def __radd__(self, other):
-        return self + other
+        return super(Polytope, self).__add__(other)
 
 
 class Segment(Polytope):
