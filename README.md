@@ -98,8 +98,8 @@ l = Line(Point(1, 2, 3), Point(3, 4, 5))
 A.meet(l)
 # Point(-2, -1, 0)
 
-p3 = Point(1, 2, 1)
-p4 = Point(1, 1, 2)
+p3 = Point(1, 2, 0)
+p4 = Point(1, 1, 1)
 c = Cuboid(p1, p2, p3, p4)
 c.area
 # 6
@@ -107,7 +107,7 @@ c.area
 # Cross ratios
 t = rotation(np.pi/16)
 crossratio(q, t*q, t**2 * q, t**3 * q, p)
-# 2.093706208978352
+# 1.4408954235712448
 
 # Higher dimensions
 p1 = Point(1, 1, 4, 0)
