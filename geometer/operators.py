@@ -115,6 +115,13 @@ def angle(*args):
     using cross ratios. To calculate the angle between two planes, two additional planes tangent to the absolute
     conic are constructed (see [1]).
 
+    Since the Laguerre formula uses the complex logarithm (which gives values between -pi*i and pi*i) and multiplies
+    it with 1/2i, this function can only calculate angles between -pi/2 and pi/2.
+
+    The sign of the angle is determined by the order of the arguments. The points passed to the cross ratio are in
+    the same order as the arguments to this function.
+    When three points are given as arguments, the first point is the point at which the angle is calculated.
+
     Parameters
     ----------
     *args
@@ -171,8 +178,7 @@ def angle(*args):
     else:
         raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
 
-    result = 1/2j*np.log(crossratio(b, c, I, J, a))
-    return np.real_if_close(result)
+    return np.real(1/2j*np.log(crossratio(b, c, I, J, a)))
 
 
 def angle_bisectors(l, m):

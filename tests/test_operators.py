@@ -46,6 +46,7 @@ def test_angle():
     c = Point(1, 0)
 
     assert np.isclose(angle(a, b, c), np.pi/4)
+    assert np.isclose(angle(a, c, b), -np.pi/4)
 
     e1 = Plane(1, 0, 0, 0)
     e2 = Plane(0, 0, 1, 0)
@@ -59,7 +60,7 @@ def test_angle():
     m = Line(p1, p3)
 
     assert np.isclose(abs(angle(l, m)), np.pi/2)
-    assert np.isclose(abs(angle(p1, p2, p3)), np.pi / 2)
+    assert np.isclose(abs(angle(p1, p2, p3)), np.pi/2)
 
 
 def test_angle_bisectors():
