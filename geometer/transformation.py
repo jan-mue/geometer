@@ -2,7 +2,7 @@ import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 from .point import Point, Subspace, infty_hyperplane
 from .curve import Quadric, Conic
-from .shapes import Polytope
+from .shapes import Polytope, Polygon
 
 
 def identity(dim):
@@ -240,7 +240,8 @@ class Transformation(ProjectiveElement):
             cls = Conic if isinstance(other, Conic) else Quadric
             return cls(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
         if isinstance(other, Polytope):
-            return type(other)(other.array.dot(self.array.T))
+            cls = Polygon if isinstance(other, Polygon) else Polytope
+            return cls(other.array.dot(self.array.T))
         return NotImplemented
 
     def __mul__(self, other):
