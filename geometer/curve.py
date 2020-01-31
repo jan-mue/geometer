@@ -479,7 +479,7 @@ class Conic(Quadric):
 
         poly = sympy.poly(ac*bd - cr*ad*bc, _symbols(3))
 
-        matrix = np.zeros((3, 3), dtype=(cr*a.array).dtype)
+        matrix = np.zeros((3, 3), dtype=np.find_common_type([a.array.dtype, type(cr)], []))
         ind = np.triu_indices(3)
         matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
         return cls(matrix + matrix.T)
@@ -676,7 +676,7 @@ class Sphere(Quadric):
 
     def __init__(self, center=Point(0, 0, 0), radius=1):
         c = -center.normalized_array
-        m = np.eye(center.shape[0], dtype=(radius*c).dtype)
+        m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
@@ -725,8 +725,8 @@ class Cone(Quadric):
     """
 
     def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1):
-        from .operators import dist
-        from .transformation import Transformation
+        from .operators import dist, angle
+        from .transformation import rotation, translation
 
         h = dist(vertex, base_center)
         c = (radius / h)**2
@@ -738,7 +738,7 @@ class Cone(Quadric):
             v = vertex.normalized_array
 
         # first build a cone with axis parallel to the z-axis
-        m = np.eye(4, dtype=(c*v).dtype)
+        m = np.eye(4, dtype=np.find_common_type([v.dtype, type(c)], []))
         m[-1, :] = -v
         m[:, -1] = -v
 
@@ -750,16 +750,17 @@ class Cone(Quadric):
             m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2]**2 * c)
 
         # rotate the axis of the cone
-        axis = Line(vertex, base_center)
-        x, y = orth(axis.array.T).T
-        v, x, y = Point(v), Point(x), Point(y)
-        z = base_center.normalized_array[:3] - vertex.normalized_array[:3]
-        z = Point(*z/np.linalg.norm(z))
-        a = [v, v + Point(1, 0, 0), v + Point(0, 1, 0), v + Point(1, 0, 1), v + Point(0, -1, 1)]
-        b = [v, v + x, v + y, v + z + x, v + z - y]
-        t = Transformation.from_points(*zip(a, b)).inverse()
+        axis = Line(Point(v), Point(v)+Point(0, 0, 1))
+        new_axis = Line(vertex, base_center)
 
-        super(Cone, self).__init__(t.array.T.dot(m).dot(t.array))
+        if new_axis != axis:
+            a = angle(axis, new_axis)
+            e = axis.join(new_axis)
+            t = rotation(a, axis=Point(*e.array[:3]))
+            t = translation(Point(v)) * t * translation(-Point(v))
+            m = t.array.T.dot(m).dot(t.array)
+
+        super(Cone, self).__init__(m)
 
 
 class Cylinder(Cone):

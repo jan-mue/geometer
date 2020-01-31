@@ -1,6 +1,6 @@
 import numpy as np
 from sympy.abc import x, y, z
-from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, Cone, Cylinder, AlgebraicCurve, crossratio, translation
+from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, Cone, Cylinder, AlgebraicCurve, crossratio, translation, rotation
 
 
 class TestAlgebraicCurve:
@@ -116,12 +116,6 @@ class TestConic:
 
         assert conic == Ellipse(Point(0, 0), 2, 3)
 
-    def test_transformation(self):
-        c = Circle()
-        t = translation(1, 1)
-
-        assert t*c == Circle(Point(1, 1))
-
 
 class TestCircle:
 
@@ -148,6 +142,12 @@ class TestCircle:
         assert c1.center == c2.center
         assert c1.radius == c2.radius
 
+    def test_transform(self):
+        c = Circle()
+        t = translation(1, 1)
+
+        assert t*c == Circle(Point(1, 1))
+
 
 class TestQuadric:
 
@@ -167,6 +167,9 @@ class TestQuadric:
         q = Quadric.from_planes(e, f)
         assert q.components == [e, f]
 
+
+class TestSphere:
+
     def test_intersection(self):
         s = Sphere(Point(0, 0, 2), 2)
         l = Line(Point(-1, 0, 2), Point(1, 0, 2))
@@ -174,32 +177,45 @@ class TestQuadric:
         assert s.contains(Point(0, 0, 0))
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
 
-        c = Cone(vertex=Point(1, 1, 1), base_center=Point(2, 2, 2), radius=2)
-        a = np.sqrt(2)
-        l = Line(Point(0, 4, 2), Point(4, 0, 2))
-        assert c.intersect(l) == [Point(2-a, 2+a, 2), Point(2+a, 2-a, 2)]
-
         s = Sphere(Point(0, 0, 0, 2), 2)
         l = Line(Point(-1, 0, 0, 2), Point(1, 0, 0, 2))
 
         assert s.contains(Point(0, 0, 0, 0))
         assert s.intersect(l) == [Point(2, 0, 0, 2), Point(-2, 0, 0, 2)]
 
-    def test_sphere(self):
+    def test_s2(self):
         s2 = Sphere()
-        s3 = Sphere(Point(1, 2, 3, 4), 5)
 
         assert s2.center == Point(0, 0, 0)
         assert np.isclose(s2.radius, 1)
         assert np.isclose(s2.volume, 4/3*np.pi)
         assert np.isclose(s2.area, 4*np.pi)
 
+    def test_s3(self):
+        s3 = Sphere(Point(1, 2, 3, 4), 5)
+
         assert s3.center == Point(1, 2, 3, 4)
         assert np.isclose(s3.radius, 5)
         assert np.isclose(s3.volume, 1/2 * np.pi**2 * 5**4)
         assert np.isclose(s3.area, 2 * np.pi**2 * 5**3)
 
-    def test_cone(self):
+    def test_transform(self):
+        s = Sphere(Point(0, 0, 2), 2)
+        t = translation(1, 1, -1)
+
+        assert t*s == Sphere(Point(1, 1, 1), 2)
+
+
+class TestCone:
+
+    def test_intersection(self):
+        c = Cone(vertex=Point(1, 1, 1), base_center=Point(2, 2, 2), radius=2)
+        a = np.sqrt(2)
+        l = Line(Point(0, 4, 2), Point(4, 0, 2))
+
+        assert c.intersect(l) == [Point(2 - a, 2 + a, 2), Point(2 + a, 2 - a, 2)]
+
+    def test_init(self):
         c = Cone(vertex=Point(1, 0, 0), base_center=Point(2, 0, 0), radius=4)
 
         assert c.contains(Point(1, 0, 0))
@@ -215,7 +231,16 @@ class TestQuadric:
         assert c.contains(Point(2, 2-s, 2+s))
         assert c.contains(Point(s, 0, -s))
 
-    def test_cylinder(self):
+    def test_transform(self):
+        c = Cone(vertex=Point(1, 1, 1), base_center=Point(2, 2, 2), radius=2)
+        t = translation(-1, -1, -1)
+
+        assert t*c == Cone(vertex=Point(0, 0, 0), base_center=Point(1, 1, 1), radius=2)
+
+
+class TestCylinder:
+
+    def test_init(self):
         c = Cylinder(center=Point(1, 0, 0), direction=Point(1, 0, 0), radius=4)
 
         assert c.contains(Point(1, 0, 4))
@@ -230,3 +255,11 @@ class TestQuadric:
         assert c.contains(Point(2, 2 - s, 2 + s))
         assert c.contains(Point(s, 0, -s))
         assert c.contains(Point(42+s, 42, 42-s))
+
+    def test_transform(self):
+        c = Cylinder(center=Point(1, 0, 0), direction=Point(1, 0, 0), radius=4)
+        t = translation(1, 1, 1)
+        r = rotation(np.pi/2, axis=Point(0, 1, 0))
+
+        assert t*c == Cylinder(center=Point(2, 1, 1), direction=Point(1, 0, 0), radius=4)
+        assert r*c == Cylinder(center=Point(0, 0, 1), direction=Point(0, 0, 1), radius=4)

@@ -1,4 +1,4 @@
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, dist, rotation
+from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, dist, rotation, translation
 import numpy as np
 
 
@@ -127,20 +127,6 @@ class TestPolygon:
         assert r.area == r2.area
         assert r2.contains(Point(-0.5, 1.5))
 
-    def test_regular_polygon(self):
-        a = Point(0, 0, 0)
-        p = RegularPolygon(a, 1, 6, axis=Point(0, 0, 1))
-
-        d = p.edges[0].length
-
-        assert len(p.vertices) == 6
-        assert np.isclose(dist(a, p.vertices[0]), 1)
-        assert all(np.isclose(s.length, d) for s in p.edges[1:])
-        assert np.allclose(p.angles, np.pi/3)
-        assert p.center == a
-        assert np.isclose(p.radius, 1)
-        assert np.isclose(p.inradius, np.cos(np.pi/6))
-
     def test_copy(self):
         a = Point(0, 0)
         b = Point(0, 2)
@@ -175,30 +161,38 @@ class TestPolygon:
         assert t.centroid == (a+b+c)/3
         assert t.centroid == l1.meet(l2)
         assert r.centroid == Point(1, 1, 1)
+
+
+class TestRegularPolygon:
+
+    def test_init(self):
+        a = Point(0, 0, 0)
+        p = RegularPolygon(a, 1, 6, axis=Point(0, 0, 1))
+
+        d = p.edges[0].length
+
+        assert len(p.vertices) == 6
+        assert np.isclose(dist(a, p.vertices[0]), 1)
+        assert all(np.isclose(s.length, d) for s in p.edges[1:])
+        assert np.allclose(p.angles, np.pi/3)
+        assert p.center == a
+
+    def test_radius(self):
+        p = RegularPolygon(Point(0, 0, 0), 1, 6, axis=Point(0, 0, 1))
+
+        assert np.isclose(p.radius, 1)
+        assert np.isclose(p.inradius, np.cos(np.pi/6))
+
+    def test_transform(self):
+        p = RegularPolygon(Point(0, 0, 0), 1, 6, axis=Point(0, 0, 1))
+        t = translation(1, 1, 0)
+
+        assert t*p == RegularPolygon(Point(1, 1, 0), 1, 6, axis=Point(0, 0, 1))
         
         
-class TestPolytope:
+class TestSimplex:
 
-    def test_cube(self):
-        a = Point(0, 0, 0)
-        b = Point(1, 0, 0)
-        c = Point(0, 1, 0)
-        d = Point(0, 0, 1)
-        cube = Cuboid(a, b, c, d)
-        assert len(cube.faces) == 6
-        assert len(cube.vertices) == 8
-        assert cube.area == 6
-
-    def test_intersect(self):
-        a = Point(0, 0, 0)
-        b = Point(1, 0, 0)
-        c = Point(0, 1, 0)
-        d = Point(0, 0, 1)
-        cube = Cuboid(a, b, c, d)
-        l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
-        assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
-
-    def test_simplex_volume(self):
+    def test_volume(self):
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -209,3 +203,47 @@ class TestPolytope:
 
         triangle = Simplex(a, b, c)
         assert np.isclose(triangle.volume, 1/2)
+
+    def test_transform(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        s = Simplex(a, b, c, d)
+        x = Point(1, 1, 1)
+        t = translation(x)
+
+        assert t * s == Simplex(a + x, b + x, c + x, d + x)
+
+
+class TestCuboid:
+
+    def test_intersect(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+        l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
+        assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
+
+    def test_area(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+        assert len(cube.faces) == 6
+        assert len(cube.vertices) == 8
+        assert cube.area == 6
+
+    def test_transform(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+        x = Point(1, 1, 1)
+        t = translation(x)
+
+        assert t*cube == Cuboid(a+x, b+x, c+x, d+x)

@@ -422,9 +422,6 @@ class RegularPolygon(Polygon):
     """
 
     def __init__(self, center, radius, n, axis=None):
-
-        # TODO: handle points at infinity
-
         if axis is None:
             p = Point(1, 0)
         else:
@@ -433,12 +430,13 @@ class RegularPolygon(Polygon):
 
         vertex = center + radius*p
 
-        from .transformation import rotation
+        from .transformation import rotation, translation
 
         vertices = []
         for i in range(n):
-            r = rotation(2*np.pi*i / n, axis=axis)
-            vertices.append(r*vertex)
+            t = rotation(2*np.pi*i / n, axis=axis)
+            t = translation(center) * t * translation(-center)
+            vertices.append(t*vertex)
 
         super(RegularPolygon, self).__init__(*vertices)
 
