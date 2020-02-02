@@ -5,6 +5,7 @@ import numpy as np
 from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
 from .utils import distinct, is_multiple
 from .point import Line, Plane, Point, infty_hyperplane
+from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set
 from .exceptions import NotCoplanar, LinearDependenceError
 
@@ -30,6 +31,11 @@ class Polytope(Tensor):
         if len(args) > 1:
             args = tuple(a.array for a in args)
         super(Polytope, self).__init__(*args, covariant=[-1])
+
+    def __apply__(self, transformation):
+        result = self.copy()
+        result.array = self.array.dot(transformation.array.T)
+        return result
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
@@ -124,6 +130,11 @@ class Segment(Polytope):
     def __init__(self, *args):
         super(Segment, self).__init__(*args)
         self._line = Line(Point(self.array[0]), Point(self.array[1]))
+
+    def __apply__(self, transformation):
+        result = super(Segment, self).__apply__(transformation)
+        result._line = Line(Point(result.array[0]), Point(result.array[1]))
+        return result
 
     def contains(self, other, tol=1e-8):
         """Tests whether a point is contained in the segment.
@@ -280,6 +291,12 @@ class Polygon(Polytope):
         super(Polygon, self).__init__(*args)
         self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
 
+    def __apply__(self, transformation):
+        result = super(Polygon, self).__apply__(transformation)
+        if result.dim > 2:
+            result._plane = Plane(*result.vertices[:result.dim])
+        return result
+
     @property
     def vertices(self):
         return [Point(x) for x in self.array]
@@ -429,8 +446,6 @@ class RegularPolygon(Polygon):
             p = Point(*e.basis_matrix[0, :-1])
 
         vertex = center + radius*p
-
-        from .transformation import rotation, translation
 
         vertices = []
         for i in range(n):

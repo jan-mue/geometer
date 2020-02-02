@@ -7,9 +7,10 @@ from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J, infty_plane
+from .transformation import rotation, translation
 from .base import ProjectiveElement, Tensor, _symbols, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, orth, is_multiple
+from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, is_multiple
 
 
 class AlgebraicCurve(ProjectiveElement):
@@ -179,6 +180,12 @@ class Quadric(ProjectiveElement):
         matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
         self.symbols = _symbols(matrix.shape[0])
         super(Quadric, self).__init__(matrix, covariant=False)
+
+    def __apply__(self, transformation):
+        inv = transformation.inverse().array
+        result = self.copy()
+        result.array = inv.T @ self.array @ inv
+        return result
 
     @classmethod
     def from_planes(cls, e, f):
@@ -726,7 +733,6 @@ class Cone(Quadric):
 
     def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1):
         from .operators import dist, angle
-        from .transformation import rotation, translation
 
         h = dist(vertex, base_center)
         c = (radius / h)**2

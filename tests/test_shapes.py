@@ -188,6 +188,7 @@ class TestRegularPolygon:
         t = translation(1, 1, 0)
 
         assert t*p == RegularPolygon(Point(1, 1, 0), 1, 6, axis=Point(0, 0, 1))
+        assert isinstance(t*p, RegularPolygon)
         
         
 class TestSimplex:
@@ -247,3 +248,4 @@ class TestCuboid:
         t = translation(x)
 
         assert t*cube == Cuboid(a+x, b+x, c+x, d+x)
+        assert isinstance(t*cube, Cuboid)

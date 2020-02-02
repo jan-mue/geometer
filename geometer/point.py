@@ -162,6 +162,9 @@ class Point(ProjectiveElement):
         result = np.append(result, self.array[-1] and 1)
         return Point(result)
 
+    def __apply__(self, transformation):
+        return type(self)(TensorDiagram((self, transformation)).calculate())
+
     def __repr__(self):
         return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if self.isinf else "")
 
@@ -229,6 +232,9 @@ class Subspace(ProjectiveElement):
 
     def __sub__(self, other):
         return self + (-other)
+
+    def __apply__(self, transformation):
+        return type(self)(self*transformation.inverse())
 
     def polynomials(self, symbols=None):
         """Returns a list of polynomials, to use for symbolic calculations.

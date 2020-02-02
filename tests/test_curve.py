@@ -147,6 +147,7 @@ class TestCircle:
         t = translation(1, 1)
 
         assert t*c == Circle(Point(1, 1))
+        assert t.apply(c).center == Point(1, 1)
 
 
 class TestQuadric:

@@ -1,8 +1,6 @@
 import numpy as np
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 from .point import Point, Subspace, infty_hyperplane
-from .curve import Quadric, Conic
-from .shapes import Polytope, Polygon
 
 
 def identity(dim):
@@ -184,6 +182,9 @@ class Transformation(ProjectiveElement):
     def __init__(self, *args):
         super(Transformation, self).__init__(*args, covariant=[0])
 
+    def __apply__(self, transformation):
+        return Transformation(super(Transformation, transformation).__mul__(self))
+
     @classmethod
     def from_points(cls, *args):
         """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in
@@ -231,21 +232,15 @@ class Transformation(ProjectiveElement):
             The result of applying this transformation to the supplied object.
 
         """
-        if isinstance(other, (Point, Transformation)):
-            return type(other)(super(Transformation, self).__mul__(other))
-        if isinstance(other, Subspace):
-            return type(other)(other*self.inverse())
-        if isinstance(other, Quadric):
-            inv = self.inverse()
-            cls = Conic if isinstance(other, Conic) else Quadric
-            return cls(TensorDiagram((inv, other), (inv.copy(), other)).calculate())
-        if isinstance(other, Polytope):
-            cls = Polygon if isinstance(other, Polygon) else Polytope
-            return cls(other.array.dot(self.array.T))
-        return NotImplemented
+        if hasattr(other, '__apply__'):
+            return other.__apply__(self)
+        raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
 
     def __mul__(self, other):
-        return self.apply(other)
+        try:
+            return self.apply(other)
+        except NotImplementedError:
+            return super(Transformation, self).__mul__(other)
 
     def __pow__(self, power, modulo=None):
         if power == 0:
