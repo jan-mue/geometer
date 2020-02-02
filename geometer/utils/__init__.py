@@ -1,5 +1,4 @@
 from .math import null_space, hat_matrix, is_multiple, orth
-from .polynomial import np_array_to_poly, poly_to_np_array, polyval
 
 
 def distinct(iterable):
