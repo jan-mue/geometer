@@ -1,13 +1,12 @@
 import math
 from itertools import combinations
 
-import sympy
 import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J, infty_plane
 from .transformation import rotation, translation
-from .base import ProjectiveElement, Tensor, _symbols, EQ_TOL_REL, EQ_TOL_ABS
+from .base import ProjectiveElement, Tensor, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
 from .utils import hat_matrix, is_multiple
     
@@ -24,17 +23,11 @@ class Quadric(ProjectiveElement):
     is_dual : bool, optional
         If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
 
-    Attributes
-    ----------
-    symbols : tuple of sympy.Symbol
-        The symbols used in the polynomial defining the hypersurface.
-
     """
 
     def __init__(self, matrix, is_dual=False):
         self.is_dual = is_dual
         matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        self.symbols = _symbols(matrix.shape[0])
         super(Quadric, self).__init__(matrix, covariant=False)
 
     def __apply__(self, transformation):
@@ -110,11 +103,6 @@ class Quadric(ProjectiveElement):
 
         """
         return np.isclose(other.array.dot(self.array.dot(other.array)), 0, atol=tol)
-
-    @property
-    def polynomial(self):
-        """sympy.Poly: The polynomial defining this quadric."""
-        return sympy.poly(self.array.dot(self.symbols).dot(self.symbols), self.symbols)
 
     @property
     def is_degenerate(self):
