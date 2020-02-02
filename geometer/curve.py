@@ -152,6 +152,10 @@ class Quadric(ProjectiveElement):
         list of Point
             The points of intersection
 
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
+
         """
         if isinstance(other, Line):
             reducible = self.is_degenerate
@@ -344,15 +348,23 @@ class Conic(Quadric):
         list of Point
             The points of intersection.
 
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
+
         """
         if isinstance(other, Conic):
             if other.is_degenerate:
                 g, h = other.components
             else:
-                x = _symbols(1)
-                m = sympy.Matrix(self.array + x * other.array)
-                f = sympy.poly(m.det(), x)
-                roots = np.roots(f.coeffs())
+                a1, a2, a3 = self.array
+                b1, b2, b3 = other.array
+                alpha = np.linalg.det(self.array)
+                beta = np.linalg.det([a1, a2, b3]) + np.linalg.det([a1, b2, a3]) + np.linalg.det([b1, a2, a3])
+                gamma = np.linalg.det([a1, b2, b3]) + np.linalg.det([b1, a2, b3]) + np.linalg.det([b1, b2, a3])
+                delta = np.linalg.det(other.array)
+
+                roots = np.roots([alpha, beta, gamma, delta])
                 c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)
                 g, h = c.components
 
