@@ -8,7 +8,7 @@ from .point import Point, Line, Plane, I, J, infty_plane
 from .transformation import rotation, translation
 from .base import ProjectiveElement, Tensor, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import hat_matrix, is_multiple
+from .utils import hat_matrix, is_multiple, adjugate
     
     
 class Quadric(ProjectiveElement):
@@ -322,17 +322,13 @@ class Conic(Quadric):
         .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
 
         """
-        p = np.array(_symbols(3))
-        ac = sympy.Matrix([p, a.array, c.array]).det()
-        bd = sympy.Matrix([p, b.array, d.array]).det()
-        ad = sympy.Matrix([p, a.array, d.array]).det()
-        bc = sympy.Matrix([p, b.array, c.array]).det()
+        ac = adjugate([np.ones(3), a.array, c.array])[:, 0]
+        bd = adjugate([np.ones(3), b.array, d.array])[:, 0]
+        ad = adjugate([np.ones(3), a.array, d.array])[:, 0]
+        bc = adjugate([np.ones(3), b.array, c.array])[:, 0]
 
-        poly = sympy.poly(ac*bd - cr*ad*bc, _symbols(3))
+        matrix = np.outer(ac, bd) - cr*np.outer(ad, bc)
 
-        matrix = np.zeros((3, 3), dtype=np.find_common_type([a.array.dtype, type(cr)], []))
-        ind = np.triu_indices(3)
-        matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
         return cls(matrix + matrix.T)
 
     def intersect(self, other):
