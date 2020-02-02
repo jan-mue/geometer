@@ -92,6 +92,12 @@ class TestConic:
         c2 = Circle(Point(0, 2), 1)
         assert Point(0, 1) in c.intersect(c2)
 
+        c3 = Conic.from_lines(Line(1, 0, 0), Line(0, 1, 0))
+        assert Point(1, 0) in c.intersect(c3)
+        assert Point(0, 1) in c.intersect(c3)
+        assert Point(-1, 0) in c.intersect(c3)
+        assert Point(0, -1) in c.intersect(c3)
+
     def test_contains(self):
         c = Conic([[1, 0, 0],
                    [0, 1, 0],

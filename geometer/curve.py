@@ -458,7 +458,7 @@ class Conic(Quadric):
         """Construct a conic from a cross ratio and four other points.
 
         This method relies on the fact that a point lies on a conic with five other points, if and only of the
-        cross ratio seen from this point is the same as the cross ratio of four of the other points seen from the fith
+        cross ratio seen from this point is the same as the cross ratio of four of the other points seen from the fifth
         point.
 
         Parameters
@@ -506,7 +506,7 @@ class Conic(Quadric):
 
         """
         if isinstance(other, Conic):
-            if self.is_degenerate:
+            if other.is_degenerate:
                 g, h = other.components
             else:
                 x = _symbols(1)
