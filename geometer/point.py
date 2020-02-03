@@ -1,8 +1,6 @@
-import warnings
 import numpy as np
-import sympy
 
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, _symbols, EQ_TOL_ABS
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, EQ_TOL_ABS
 from .exceptions import LinearDependenceError, NotCoplanar
 from .utils import null_space
 
@@ -236,35 +234,6 @@ class Subspace(ProjectiveElement):
 
     def __apply__(self, transformation):
         return type(self)(self*transformation.inverse())
-
-    def polynomials(self, symbols=None):
-        """Returns a list of polynomials, to use for symbolic calculations.
-
-        Parameters
-        ----------
-        symbols : list of sympy.Symbol, optional
-            The symbols used in the resulting polynomial. By default "x1", ..., "xn" will be used.
-
-        Returns
-        -------
-        list of sympy.Poly
-            The polynomials describing the subspace.
-
-        """
-        warnings.warn('The function Subspace.polynomials is deprecated', category=DeprecationWarning)
-
-        symbols = symbols or _symbols(self.shape[0])
-
-        def p(row):
-            f = sum(x * s for x, s in zip(row, symbols))
-            return sympy.poly(f, symbols)
-
-        if self.rank == 1:
-            return [p(self.array)]
-
-        x = self.array.reshape((-1, self.shape[-1]))
-        x = x[np.any(x, axis=1)]
-        return np.apply_along_axis(p, axis=1, arr=x)
 
     @property
     def basis_matrix(self):
@@ -603,12 +572,6 @@ class Plane(Subspace):
         result[a, range(n - 1)] = -self.array[i]
         q, r = np.linalg.qr(result)
         return q.T
-
-    @property
-    def polynomial(self):
-        """sympy.Poly: The polynomial defining this hyperplane."""
-        warnings.warn('The property Plane.polynomial is deprecated', category=DeprecationWarning)
-        return super(Plane, self).polynomials()[0]
 
     def __repr__(self):
         return "Plane({})".format(",".join(self.array.astype(str)))

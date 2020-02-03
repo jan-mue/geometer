@@ -1,161 +1,14 @@
 import math
-import warnings
 from itertools import combinations
 
-import sympy
 import numpy as np
-from numpy.polynomial import polynomial as pl
 from numpy.lib.scimath import sqrt as csqrt
 
 from .point import Point, Line, Plane, I, J, infty_plane
 from .transformation import rotation, translation
-from .base import ProjectiveElement, Tensor, _symbols, EQ_TOL_REL, EQ_TOL_ABS
+from .base import ProjectiveElement, Tensor, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, is_multiple
-
-
-class AlgebraicCurve(ProjectiveElement):
-    """A plane algebraic curve, defined by the zero set of a homogeneous polynomial in 3 variables.
-
-    Parameters
-    ----------
-    poly : sympy.Expr or numpy.ndarray
-        The polynomial defining the curve. It is automatically homogenized.
-    symbols : iterable of sympy.Symbol, optional
-        The symbols that are used in the polynomial. By default the symbols (x0, x1, x2) will be used.
-
-    Attributes
-    ----------
-    symbols : tuple of sympy.Symbol
-        The symbols used in the polynomial defining the curve.
-
-    """
-
-    def __init__(self, poly, symbols=None):
-        warnings.warn('The class AlgebraicCurve is deprecated, use sympy or other package', category=DeprecationWarning)
-
-        if isinstance(poly, np.ndarray):
-            if poly.ndim != 3:
-                raise ValueError("Expected a polynomial in 3 variables.")
-
-            self.symbols = _symbols(3) if symbols is None else tuple(symbols)
-            super(AlgebraicCurve, self).__init__(poly, covariant=False)
-            return
-
-        if not isinstance(poly, sympy.Expr):
-            raise ValueError("poly must be ndarray or sympy expression.")
-
-        if symbols is None:
-            symbols = poly.free_symbols
-
-        poly = sympy.poly(poly, *symbols)
-
-        self.symbols = symbols
-
-        poly = poly.homogenize(symbols[-1])
-
-        super(AlgebraicCurve, self).__init__(poly_to_np_array(poly, symbols), covariant=False)
-
-    @property
-    def polynomial(self):
-        """sympy.Poly: The polynomial defining this curve."""
-        return np_array_to_poly(self.array, self.symbols)
-
-    def tangent(self, at):
-        """Calculates the tangent of the curve at a given point.
-
-        Parameters
-        ----------
-        at : Point
-            The point to calculate the tangent line at.
-
-        Returns
-        -------
-        Line
-            The tangent line.
-
-        """
-        dx = [polyval(at.array, pl.polyder(self.array, axis=i)) for i in range(self.dim + 1)]
-        return Line(dx)
-
-    @property
-    def degree(self):
-        """int: The degree of the curve, i.e. the homogeneous order of the defining polynomial."""
-        return self.polynomial.homogeneous_order()
-
-    def is_tangent(self, line):
-        """Tests if a given line is tangent to the curve.
-
-        The method compares the number of intersections to the degree of the algebraic curve. If the line is tangent
-        to the curve it will have at least a double intersection and using Bezout's theorem we know that otherwise the
-        number of intersections (counted without multiplicity) is equal to the degree of the curve.
-
-        Parameters
-        ----------
-        line : Line
-            The line to test.
-
-        Returns
-        -------
-        bool
-            True if the given line is tangent to the algebraic curve.
-
-        """
-        return len(self.intersect(line)) < self.degree
-
-    def contains(self, pt, tol=1e-8):
-        """Tests if a given point lies on the algebraic curve.
-
-        Parameters
-        ----------
-        pt : Point
-            The point to test.
-        tol : float, optional
-            The accepted tolerance.
-
-        Returns
-        -------
-        bool
-            True if the curve contains the point.
-
-        """
-        return np.isclose(polyval(pt.array, self.array), 0, atol=tol)
-
-    def intersect(self, other):
-        """Calculates points of intersection with the algebraic curve.
-
-        Parameters
-        ----------
-        other : Line or AlgebraicCurve
-            The object to intersect this curve with.
-
-        Returns
-        -------
-        list of Point
-            The points of intersection.
-
-        """
-        sol = set()
-
-        if isinstance(other, Line):
-            polys = [self.polynomial] + other.polynomials(self.symbols)
-
-        elif isinstance(other, AlgebraicCurve):
-            polys = [self.polynomial, other.polynomial]
-
-        else:
-            raise NotImplementedError("Intersection for objects of type %s not supported." % str(type(other)))
-
-        for z in [0, 1]:
-            p = [f.subs(self.symbols[-1], z) for f in polys]
-
-            try:
-                x = sympy.solve_poly_system(p, *self.symbols[:-1])
-                sol.update(tuple(complex(x) for x in cor) + (z,) for cor in x)
-            except NotImplementedError:
-                continue
-
-        return [Point(np.real_if_close(x)) for x in sol if Tensor(x) != 0]
+from .utils import hat_matrix, is_multiple, adjugate
     
     
 class Quadric(ProjectiveElement):
@@ -170,17 +23,11 @@ class Quadric(ProjectiveElement):
     is_dual : bool, optional
         If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
 
-    Attributes
-    ----------
-    symbols : tuple of sympy.Symbol
-        The symbols used in the polynomial defining the hypersurface.
-
     """
 
     def __init__(self, matrix, is_dual=False):
         self.is_dual = is_dual
         matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        self.symbols = _symbols(matrix.shape[0])
         super(Quadric, self).__init__(matrix, covariant=False)
 
     def __apply__(self, transformation):
@@ -258,13 +105,6 @@ class Quadric(ProjectiveElement):
         return np.isclose(other.array.dot(self.array.dot(other.array)), 0, atol=tol)
 
     @property
-    def polynomial(self):
-        """sympy.Poly: The polynomial defining this quadric."""
-        warnings.warn('The property Quadric.polynomial is deprecated', category=DeprecationWarning)
-
-        return sympy.poly(self.array.dot(self.symbols).dot(self.symbols), self.symbols)
-
-    @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
         return np.isclose(np.linalg.det(self.array), 0, atol=EQ_TOL_ABS)
@@ -311,6 +151,10 @@ class Quadric(ProjectiveElement):
         -------
         list of Point
             The points of intersection
+
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
         if isinstance(other, Line):
@@ -482,17 +326,13 @@ class Conic(Quadric):
         .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
 
         """
-        p = np.array(_symbols(3))
-        ac = sympy.Matrix([p, a.array, c.array]).det()
-        bd = sympy.Matrix([p, b.array, d.array]).det()
-        ad = sympy.Matrix([p, a.array, d.array]).det()
-        bc = sympy.Matrix([p, b.array, c.array]).det()
+        ac = adjugate([np.ones(3), a.array, c.array])[:, 0]
+        bd = adjugate([np.ones(3), b.array, d.array])[:, 0]
+        ad = adjugate([np.ones(3), a.array, d.array])[:, 0]
+        bc = adjugate([np.ones(3), b.array, c.array])[:, 0]
 
-        poly = sympy.poly(ac*bd - cr*ad*bc, _symbols(3))
+        matrix = np.outer(ac, bd) - cr*np.outer(ad, bc)
 
-        matrix = np.zeros((3, 3), dtype=np.find_common_type([a.array.dtype, type(cr)], []))
-        ind = np.triu_indices(3)
-        matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
         return cls(matrix + matrix.T)
 
     def intersect(self, other):
@@ -508,15 +348,23 @@ class Conic(Quadric):
         list of Point
             The points of intersection.
 
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
+
         """
         if isinstance(other, Conic):
             if other.is_degenerate:
                 g, h = other.components
             else:
-                x = _symbols(1)
-                m = sympy.Matrix(self.array + x * other.array)
-                f = sympy.poly(m.det(), x)
-                roots = np.roots(f.coeffs())
+                a1, a2, a3 = self.array
+                b1, b2, b3 = other.array
+                alpha = np.linalg.det(self.array)
+                beta = np.linalg.det([a1, a2, b3]) + np.linalg.det([a1, b2, a3]) + np.linalg.det([b1, a2, a3])
+                gamma = np.linalg.det([a1, b2, b3]) + np.linalg.det([b1, a2, b3]) + np.linalg.det([b1, b2, a3])
+                delta = np.linalg.det(other.array)
+
+                roots = np.roots([alpha, beta, gamma, delta])
                 c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)
                 g, h = c.components
 
