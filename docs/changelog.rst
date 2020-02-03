@@ -31,6 +31,11 @@ Bug fixes
 - Indices passed to Tensor constructor are validated and negative indices converted
 - Fixed init method of Cone & Cylinder classes
 
+Deprecations
+------------
+- Deprecated AlgebraicCurve, Subspace.polygons, Plane.polygon, Quadric.polygon and the
+  module utils.polynomial in preparation of removal of sympy as dependency
+
 
 0.2 - released (15.9.2019)
 --------------------------

@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 import sympy
 import numpy as np
@@ -28,6 +29,8 @@ def polyval(x, c):
         The result of the evaluation as described above.
 
     """
+    warnings.warn('The function polyval is deprecated', category=DeprecationWarning)
+
     if len(x) != c.ndim:
         raise ValueError("Dimension of point and polynomial do not match.")
     for xi in x:
@@ -58,6 +61,8 @@ def poly_to_np_array(p, symbols):
         The coefficients of the polynomial as described above.
 
     """
+    warnings.warn('The function poly_to_np_array is deprecated', category=DeprecationWarning)
+
     p = sympy.poly(p, symbols)
     c = np.zeros([p.total_degree() + 1] * len(symbols), dtype=complex)
 
@@ -95,6 +100,8 @@ def np_array_to_poly(c, symbols):
         The resulting polynomial as described above.
 
     """
+    warnings.warn('The function np_array_to_poly is deprecated', category=DeprecationWarning)
+
     c = np.array(c)
     f = 0
     indices = [range(i) for i in c.shape]

@@ -1,4 +1,5 @@
 import math
+import warnings
 from itertools import combinations
 
 import sympy
@@ -31,6 +32,7 @@ class AlgebraicCurve(ProjectiveElement):
     """
 
     def __init__(self, poly, symbols=None):
+        warnings.warn('The class AlgebraicCurve is deprecated, use sympy or other package', category=DeprecationWarning)
 
         if isinstance(poly, np.ndarray):
             if poly.ndim != 3:
@@ -258,6 +260,8 @@ class Quadric(ProjectiveElement):
     @property
     def polynomial(self):
         """sympy.Poly: The polynomial defining this quadric."""
+        warnings.warn('The property Quadric.polynomial is deprecated', category=DeprecationWarning)
+
         return sympy.poly(self.array.dot(self.symbols).dot(self.symbols), self.symbols)
 
     @property

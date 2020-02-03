@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import sympy
 
@@ -250,6 +251,8 @@ class Subspace(ProjectiveElement):
             The polynomials describing the subspace.
 
         """
+        warnings.warn('The function Subspace.polynomials is deprecated', category=DeprecationWarning)
+
         symbols = symbols or _symbols(self.shape[0])
 
         def p(row):
@@ -604,6 +607,7 @@ class Plane(Subspace):
     @property
     def polynomial(self):
         """sympy.Poly: The polynomial defining this hyperplane."""
+        warnings.warn('The property Plane.polynomial is deprecated', category=DeprecationWarning)
         return super(Plane, self).polynomials()[0]
 
     def __repr__(self):
