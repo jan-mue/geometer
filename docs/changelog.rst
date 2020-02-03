@@ -11,20 +11,25 @@ New Features
 - Added properties shape, rank and T to Tensor class
 - Tensor instances can be raised to an arbitrary positive power
 - Dynamic calculation of center and radius attributes of RegularPolygon instances
-- Added RegularPolygon.incircle
+- Added RegularPolygon.inradius property
 - Polytope is now a subclass of Tensor
 - Added functions for generating transforms that perform scaling and reflections
-- Updated dependencies to numpy 1.18
+- Added Polygon.centroid property
+- Updated numpy to version 1.18
 
 Bug fixes
 ---------
 
 - Transformations are now applied correctly to quadrics and conics
+- Fixed bug that made transformation of Cuboid & RegularPolygon fail (issue #23)
 - Raising transformations to a power (other than 1) is calculated correctly
 - Tolerance parameters are correctly used in Tensor.__eq__
 - Scalar multiplication with Points is calculated correctly using normalized_array
 - Fixed copy method Tensor subclasses
-- Return real angles if possible
+- Return real angles instead of angles with complex type
+- Fixed init method of regular polygons that aren't centered at the origin
+- Indices passed to Tensor constructor are validated and negative indices converted
+- Fixed init method of Cone & Cylinder classes
 
 
 0.2 - released (15.9.2019)
@@ -55,7 +60,7 @@ Bug fixes
 - Plane.perpendicular now also works for points that lie on the plane
 - Addition/Subtraction of subspaces and points works in more cases
 - Adding a point at infinity to another point will give a finite point moved in that direction
-- Globally accessible tolerance parameters to avoid inaccurate calculations
+- Globally accessible tolerance parameters to avoid inaccurate calculations (issue #22)
 - Fixed Transformation.from_points
 
 
