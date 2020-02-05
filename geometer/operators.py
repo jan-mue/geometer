@@ -109,14 +109,15 @@ def harmonic_set(a, b, c):
 
 
 def angle(*args):
-    """Calculates the (oriented) angle between given points, lines or planes.
+    r"""Calculates the (oriented) angle between given points, lines or planes.
 
     The function uses the Laguerre formula to calculate angles in two or three dimensional projective space
     using cross ratios. To calculate the angle between two planes, two additional planes tangent to the absolute
     conic are constructed (see [1]).
 
-    Since the Laguerre formula uses the complex logarithm (which gives values between -pi*i and pi*i) and multiplies
-    it with 1/2i, this function can only calculate angles between -pi/2 and pi/2.
+    Since the Laguerre formula uses the complex logarithm (which gives values between :math:`-\pi i` and :math:`\pi i`)
+    and multiplies it with :math:`1/2i`, this function can only calculate angles between :math:`-\pi / 2` and
+    :math:`\pi / 2`.
 
     The sign of the angle is determined by the order of the arguments. The points passed to the cross ratio are in
     the same order as the arguments to this function.

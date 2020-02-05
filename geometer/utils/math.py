@@ -86,9 +86,14 @@ def hat_matrix(*args):
 
 
 def adjugate(A):
-    """Calculates the adjugate matrix using tensor diagrams.
+    r"""Calculates the adjugate matrix using tensor diagrams.
 
-    This function uses the formula from here: (German)
+    This function uses the following formula for the adjugate matrix (in Einstein notation):
+
+    .. math::
+        \textrm{adj}(A)_{ij} = \frac{1}{(n-1)!} \varepsilon_{i\ i_2 \ldots i_n} \varepsilon_{j\ j_2 \ldots j_n} A_{j_2 i_2} \ldots A_{j_n i_n}
+
+    Source (German):
     https://de.wikipedia.org/wiki/Levi-Civita-Symbol#Zusammenhang_mit_der_Determinante
 
     Parameters
@@ -142,7 +147,7 @@ def orth(A):
 
     Parameters
     ----------
-    A : ndarray
+    A : array_like
         The input matrix.
 
     Returns

@@ -20,6 +20,9 @@
 # -- Project information -----------------------------------------------------
 
 import geometer
+import sys
+import inspect
+from os.path import relpath, dirname
 
 project = 'geometer'
 copyright = '2019, Jan Müller'
@@ -45,6 +48,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.linkcode',
 ]
 
 # Napoleon settings
@@ -59,6 +64,53 @@ napoleon_use_admonition_for_references = False
 napoleon_use_ivar = False
 napoleon_use_param = False
 napoleon_use_rtype = True
+
+
+# Links to source code on GitHub
+def linkcode_resolve(domain, info):
+    if domain != 'py':
+        return None
+
+    modname = info['module']
+    fullname = info['fullname']
+
+    submod = sys.modules.get(modname)
+    if submod is None:
+        return None
+
+    obj = submod
+    for part in fullname.split('.'):
+        try:
+            obj = getattr(obj, part)
+        except Exception:
+            return None
+
+    try:
+        fn = inspect.getsourcefile(obj)
+    except Exception:
+        fn = None
+    if not fn:
+        return None
+
+    try:
+        source, lineno = inspect.getsourcelines(obj)
+    except Exception:
+        lineno = None
+
+    if lineno:
+        linespec = "#L%d-L%d" % (lineno, lineno + len(source) - 1)
+    else:
+        linespec = ""
+
+    fn = relpath(fn, start=dirname(geometer.__file__))
+
+    return "https://github.com/jan-mue/geometer/blob/v%s/geometer/%s%s" % (geometer.__version__, fn, linespec)
+
+
+# Looks for objects in external projects
+intersphinx_mapping = {
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

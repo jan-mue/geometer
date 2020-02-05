@@ -12,9 +12,11 @@ from .utils import hat_matrix, is_multiple, adjugate
     
     
 class Quadric(ProjectiveElement):
-    """Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
+    r"""Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
-    The quadric is defined by a symmetric matrix of size n+1 where n is the dimension of the space.
+    The quadric is defined by a symmetric matrix of size :math:`n+1` where :math:`n` is the dimension of the projective
+    space. If :math:`A \in \mathbb{R}^{(n+1) \times (n+1)}`, the quadric contains all points
+    :math:`x \in \mathbb{R}^{n+1}` such that :math:`x^T A x = 0`.
 
     Parameters
     ----------
@@ -22,6 +24,11 @@ class Quadric(ProjectiveElement):
         A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
     is_dual : bool, optional
         If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
+
+    Attributes
+    ----------
+    is_dual : bool
+        True if the quadric is a dual quadric i.e. contains all hyperplanes tangent to the non-dual quadric.
 
     """
 

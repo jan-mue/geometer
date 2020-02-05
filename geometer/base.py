@@ -14,6 +14,9 @@ EQ_TOL_ABS = 1e-8
 class Tensor:
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
+    Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
+    of a tensor (see [1]).
+
     Parameters
     ----------
     *args
@@ -26,6 +29,10 @@ class Tensor:
     ----------
     array : numpy.ndarray
         The underlying numpy array.
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Ricci_calculus#Upper_and_lower_indices
 
     """
 
@@ -65,7 +72,7 @@ class Tensor:
 
     @property
     def shape(self):
-        """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array."""
+        """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array, same as ``self.array.shape``."""
         return self.array.shape
 
     @property
@@ -76,7 +83,7 @@ class Tensor:
 
     @property
     def rank(self):
-        """int: The rank of the Tensor. (same as ndarray.ndim)"""
+        """int: The rank of the Tensor, same as ``self.array.ndim``."""
         return self.array.ndim
 
     def tensor_product(self, other):
@@ -140,6 +147,7 @@ class Tensor:
 
     @property
     def T(self):
+        """The transposed tensor, same as ``self.transpose()``."""
         return self.transpose()
 
     def copy(self):
@@ -211,7 +219,18 @@ class Tensor:
 
 
 class LeviCivitaTensor(Tensor):
-    """This class can be used to construct a tensor representing the Levi-Civita symbol.
+    r"""This class can be used to construct a tensor representing the Levi-Civita symbol.
+
+    The Levi-Civita symbol is also called :math:`\varepsilon`-Tensor and is defined as follows:
+
+    .. math::
+
+        \varepsilon_{\nu_{1} \ldots \nu_{p}} =
+        \begin{cases}
+            +1 & \text{ if } (\nu_{1}, \ldots, \nu_{n}) \text{ are an even permutation of } (1, \ldots, n)\\
+            -1 & \text{ if } (\nu_{1}, \ldots, \nu_{n}) \text{ are an odd permutation of } (1, \ldots, n)\\
+            0 & \text{ else}
+        \end{cases}
 
     Parameters
     ----------
@@ -244,7 +263,18 @@ class LeviCivitaTensor(Tensor):
 
 
 class KroneckerDelta(Tensor):
-    """This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
+    r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
+
+    The following generalized definition of the Kronecker delta is used:
+
+    .. math::
+
+        \delta_{\nu_{1} \ldots \nu_{p}}^{\mu_{1} \ldots \mu_{p}} =
+        \begin{cases}
+            +1 & \text{ if } (\nu_{1}, \ldots, \nu_{p}) \text{ are an even permutation of } (\mu_{1}, \ldots, \mu_{p})\\
+            -1 & \text{ if } (\nu_{1}, \ldots, \nu_{p}) \text{ are an odd permutation of } (\mu_{1}, \ldots, \mu_{p})\\
+            0 & \text{ else}
+        \end{cases}
 
     Parameters
     ----------

@@ -2,6 +2,20 @@
 Changelog
 =========
 
+0.3 - unreleased
+----------------
+
+New Features
+------------
+
+- Removed sympy as dependency
+
+Bug fixes
+---------
+
+-
+
+
 0.2.1 - released (3.2.2020)
 ---------------------------
 

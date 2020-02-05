@@ -9,11 +9,6 @@ geometer.utils package
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: geometer.utils.polynomial
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 Modules
 -------
 
