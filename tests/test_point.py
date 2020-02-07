@@ -1,4 +1,4 @@
-from geometer import Point, Line, Plane, join, meet, is_perpendicular
+from geometer import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, join, meet, is_perpendicular
 
 
 class Test2D:
@@ -193,3 +193,24 @@ class Test4D:
 
         l = Line(p1, p2)
         assert l.project(Point(0, 0, 0, 0)) == Point(0.5, 0.5, 0, 0)
+
+
+class TestCollections:
+
+    def test_join(self):
+        a = PointCollection([Point(0, 0), Point(0, 1)])
+        b = PointCollection([Point(1, 0), Point(1, 1)])
+
+        assert a.join(b) == LineCollection([Line(0, 1, 0), Line(0, 1, -1)])
+
+        a = PointCollection([Point(0, 0, 0), Point(0, 0, 1)])
+        b = PointCollection([Point(1, 0, 0), Point(1, 0, 1)])
+        c = PointCollection([Point(0, 1, 0), Point(0, 1, 1)])
+
+        assert join(a, b, c) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+
+    def test_meet(self):
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
+        b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+
+        assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])

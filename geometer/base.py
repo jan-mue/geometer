@@ -476,3 +476,24 @@ class ProjectiveElement(Tensor, ABC):
     def dim(self):
         """int: The dimension of the tensor."""
         return self.shape[0] - 1
+
+
+class ProjectiveCollection(Tensor, ABC):
+
+    def __init__(self, elements, *, covariant=True):
+        if not isinstance(elements, (np.ndarray, Tensor)):
+            elements = [x.array if isinstance(x, Tensor) else x for x in elements]
+        super(ProjectiveCollection, self).__init__(elements, covariant=covariant)
+
+    def __eq__(self, other):
+        if isinstance(other, Tensor):
+
+            if self.shape != other.shape:
+                return False
+
+            return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+
+        return super(ProjectiveCollection, self).__eq__(other)
+
+    def __len__(self):
+        return self.shape[0]

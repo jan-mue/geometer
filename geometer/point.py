@@ -1,6 +1,6 @@
 import numpy as np
 
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, EQ_TOL_ABS
+from .base import ProjectiveElement, ProjectiveCollection, TensorDiagram, LeviCivitaTensor, Tensor, EQ_TOL_ABS
 from .exceptions import LinearDependenceError, NotCoplanar
 from .utils import null_space
 
@@ -74,6 +74,94 @@ def _join_meet_duality(*args, intersect_lines=True):
     return Subspace(result)
 
 
+def _outer_product(*args, axes=(0,)):
+
+    einsum_args = []
+    index_count = len(axes)
+    for arr in args:
+        einsum_args.append(arr)
+        einsum_args.append(list(axes) + list(range(index_count, index_count+arr.ndim-len(axes))))
+        index_count += arr.ndim - len(axes)
+
+    result_indices = list(range(index_count))
+
+    return np.einsum(*einsum_args, result_indices)
+
+
+def _join_points(*args):
+
+    n = args[0].shape[-1]
+    e = LeviCivitaTensor(n, False)
+
+    free_indices = list(range(args[0].ndim - 1))
+
+    points = _outer_product(*args, axes=free_indices)
+    points = Tensor(points, covariant=range(len(free_indices), len(free_indices)+len(args)))
+    diagram = TensorDiagram(*[(points, e)]*len(args))
+
+    return diagram.calculate()
+
+
+def _meet_planes_lines(planes, lines):
+
+    n = planes.shape[-1]
+    e = LeviCivitaTensor(n)
+
+    x = Tensor(_outer_product(planes, lines), covariant=[0])
+
+    diagram = TensorDiagram((e, x), *[(e, x)]*(n-2))
+    return diagram.calculate().array.T
+
+
+def _meet_coplanar_lines(lines1, lines2):
+
+    n = lines1.shape[-1]
+    e = LeviCivitaTensor(n)
+
+    x = Tensor(_outer_product(lines1, lines2), covariant=range(lines1.ndim + lines2.ndim - 2*n + 3))
+    free_indices = list(range(1, lines1.ndim + lines2.ndim - 2*n + 4))
+
+    diagram = TensorDiagram(*[(e, x)]*(n-2), (e, x))
+    points = diagram.calculate().array
+
+    points = points.transpose(free_indices + [0] + list(range(len(free_indices)+1, points.ndim)))
+
+    if n > 3:
+        max_ind = np.abs(points).reshape((np.prod(points.shape[:len(free_indices)]), -1)).argmax(1)
+        i = np.unravel_index(max_ind, points.shape[len(free_indices):])
+        indices = tuple(x.flatten() for x in np.indices(points.shape[:len(free_indices)]))
+        points = points[indices + (slice(None),) + i[1:]].reshape(points.shape[:len(free_indices)+1])
+
+    return points
+
+
+def _join_collections(*args):
+    result = _join_points(*[a.array for a in args])
+
+    if len(args) == 2:
+        return LineCollection(result)
+    if len(args) == 3:
+        return PlaneCollection(result)
+
+    return SubspaceCollection(result)
+
+
+def _meet_collections(a, b):
+    if isinstance(a, Line):
+        a = LineCollection([a])
+    if isinstance(b, Line):
+        b = LineCollection([b])
+
+    if isinstance(a, LineCollection) and isinstance(b, LineCollection):
+        result = _meet_coplanar_lines(a.array, b.array)
+    elif isinstance(a, PlaneCollection) and isinstance(b, LineCollection):
+        result = _meet_planes_lines(a.array, b.array)
+    elif isinstance(a, LineCollection) and isinstance(b, PlaneCollection):
+        result = _meet_planes_lines(b.array, a.array)
+
+    return PointCollection(result)
+
+
 def join(*args):
     """Joins a number of objects to form a line, plane or subspace.
 
@@ -88,6 +176,8 @@ def join(*args):
         The resulting line, plane or subspace.
 
     """
+    if any(isinstance(a, ProjectiveCollection) for a in args):
+        return _join_collections(*args)
     return _join_meet_duality(*args, intersect_lines=False)
 
 
@@ -105,6 +195,8 @@ def meet(*args):
         The resulting point, line or subspace.
 
     """
+    if any(isinstance(a, SubspaceCollection) for a in args):
+        return _meet_collections(*args)
     return _join_meet_duality(*args, intersect_lines=True)
 
 
@@ -674,3 +766,44 @@ def infty_hyperplane(dimension):
 
 
 infty_plane = infty_hyperplane(3)
+
+
+class PointCollection(ProjectiveCollection):
+
+    def __init__(self, *args):
+        super(PointCollection, self).__init__(*args, covariant=[-1])
+
+    def join(self, *others):
+        return join(self, *others)
+
+    def __getitem__(self, item):
+        return Point(self.array[item])
+
+
+class SubspaceCollection(ProjectiveCollection):
+
+    def __init__(self, *args):
+        super(SubspaceCollection, self).__init__(*args, covariant=[0])
+
+
+class LineCollection(SubspaceCollection):
+
+    def meet(self, other):
+        return meet(self, other)
+
+    def join(self, *others):
+        return join(self, *others)
+
+    def __getitem__(self, item):
+        return Line(self.array[item])
+
+
+class PlaneCollection(SubspaceCollection):
+
+    def meet(self, other):
+        return meet(self, other)
+
+    def __getitem__(self, item):
+        return Plane(self.array[item])
+
+
