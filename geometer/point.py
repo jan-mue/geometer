@@ -102,6 +102,10 @@ def _join_points(*args):
     return diagram.calculate()
 
 
+def _join_points_lines(points, lines):
+    return np.einsum(points, [0, 1], lines, [0]+list(range(1, lines.ndim)), [0, 2])
+
+
 def _meet_planes_lines(planes, lines):
 
     n = planes.shape[-1]
@@ -136,14 +140,27 @@ def _meet_coplanar_lines(lines1, lines2):
 
 
 def _join_collections(*args):
-    result = _join_points(*[a.array for a in args])
 
-    if len(args) == 2:
-        return LineCollection(result)
-    if len(args) == 3:
-        return PlaneCollection(result)
+    if all(isinstance(a, PointCollection) for a in args):
+        result = _join_points(*[a.array for a in args])
 
-    return SubspaceCollection(result)
+        if len(args) == 2:
+            return LineCollection(result)
+        if len(args) == 3:
+            return PlaneCollection(result)
+
+        return SubspaceCollection(result)
+
+    if len(args) != 2:
+        raise ValueError('Expected 2 arguments.')
+
+    a, b = args
+    if isinstance(a, PointCollection) and isinstance(b, LineCollection):
+        return PlaneCollection(_join_points_lines(a.array, b.array))
+    if isinstance(a, LineCollection) and isinstance(b, LineCollection):
+        return PlaneCollection(_join_points_lines(b.array, a.array))
+
+    raise ValueError("Operation not supported.")
 
 
 def _meet_collections(a, b):
@@ -158,6 +175,8 @@ def _meet_collections(a, b):
         result = _meet_planes_lines(a.array, b.array)
     elif isinstance(a, LineCollection) and isinstance(b, PlaneCollection):
         result = _meet_planes_lines(b.array, a.array)
+    else:
+        raise ValueError("Operation not supported.")
 
     return PointCollection(result)
 

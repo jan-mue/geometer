@@ -600,7 +600,7 @@ class Polyhedron(Polytope):
         v2 = PointCollection(np.roll(self.array, -1, axis=1))
 
         edges = v1.join(v2)
-        rays = points.join(Point(direction))
+        rays = points.join(PointCollection(direction))
         intersections = edges.meet(rays)
         ind = _segment_contains(v1.array, v2.array, intersections.array) & _segment_contains(points.array, direction, intersections.array)
         ind = np.sum(ind, axis=1) % 2 == 1

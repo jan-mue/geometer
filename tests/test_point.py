@@ -208,8 +208,19 @@ class TestCollections:
         c = PointCollection([Point(0, 1, 0), Point(0, 1, 1)])
 
         assert join(a, b, c) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+        assert join(a, b.join(c)) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
     def test_meet(self):
+        a = LineCollection([Line(0, 1, 0), Line(0, 1, -1)])
+        b = LineCollection([Line(1, 0, 0), Line(1, 0, -1)])
+
+        assert a.meet(b) == PointCollection([Point(0, 0), Point(1, 1)])
+
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
+        b = LineCollection([Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))])
+
+        assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 0)])
+
         a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
         b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
