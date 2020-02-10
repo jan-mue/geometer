@@ -17,6 +17,10 @@ from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, is_m
 class AlgebraicCurve(ProjectiveElement):
     """A plane algebraic curve, defined by the zero set of a homogeneous polynomial in 3 variables.
 
+    .. deprecated:: 0.2.1
+          The class `AlgebraicCurve` will be removed in geometer 0.3, use the differential geometry
+          module of sympy or another library instead.
+
     Parameters
     ----------
     poly : sympy.Expr or numpy.ndarray

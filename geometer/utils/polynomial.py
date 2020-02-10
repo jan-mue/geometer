@@ -9,6 +9,9 @@ from numpy.polynomial import polynomial as pl
 def polyval(x, c):
     """Evaluate a multivariate polynomial at a specified point.
 
+    .. deprecated:: 0.2.1
+          `polyval` will be removed in geometer 0.3.
+
     If `x` is an array of length :math:`n` and `c` an array of shape :math:`(m, \ldots, m)`, the result is
 
     .. math::
@@ -40,6 +43,9 @@ def polyval(x, c):
 
 def poly_to_np_array(p, symbols):
     """Convert a sympy polynomial to an array of coefficients as required by numpy.
+
+    .. deprecated:: 0.2.1
+          `poly_to_np_array` will be removed in geometer 0.3.
 
     If `p` is a multivariate polynomial with the variables :math:`x_1, \ldots, x_n` specified in `symbols`, the
     resulting array will be such that
@@ -78,6 +84,9 @@ def poly_to_np_array(p, symbols):
 
 def np_array_to_poly(c, symbols):
     """Converts an array of coefficients into a sympy polynomial.
+
+    .. deprecated:: 0.2.1
+          `np_array_to_poly` will be removed in geometer 0.3.
 
     If `c` an array of shape :math:`(m, \ldots, m)` and variables :math:`x_1, \ldots, x_n` are given as `symbols`, the
     resulting polynomial will be given by

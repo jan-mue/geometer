@@ -243,6 +243,9 @@ class Subspace(ProjectiveElement):
     def polynomials(self, symbols=None):
         """Returns a list of polynomials, to use for symbolic calculations.
 
+        .. deprecated:: 0.2.1
+          `polynomials` will be removed in geometer 0.3.
+
         Parameters
         ----------
         symbols : list of sympy.Symbol, optional

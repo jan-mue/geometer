@@ -2,6 +2,15 @@
 Changelog
 =========
 
+0.2.2 - unreleased
+------------------
+
+Bug fixes
+---------
+
+- Fixed an issue with numerical stability when intersecting transformed polytopes (issue #24)
+
+
 0.2.1 - released (3.2.2020)
 ---------------------------
 
