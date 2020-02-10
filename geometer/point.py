@@ -64,6 +64,9 @@ def _join_meet_duality(*args, intersect_lines=True):
     if result == 0:
         raise LinearDependenceError("Arguments are not linearly independent.")
 
+    # normalize result to avoid large values
+    result /= np.max(np.abs(result.array))
+
     if result.tensor_shape == (0, 1):
         return Line(result) if n == 3 else Plane(result)
     if result.tensor_shape == (1, 0):

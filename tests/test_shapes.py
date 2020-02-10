@@ -127,6 +127,13 @@ class TestPolygon:
         assert r.area == r2.area
         assert r2.contains(Point(-0.5, 1.5))
 
+        l = Line(Point(0, 0, -10), Point(0, 0, 10))
+        r = Rectangle(Point(-10, -10, 0), Point(10, -10, 0), Point(10, 10, 0), Point(-10, 10, 0))
+        t = rotation(3.14/6, Point(1, 0, 0))
+
+        assert r.intersect(l) == [Point(0, 0, 0)]
+        assert (t*r).intersect(l) == [Point(0, 0, 0)]
+
     def test_copy(self):
         a = Point(0, 0)
         b = Point(0, 2)
