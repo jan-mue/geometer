@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 
@@ -82,6 +83,41 @@ def hat_matrix(*args):
     result[i, j] = x
 
     return result
+
+
+def adjugate(A):
+    r"""Calculates the adjugate matrix using tensor diagrams.
+
+    This function uses the following formula for the adjugate matrix (in Einstein notation):
+
+    .. math::
+        \textrm{adj}(A)_{ij} = \frac{1}{(n-1)!} \varepsilon_{i\ i_2 \ldots i_n} \varepsilon_{j\ j_2 \ldots j_n} A_{j_2 i_2} \ldots A_{j_n i_n}
+
+    Source (German):
+    https://de.wikipedia.org/wiki/Levi-Civita-Symbol#Zusammenhang_mit_der_Determinante
+
+    Parameters
+    ----------
+    A : array_like
+        A square matrix.
+
+    Returns
+    -------
+    numpy.ndarray
+        The adjugate of A.
+
+    """
+    from ..base import TensorDiagram, Tensor, LeviCivitaTensor
+
+    A = np.array(A)
+    n = A.shape[0]
+
+    e1 = LeviCivitaTensor(n, False)
+    e2 = LeviCivitaTensor(n, False)
+    tensors = [Tensor(A) for _ in range(n-1)]
+    diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
+
+    return diagram.calculate().array.T / math.factorial(n-1)
 
 
 def null_space(A):

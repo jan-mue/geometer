@@ -11,7 +11,7 @@ from .point import Point, Line, Plane, I, J, infty_plane
 from .transformation import rotation, translation
 from .base import ProjectiveElement, Tensor, _symbols, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, is_multiple
+from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, is_multiple, adjugate
 
 
 class AlgebraicCurve(ProjectiveElement):
@@ -486,17 +486,13 @@ class Conic(Quadric):
         .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
 
         """
-        p = np.array(_symbols(3))
-        ac = sympy.Matrix([p, a.array, c.array]).det()
-        bd = sympy.Matrix([p, b.array, d.array]).det()
-        ad = sympy.Matrix([p, a.array, d.array]).det()
-        bc = sympy.Matrix([p, b.array, c.array]).det()
+        ac = adjugate([np.ones(3), a.array, c.array])[:, 0]
+        bd = adjugate([np.ones(3), b.array, d.array])[:, 0]
+        ad = adjugate([np.ones(3), a.array, d.array])[:, 0]
+        bc = adjugate([np.ones(3), b.array, c.array])[:, 0]
 
-        poly = sympy.poly(ac*bd - cr*ad*bc, _symbols(3))
+        matrix = np.outer(ac, bd) - cr * np.outer(ad, bc)
 
-        matrix = np.zeros((3, 3), dtype=np.find_common_type([a.array.dtype, type(cr)], []))
-        ind = np.triu_indices(3)
-        matrix[ind] = [poly.coeff_monomial(p[i]*p[j]) for i, j in zip(*ind)]
         return cls(matrix + matrix.T)
 
     def intersect(self, other):
@@ -517,10 +513,14 @@ class Conic(Quadric):
             if other.is_degenerate:
                 g, h = other.components
             else:
-                x = _symbols(1)
-                m = sympy.Matrix(self.array + x * other.array)
-                f = sympy.poly(m.det(), x)
-                roots = np.roots(f.coeffs())
+                a1, a2, a3 = self.array
+                b1, b2, b3 = other.array
+                alpha = np.linalg.det(self.array)
+                beta = np.linalg.det([a1, a2, b3]) + np.linalg.det([a1, b2, a3]) + np.linalg.det([b1, a2, a3])
+                gamma = np.linalg.det([a1, b2, b3]) + np.linalg.det([b1, a2, b3]) + np.linalg.det([b1, b2, a3])
+                delta = np.linalg.det(other.array)
+
+                roots = np.roots([alpha, beta, gamma, delta])
                 c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)
                 g, h = c.components
 
