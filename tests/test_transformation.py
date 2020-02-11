@@ -21,6 +21,10 @@ def test_translation():
     t = translation(0, -1)
     assert t*p == Point(0, 0)
 
+    l = Line(Point(0, 0, 1), Point(1, 0, 1))
+    t = translation(0, 0, -1)
+    assert t*l == Line(Point(0, 0, 0), Point(1, 0, 0))
+
 
 def test_inverse():
     E = Transformation(np.eye(4))

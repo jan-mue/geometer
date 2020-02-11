@@ -238,7 +238,13 @@ class Subspace(ProjectiveElement):
         return self + (-other)
 
     def __apply__(self, transformation):
-        return type(self)(self*transformation.inverse())
+        ts = self.tensor_shape
+        edges = [(self, transformation.copy()) for _ in range(ts[0])]
+        if ts[1] > 0:
+            inv = transformation.inverse()
+            edges.extend((inv.copy(), self) for _ in range(ts[1]))
+        diagram = TensorDiagram(*edges)
+        return type(self)(diagram.calculate())
 
     def polynomials(self, symbols=None):
         """Returns a list of polynomials, to use for symbolic calculations.
