@@ -134,6 +134,14 @@ class TestCircle:
         c = Circle(Point(0, 1), 1)
         assert c.center == Point(0, 1)
 
+    def test_intersection(self):
+        c = Circle(Point(0, 2), 2)
+        l = Line(Point(-1, 2), Point(1, 2))
+
+        assert c.contains(Point(0, 0))
+        assert c.intersect(l) == [Point(-2, 2), Point(2, 2)]
+        assert c.intersect(l-Point(0, 2)) == [Point(0, 0)]
+
     def test_intersection_angle(self):
         c1 = Circle()
         c2 = Circle(Point(1, 1), 1)

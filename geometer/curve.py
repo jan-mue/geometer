@@ -279,15 +279,22 @@ class Quadric(ProjectiveElement):
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
         n = self.shape[0]
 
-        x = []
-        for ind in combinations(range(n), n-2):
-            # calculate all principal minors of order 2
-            row_ind = [[j] for j in range(n) if j not in ind]
-            col_ind = [j for j in range(n) if j not in ind]
-            x.append(csqrt(-np.linalg.det(self.array[row_ind, col_ind])))
+        if n == 3:
+            b = adjugate(self.array)
+            i = np.argmax(np.abs(np.diag(b)))
+            beta = csqrt(-b[i, i])
+            p = -b[:, i] / beta if beta != 0 else b[:, i]
+
+        else:
+            p = []
+            for ind in combinations(range(n), n - 2):
+                # calculate all principal minors of order 2
+                row_ind = [[j] for j in range(n) if j not in ind]
+                col_ind = [j for j in range(n) if j not in ind]
+                p.append(csqrt(-np.linalg.det(self.array[row_ind, col_ind])))
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
-        m = hat_matrix(x)
+        m = hat_matrix(p)
         t = self.array + m
 
         # components are in the non-zero rows and columns (up to scalar multiple)
