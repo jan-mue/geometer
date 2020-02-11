@@ -342,7 +342,8 @@ class Polygon(Polytope):
             if np.isclose(a[0], 0, atol=EQ_TOL_ABS):
                 direction = Point([1] + [0] * self.dim)
             else:
-                direction = Point([a[1], -a[0]] + [0]*(self.dim-1))
+                norm = np.linalg.norm(a[:2])
+                direction = Point([a[1]/norm, -a[0]/norm] + [0]*(self.dim-1))
 
         ray = Segment(other, direction)
         intersection_count = sum(len(s.intersect(ray)) for s in self.edges)
