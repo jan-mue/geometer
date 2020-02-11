@@ -333,7 +333,7 @@ class Quadric(ProjectiveElement):
                     q = Quadric(m.dot(self.array).dot(m.T))
                     line_base = other.basis_matrix.T
                     line = Line(*[Point(x) for x in m.dot(line_base).T])
-                    p, q = [Point(m.T.dot(p.array)) for p in q.intersect(line)]
+                    return [Point(m.T.dot(p.array)) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
                     b = m.T.dot(self.array).dot(m)

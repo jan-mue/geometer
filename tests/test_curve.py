@@ -183,6 +183,7 @@ class TestSphere:
 
         assert s.contains(Point(0, 0, 0))
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
+        assert s.intersect(l-Point(0, 0, 2)) == [Point(0, 0, 0)]
 
         s = Sphere(Point(0, 0, 0, 2), 2)
         l = Line(Point(-1, 0, 0, 2), Point(1, 0, 0, 2))
