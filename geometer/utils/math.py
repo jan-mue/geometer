@@ -135,8 +135,7 @@ def null_space(A):
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=True)
-    cond = np.finfo(s.dtype).eps * max(vh.shape)
-    tol = np.amax(s) * cond
+    tol = max(A.shape) * np.spacing(np.max(s))
     dim = np.sum(s > tol, dtype=int)
     Q = vh[dim:, :].T.conj()
     return Q
@@ -157,8 +156,7 @@ def orth(A):
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=False)
-    cond = np.finfo(s.dtype).eps * max(vh.shape)
-    tol = np.amax(s) * cond
+    tol = max(A.shape) * np.spacing(np.max(s))
     dim = np.sum(s > tol, dtype=int)
     Q = u[:, :dim]
     return Q
