@@ -33,6 +33,9 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
     a = np.asarray(a)
     b = np.asarray(b)
 
+    a = a / np.max(np.abs(a), axis=axis, keepdims=True)
+    b = b / np.max(np.abs(b), axis=axis, keepdims=True)
+
     if axis is None:
         a = a.ravel()
         b = b.ravel()
