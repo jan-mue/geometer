@@ -520,7 +520,11 @@ class Line(Subspace):
     def base_point(self):
         """Point: A base point for the line, arbitrarily chosen."""
         if self.dim > 2:
-            return Point(self.basis_matrix[0, :])
+            base = self.basis_matrix
+            p, q = Point(base[0, :]), base[1, :]
+            if p.isinf:
+                return q
+            return p
 
         if np.isclose(self.array[2], 0, atol=EQ_TOL_ABS):
             return Point(0, 0)
@@ -535,10 +539,17 @@ class Line(Subspace):
         """Point: The direction of the line (not normalized)."""
         if self.dim > 2:
             base = self.basis_matrix
-            return Point(base[0, :]) - Point(base[1, :])
+            p, q = Point(base[0, :]), base[1, :]
+            if p.isinf:
+                return p
+            if q.isinf:
+                return q
+            return Point(p.normalized_array - q.normalized_array)
+
         if np.isclose(self.array[0], 0, atol=EQ_TOL_ABS) and np.isclose(self.array[1], 0, atol=EQ_TOL_ABS):
             return Point([0, 1, 0])
-        return Point(self.array[1], -self.array[0])
+
+        return Point([self.array[1], -self.array[0], 0])
 
     @property
     def basis_matrix(self):
