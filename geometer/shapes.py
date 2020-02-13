@@ -6,7 +6,7 @@ from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
 from .utils import distinct, is_multiple
 from .point import Line, Plane, Point, infty_hyperplane
 from .transformation import rotation, translation
-from .operators import dist, angle, harmonic_set
+from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
@@ -156,36 +156,17 @@ class Segment(Polytope):
             return False
 
         p, q = self.vertices
+        d = Point(q.normalized_array - p.normalized_array)
 
-        pinf = p.isinf
-        qinf = q.isinf
+        m = self._line.basis_matrix
+        p = Point(m.dot(p.array))
+        q = Point(m.dot(q.array))
+        d = Point(m.dot(d.array))
+        other = Point(m.dot(other.array))
 
-        # other is on a ray at infinity
-        if other.isinf and not (pinf and qinf):
-            return other == p or other == q
+        cr = crossratio(d, p, q, other)
 
-        # when possible, use a finite point as start point of a ray/segment
-        start = p
-
-        # only p at infinity
-        if pinf and not qinf:
-            direction = p.array[:-1]
-            d2 = np.inf
-            start = q
-
-        # only q at infinity
-        elif qinf and not pinf:
-            direction = q.array[:-1]
-            d2 = np.inf
-
-        # both vertices finite or at infinity
-        else:
-            direction = (q - p).array[:-1]
-            d2 = direction.dot(direction)
-
-        d1 = (other - start).array[:-1].dot(direction)
-
-        return 0 <= d1 + tol and d1 <= d2 + tol
+        return 0 <= cr + tol and cr <= 1 + tol
 
     def intersect(self, other):
         """Intersect the line segment with another object.
