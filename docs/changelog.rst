@@ -16,6 +16,28 @@ Bug fixes
 -
 
 
+0.2.2 - released (15.2.2020)
+----------------------------
+
+New Features
+------------
+
+- New adjugate function in utils.math
+- New algorithms for Segment.contains, Conic.intersect & Conic.from_crossratio
+
+Bug fixes
+---------
+
+- Fixed an issue with numerical stability when intersecting transformed polytopes (issue #24)
+- Conic.components uses a better algorithm that should give correct results in all cases
+- Quadric.intersect no longer throws a ValueError when a 3D line has only a single point of intersection
+- Line.base_point will now try to always return finite points and Line.direction a point at infinity
+- Arrays with small component values are handled correctly by the is_multiple function
+- Fixed an issue with Polygon.contains that caused the direction used in the method to be close to zero (issue #25)
+- Transformation of line in 3D now works correctly
+- The functions null_space and orth now use the same threshold values as Matlab for truncating the singular values
+
+
 0.2.1 - released (3.2.2020)
 ---------------------------
 

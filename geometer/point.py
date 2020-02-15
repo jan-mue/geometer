@@ -62,6 +62,9 @@ def _join_meet_duality(*args, intersect_lines=True):
     if result == 0:
         raise LinearDependenceError("Arguments are not linearly independent.")
 
+    # normalize result to avoid large values
+    result /= np.max(np.abs(result.array))
+
     if result.tensor_shape == (0, 1):
         return Line(result) if n == 3 else Plane(result)
     if result.tensor_shape == (1, 0):
@@ -233,7 +236,13 @@ class Subspace(ProjectiveElement):
         return self + (-other)
 
     def __apply__(self, transformation):
-        return type(self)(self*transformation.inverse())
+        ts = self.tensor_shape
+        edges = [(self, transformation.copy()) for _ in range(ts[0])]
+        if ts[1] > 0:
+            inv = transformation.inverse()
+            edges.extend((inv.copy(), self) for _ in range(ts[1]))
+        diagram = TensorDiagram(*edges)
+        return type(self)(diagram.calculate())
 
     @property
     def basis_matrix(self):
@@ -477,7 +486,11 @@ class Line(Subspace):
     def base_point(self):
         """Point: A base point for the line, arbitrarily chosen."""
         if self.dim > 2:
-            return Point(self.basis_matrix[0, :])
+            base = self.basis_matrix
+            p, q = Point(base[0, :]), base[1, :]
+            if p.isinf:
+                return q
+            return p
 
         if np.isclose(self.array[2], 0, atol=EQ_TOL_ABS):
             return Point(0, 0)
@@ -492,10 +505,17 @@ class Line(Subspace):
         """Point: The direction of the line (not normalized)."""
         if self.dim > 2:
             base = self.basis_matrix
-            return Point(base[0, :]) - Point(base[1, :])
+            p, q = Point(base[0, :]), base[1, :]
+            if p.isinf:
+                return p
+            if q.isinf:
+                return q
+            return Point(p.normalized_array - q.normalized_array)
+
         if np.isclose(self.array[0], 0, atol=EQ_TOL_ABS) and np.isclose(self.array[1], 0, atol=EQ_TOL_ABS):
             return Point([0, 1, 0])
-        return Point(self.array[1], -self.array[0])
+
+        return Point([self.array[1], -self.array[0], 0])
 
     @property
     def basis_matrix(self):
