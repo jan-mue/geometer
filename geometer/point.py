@@ -796,7 +796,17 @@ class PointCollection(ProjectiveCollection):
         return join(self, *others)
 
     def __getitem__(self, item):
-        return Point(self.array[item])
+        if isinstance(item, int):
+            return Point(self.array[item])
+        return PointCollection(self.array[item])
+
+    @property
+    def normalized_array(self):
+        array = self.array.T.astype(complex)
+        isinf = np.isclose(array[-1], 0, atol=EQ_TOL_ABS)
+        array[:, ~isinf] = array[:, ~isinf] / array[-1, ~isinf]
+        array = np.real_if_close(array)
+        return array.T
 
 
 class SubspaceCollection(ProjectiveCollection):
@@ -813,8 +823,17 @@ class LineCollection(SubspaceCollection):
     def join(self, *others):
         return join(self, *others)
 
+    @property
+    def basis_matrix(self):
+        x = self.array
+        x = self.array.reshape(x.shape[0], -1, x.shape[-1])
+        u, s, vh = np.linalg.svd(x)
+        return vh.T[:, -2:].T
+
     def __getitem__(self, item):
-        return Line(self.array[item])
+        if isinstance(item, int):
+            return Line(self.array[item])
+        return LineCollection(self.array[item])
 
 
 class PlaneCollection(SubspaceCollection):
@@ -823,6 +842,6 @@ class PlaneCollection(SubspaceCollection):
         return meet(self, other)
 
     def __getitem__(self, item):
-        return Plane(self.array[item])
-
-
+        if isinstance(item, int):
+            return Plane(self.array[item])
+        return PlaneCollection(self.array[item])

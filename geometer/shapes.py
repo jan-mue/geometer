@@ -4,96 +4,68 @@ import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
 from .utils import distinct, is_multiple
-from .point import Line, Plane, Point, PointCollection, infty_hyperplane
+from .point import Line, Plane, Point, PointCollection, LineCollection, infty_hyperplane
 from .transformation import rotation, translation
-from .operators import dist, angle, harmonic_set
+from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
-def _segment_contains(vertex1, vertex2, points):
-    # allow multiple points for one vertex
-    if points.ndim != vertex1.ndim:
-        new_shape = vertex1.shape[:-1] + (1,) * (points.ndim - vertex1.ndim) + vertex1.shape[-1:]
-        reps = [x // y for x, y in zip(points.shape, new_shape)]
-        vertex1 = np.tile(vertex1.reshape(new_shape), reps)
-        vertex2 = np.tile(vertex2.reshape(new_shape), reps)
+def _segments_contain(vertex1, vertex2, points, tol=1e-8):
+    if len(points) == 0:
+        return np.empty((0,), dtype=bool)
 
-    v1inf = np.isclose(vertex1.T[-1], 0).T
-    v2inf = np.isclose(vertex2.T[-1], 0).T
-    pinf = np.isclose(points.T[-1], 0).T
+    if isinstance(vertex1, Point):
+        vertex1 = PointCollection(np.tile(vertex1.array[np.newaxis, :], (len(points), 1)))
+    if isinstance(vertex2, Point):
+        vertex2 = PointCollection(np.tile(vertex2.array[np.newaxis, :], (len(points), 1)))
 
-    d1 = np.empty(pinf.shape)
-    d2 = np.empty(pinf.shape)
+    lines = vertex1.join(vertex2)
 
-    direction = np.empty(vertex1.shape, np.common_type(vertex1, vertex2))
-    result = np.empty(pinf.shape, dtype=bool)
+    d = PointCollection(vertex2.normalized_array - vertex1.normalized_array)
 
-    # when possible, we will use a finite point as start point of a ray/segment
-    start = vertex1.copy()
+    m = lines.basis_matrix
 
-    # only vertex1 at infinity
-    ind1 = v1inf & (~v2inf)
-    if np.sum(ind1) > 0:
-        direction[ind1] = vertex1[ind1]
-        start[ind1] = (vertex2[ind1].T / vertex2[ind1, -1]).T
-        d2[ind1] = np.inf
-        ind1 &= pinf
-        result[ind1] = is_multiple(vertex1[ind1], points[ind1], axis=-1)
+    def project(p):
+        return PointCollection(np.einsum('ijk,ik->ij', m, p.array))
 
-    # only vertex2 at infinity
-    ind2 = v2inf & (~v1inf)
-    if np.sum(ind2) > 0:
-        direction[ind2] = vertex2[ind2]
-        start[ind2] = (vertex1[ind2].T / vertex1[ind2, -1]).T
-        d2[ind2] = np.inf
-        ind2 &= pinf
-        result[ind2] = is_multiple(vertex2[ind2], points[ind2], axis=-1)
+    vertex1 = project(vertex1)
+    vertex2 = project(vertex2)
+    d = project(d)
+    points = project(points)
 
-    # both vertices finite
-    ind3 = ~v1inf & ~v2inf
-    if np.sum(ind3) > 0:
-        v1 = vertex1[ind3].T / vertex1[ind3, -1]
-        v2 = vertex2[ind3].T / vertex2[ind3, -1]
-        direction[ind3] = (v2 - v1).T
-        start[ind3] = v1.T
-        d2[ind3] = np.sum(direction[ind3] ** 2, axis=-1)
-        ind3 &= pinf
-        result[ind3] = False
+    def crossratio_collections(a, b, c, d):
+        ac = np.linalg.det(np.stack([a.array, c.array], axis=-1))
+        bd = np.linalg.det(np.stack([b.array, d.array], axis=-1))
+        ad = np.linalg.det(np.stack([a.array, d.array], axis=-1))
+        bc = np.linalg.det(np.stack([b.array, c.array], axis=-1))
 
-    # both vertices at infinity
-    ind4 = v1inf & v2inf
-    if np.sum(ind4) > 0:
-        direction[ind4] = vertex2[ind4] - vertex1[ind4]
-        d2[ind4] = np.sum(direction[ind4] ** 2, axis=-1)
-        ind4 &= ~pinf
-        result[ind4] = False
+        with np.errstate(divide="ignore"):
+            return ac * bd / (ad * bc)
 
-    # normalize finite points
-    ind = ~pinf & ~ind4
-    points = points.copy()
-    points[ind] = (points[ind].T / points[ind, -1]).T
+    cr = crossratio_collections(d, vertex1, vertex2, points)
 
-    # calculate result for remaining cases
-    ind = ~(ind1 | ind2 | ind3 | ind4)
-    d1[ind] = np.sum((points[ind] - start[ind]) * direction[ind], axis=-1)
-    result[ind] = (0 <= d1[ind]) & (d1[ind] <= d2[ind])
-
-    return result
+    return (0 <= cr + tol) & (cr <= 1 + tol)
 
 
 def _general_direction(points, planes):
     # build array of directions for point in polygon problem
 
+    points = points.array
+    planes = planes.array
+
     direction = np.zeros(points.shape, planes.dtype)
-    ind = np.isclose(planes.T[0], 0)
+    ind = np.isclose(planes.T[0], 0, atol=EQ_TOL_ABS)
     direction[ind, 0] = 1
     direction[~ind, 0] = planes[~ind, 1]
     direction[~ind, 1] = -planes[~ind, 0]
 
-    isinf = np.isclose(points.T[-1], 0)
-    direction[isinf, 0] = 1
-    ind = is_multiple(direction[isinf], points[isinf], axis=-1)
-    direction[isinf, 1] = ind.astype(int)
+    ind = is_multiple(direction, points, axis=-1)
+    direction[ind, 0] = 0
+    ind2 = np.isclose(planes.T[1], 0, atol=EQ_TOL_ABS)
+    direction[ind & ind2, 1] = 1
+    ind = ind & ~ind2
+    direction[ind, 1] = planes[ind, 2]
+    direction[ind, 2] = -planes[ind, 1]
 
     return direction
 
@@ -243,7 +215,18 @@ class Segment(Polytope):
         if not self._line.contains(other):
             return False
 
-        return _segment_contains(*self.array, other.array)
+        p, q = self.vertices
+        d = Point(q.normalized_array - p.normalized_array)
+
+        m = self._line.basis_matrix
+        p = Point(m.dot(p.array))
+        q = Point(m.dot(q.array))
+        d = Point(m.dot(d.array))
+        other = Point(m.dot(other.array))
+
+        cr = crossratio(d, p, q, other)
+
+        return 0 <= cr + tol and cr <= 1 + tol
 
     def intersect(self, other):
         """Intersect the line segment with another object.
@@ -378,8 +361,8 @@ class Polygon(Polytope):
         edges = v1.join(v2)
         points = edges.meet(line)
 
-        ind = _segment_contains(v1.array, v2.array, points.array)
-        return points.array[ind]
+        ind = _segments_contain(v1, v2, points)
+        return points[ind]
 
     def contains(self, other):
         """Tests whether a point is contained in the polygon.
@@ -402,11 +385,11 @@ class Polygon(Polytope):
         if self.dim == 2:
             direction = [1, 0, 0]
         else:
-            direction = _general_direction(other.array, self._plane.array)
+            direction = _general_direction(other, self._plane)
 
         ray = Segment(other, Point(direction))
         intersections = self._intersect_coplanar_line(ray._line)
-        intersection_count = np.sum(_segment_contains(*ray.array, intersections))
+        intersection_count = np.sum(_segments_contain(*ray.vertices, intersections))
 
         return intersection_count % 2 == 1
 
@@ -442,11 +425,11 @@ class Polygon(Polytope):
 
         if isinstance(other, Segment):
             intersections = self._intersect_coplanar_line(other._line)
-            intersections = intersections[_segment_contains(*other.array, intersections)]
+            intersections = intersections[_segments_contain(*other.vertices, intersections)]
         else:
             intersections = self._intersect_coplanar_line(other)
 
-        return list(distinct(Point(x) for x in intersections))
+        return list(distinct(intersections))
 
     def _normalized_projection(self):
         points = self.array
@@ -586,26 +569,36 @@ class Polyhedron(Polytope):
         return sum(s.area for s in self.faces)
 
     def _intersect_line(self, line):
+        # create collection of planes that the faces lie in
         v1 = PointCollection(self.array[:, 0, :])
         v2 = PointCollection(self.array[:, 1, :])
         v3 = PointCollection(self.array[:, 2, :])
-
-        # intersect line with planes that the faces lie in
         planes = v1.join(v2, v3)
-        points = planes.meet(line)
 
-        # intersect rays with edges of the polygons
-        direction = _general_direction(points.array, planes.array)
-        v1 = PointCollection(self.array)
-        v2 = PointCollection(np.roll(self.array, -1, axis=1))
+        # intersect line with the planes
+        intersections = planes.meet(line)
 
+        # calculate lines that the edges lie on
+        v1 = PointCollection(self.array.reshape(-1, self.shape[-1]))
+        v2 = PointCollection(np.roll(self.array, -1, axis=1).reshape(-1, self.shape[-1]))
         edges = v1.join(v2)
-        rays = points.join(PointCollection(direction))
-        intersections = edges.meet(rays)
-        ind = _segment_contains(v1.array, v2.array, intersections.array) & _segment_contains(points.array, direction, intersections.array)
-        ind = np.sum(ind, axis=1) % 2 == 1
 
-        return points.array[ind]
+        # intersect rays with the edge lines to see which points lie in the polygon
+        directions = PointCollection(_general_direction(intersections, planes))
+        assert all(e.contains(d) for e, d in zip(planes, directions))
+
+        rays = intersections.join(directions)
+        rays = LineCollection(np.repeat(rays.array, self.shape[1], axis=0))
+        edge_intersections = edges.meet(rays)
+
+        start_points = PointCollection(np.repeat(intersections.array, self.shape[1], axis=0))
+        directions = PointCollection(np.repeat(directions.array, self.shape[1], axis=0))
+
+        ind = _segments_contain(v1, v2, edge_intersections)
+        ind = ind & _segments_contain(start_points, directions, edge_intersections)
+        ind = np.sum(ind.reshape(self.shape[:-1]), axis=1) % 2 == 1
+
+        return intersections[ind]
 
     def intersect(self, other):
         """Intersect the polyhedron with another object.
@@ -623,11 +616,11 @@ class Polyhedron(Polytope):
         """
         if isinstance(other, Segment):
             intersections = self._intersect_line(other._line)
-            intersections = intersections[_segment_contains(*other.array, intersections)]
+            intersections = intersections[_segments_contain(*other.vertices, intersections)]
         else:
             intersections = self._intersect_line(other)
 
-        return list(distinct(Point(x) for x in intersections))
+        return list(distinct(intersections))
 
 
 class Cuboid(Polyhedron):
