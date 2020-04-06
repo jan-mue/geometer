@@ -32,10 +32,19 @@ class Quadric(ProjectiveElement):
 
     """
 
-    def __init__(self, matrix, is_dual=False):
+    def __init__(self, matrix, is_dual=False, **kwargs):
         self.is_dual = is_dual
-        matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        super(Quadric, self).__init__(matrix, covariant=False)
+        kwargs.setdefault('covariant', False)
+        super(Quadric, self).__init__(matrix, **kwargs)
+
+    def __add__(self, other):
+        if not isinstance(other, Point):
+            return super(Quadric, self).__add__(other)
+
+        return translation(other) * self
+
+    def __sub__(self, other):
+        return self + (-other)
 
     def __apply__(self, transformation):
         inv = transformation.inverse().array
@@ -59,7 +68,7 @@ class Quadric(ProjectiveElement):
 
         """
         m = np.outer(e.array, f.array)
-        return cls(m + m.T)
+        return cls(m + m.T, copy=False)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -93,7 +102,7 @@ class Quadric(ProjectiveElement):
         """
         return self.dual.contains(plane)
 
-    def contains(self, other, tol=1e-8):
+    def contains(self, other, tol=EQ_TOL_ABS):
         """Tests if a given point lies on the quadric.
 
         Parameters
@@ -206,7 +215,7 @@ class Quadric(ProjectiveElement):
     @property
     def dual(self):
         """Quadric: The dual quadric."""
-        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual)
+        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual, copy=False)
 
 
 class Conic(Quadric):
@@ -234,7 +243,7 @@ class Conic(Quadric):
         ade = np.linalg.det([a, d, e])
         bce = np.linalg.det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return cls(m+m.T)
+        return cls(m+m.T, copy=False)
 
     @classmethod
     def from_lines(cls, g, h):
@@ -252,7 +261,7 @@ class Conic(Quadric):
 
         """
         m = np.outer(g.array, h.array)
-        return cls(m + m.T)
+        return cls(m + m.T, copy=False)
 
     @classmethod
     def from_tangent(cls, tangent, a, b, c, d):
@@ -313,7 +322,7 @@ class Conic(Quadric):
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
         c = cls.from_tangent(Line(bound.array), Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array))
-        return cls(np.linalg.inv(c.array))
+        return cls(np.linalg.inv(c.array), copy=False)
 
     @classmethod
     def from_crossratio(cls, cr, a, b, c, d):
@@ -347,7 +356,7 @@ class Conic(Quadric):
 
         matrix = np.outer(ac, bd) - cr * np.outer(ad, bc)
 
-        return cls(matrix + matrix.T)
+        return cls(matrix + matrix.T, copy=False)
 
     def intersect(self, other):
         """Calculates points of intersection with the conic.
@@ -460,7 +469,7 @@ class Ellipse(Conic):
 
     """
 
-    def __init__(self, center=Point(0, 0), hradius=1, vradius=1):
+    def __init__(self, center=Point(0, 0), hradius=1, vradius=1, **kwargs):
         r = np.array([vradius ** 2, hradius ** 2, 1])
         c = -center.normalized_array
         d = c * r
@@ -469,7 +478,8 @@ class Ellipse(Conic):
         m[2, :] = d
         m[:, 2] = d
         m[2, 2] = d.dot(c) - (r[0] * r[1] + 1)
-        super(Ellipse, self).__init__(m)
+        kwargs['copy'] = False
+        super(Ellipse, self).__init__(m, **kwargs)
 
 
 class Circle(Ellipse):
@@ -484,8 +494,8 @@ class Circle(Ellipse):
 
     """
 
-    def __init__(self, center=Point(0, 0), radius=1):
-        super(Circle, self).__init__(center, radius, radius)
+    def __init__(self, center=Point(0, 0), radius=1, **kwargs):
+        super(Circle, self).__init__(center, radius, radius, **kwargs)
 
     @property
     def center(self):
@@ -547,13 +557,14 @@ class Sphere(Quadric):
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), radius=1):
+    def __init__(self, center=Point(0, 0, 0), radius=1, **kwargs):
         c = -center.normalized_array
         m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
-        super(Sphere, self).__init__(m)
+        kwargs['copy'] = False
+        super(Sphere, self).__init__(m, **kwargs)
 
     @property
     def center(self):
@@ -597,7 +608,7 @@ class Cone(Quadric):
 
     """
 
-    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1):
+    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs):
         from .operators import dist, angle
 
         h = dist(vertex, base_center)
@@ -632,7 +643,8 @@ class Cone(Quadric):
             t = translation(Point(v)) * t * translation(-Point(v))
             m = t.array.T.dot(m).dot(t.array)
 
-        super(Cone, self).__init__(m)
+        kwargs['copy'] = False
+        super(Cone, self).__init__(m, **kwargs)
 
 
 class Cylinder(Cone):
@@ -649,6 +661,6 @@ class Cylinder(Cone):
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1):
+    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
         vertex = infty_plane.meet(Line(center, center+direction))
-        super(Cylinder, self).__init__(vertex, center, radius)
+        super(Cylinder, self).__init__(vertex, center, radius, **kwargs)

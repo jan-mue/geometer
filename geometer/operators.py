@@ -1,7 +1,7 @@
 import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
-from .base import LeviCivitaTensor, TensorDiagram
+from .base import LeviCivitaTensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import IncidenceError, NotCollinear
 from .utils import orth
 
@@ -265,7 +265,7 @@ def dist(p, q):
         return 4*abs(np.sqrt(pqi * pqj)/(pij*qij))
 
 
-def is_cocircular(a, b, c, d, rtol=1.e-5, atol=1.e-8):
+def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     """Tests whether four points lie on a circle.
 
     Parameters
@@ -299,7 +299,7 @@ def is_cocircular(a, b, c, d, rtol=1.e-5, atol=1.e-8):
     return np.isclose(i, j, rtol, atol)
 
 
-def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
+def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     """Tests whether two lines/planes are perpendicular.
 
     Parameters
@@ -343,7 +343,7 @@ def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
     return np.isclose(crossratio(L, M, I, J, Point(1, 1)), -1, rtol, atol)
 
 
-def is_coplanar(*args, tol=1.e-8):
+def is_coplanar(*args, tol=EQ_TOL_ABS):
     """Tests whether the given points or lines are collinear, coplanar or concurrent. Works in any dimension.
 
     Due to line point duality this function has dual versions :obj:`is_collinear`, :obj:`is_collinear` and

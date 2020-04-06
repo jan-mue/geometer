@@ -179,11 +179,12 @@ class Transformation(ProjectiveElement):
 
     """
 
-    def __init__(self, *args):
-        super(Transformation, self).__init__(*args, covariant=[0])
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('covariant', [0])
+        super(Transformation, self).__init__(*args, **kwargs)
 
     def __apply__(self, transformation):
-        return Transformation(super(Transformation, transformation).__mul__(self))
+        return Transformation(transformation.array @ self.array)
 
     @classmethod
     def from_points(cls, *args):
@@ -249,7 +250,7 @@ class Transformation(ProjectiveElement):
             return self.inverse().__pow__(-power, modulo)
 
         result = super(Transformation, self).__pow__(power, modulo)
-        return Transformation(result)
+        return Transformation(result, copy=False)
 
     def inverse(self):
         """Calculates the inverse projective transformation.

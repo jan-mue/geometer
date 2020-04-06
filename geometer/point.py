@@ -43,10 +43,10 @@ def _join_meet_duality(*args, intersect_lines=True):
                 i = np.unravel_index(np.abs(array).argmax(), array.shape)
                 if not intersect_lines:
                     # extract the common subspace
-                    result = Tensor(array[i[0], ...], covariant=False)
+                    result = Tensor(array[i[0], ...], covariant=False, copy=False)
                 else:
                     # extract the point of intersection
-                    result = Tensor(array[(slice(None),) + i[1:]])
+                    result = Tensor(array[(slice(None),) + i[1:]], copy=False)
 
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
@@ -63,18 +63,18 @@ def _join_meet_duality(*args, intersect_lines=True):
         raise LinearDependenceError("Arguments are not linearly independent.")
 
     # normalize result to avoid large values
-    result /= np.max(np.abs(result.array))
+    result.array = result.array / np.max(np.abs(result.array))
 
     if result.tensor_shape == (0, 1):
-        return Line(result) if n == 3 else Plane(result)
+        return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
     if result.tensor_shape == (1, 0):
-        return Point(result)
+        return Point(result, copy=False)
     if result.tensor_shape == (2, 0):
-        return Line(result).contravariant_tensor
+        return Line(result, copy=False).contravariant_tensor
     if result.tensor_shape == (0, n-2):
-        return Line(result)
+        return Line(result, copy=False)
 
-    return Subspace(result)
+    return Subspace(result, copy=False)
 
 
 def join(*args):
@@ -128,11 +128,11 @@ class Point(ProjectiveElement):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         if np.isscalar(args[0]):
-            super(Point, self).__init__(*args, 1)
+            super(Point, self).__init__(*args, 1, **kwargs)
         else:
-            super(Point, self).__init__(*args)
+            super(Point, self).__init__(*args, **kwargs)
 
     def __add__(self, other):
         if not isinstance(other, Point):
@@ -222,8 +222,9 @@ class Subspace(ProjectiveElement):
 
     """
 
-    def __init__(self, *args):
-        super(Subspace, self).__init__(*args, covariant=False)
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('covariant', False)
+        super(Subspace, self).__init__(*args, **kwargs)
 
     def __add__(self, other):
         if not isinstance(other, Point):
@@ -263,7 +264,7 @@ class Subspace(ProjectiveElement):
             if not self.contains(p):
                 return p
 
-    def contains(self, other, tol=1e-8):
+    def contains(self, other, tol=EQ_TOL_ABS):
         """Tests whether a given point or line lies in the subspace.
 
         Parameters
@@ -377,12 +378,12 @@ class Line(Subspace):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         if len(args) == 2:
-            pt1, pt2 = args
-            super(Line, self).__init__(pt1.join(pt2))
+            kwargs['copy'] = False
+            super(Line, self).__init__(join(*args), **kwargs)
         else:
-            super(Line, self).__init__(*args)
+            super(Line, self).__init__(*args, **kwargs)
 
     @property
     def covariant_tensor(self):
@@ -575,18 +576,19 @@ infty = Line(0, 0, 1)
 
 class Plane(Subspace):
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         if all(isinstance(o, (Line, Point)) for o in args):
-            super(Plane, self).__init__(join(*args))
+            kwargs['copy'] = False
+            super(Plane, self).__init__(join(*args), **kwargs)
         else:
-            super(Plane, self).__init__(*args)
+            super(Plane, self).__init__(*args, **kwargs)
 
     @property
     def basis_matrix(self):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         n = self.dim + 1
         i = np.where(self.array != 0)[0][0]
-        result = np.zeros((n, n - 1), dtype=self.array.dtype)
+        result = np.zeros((n, n - 1), dtype=self.dtype)
         a = [j for j in range(n) if j != i]
         result[i, :] = self.array[a]
         result[a, range(n - 1)] = -self.array[i]

@@ -27,14 +27,14 @@ class Polytope(Tensor):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         if len(args) > 1:
             args = tuple(a.array for a in args)
         super(Polytope, self).__init__(*args, covariant=[-1])
 
     def __apply__(self, transformation):
         result = self.copy()
-        result.array = self.array.dot(transformation.array.T)
+        result.array = self.array @ transformation.array.T
         return result
 
     def __repr__(self):
@@ -106,6 +106,9 @@ class Polytope(Tensor):
             return type(self)(*[f + other for f in self.facets])
         return super(Polytope, self).__add__(other)
 
+    def __sub__(self, other):
+        return self + (-other)
+
 
 class Segment(Polytope):
     """Represents a line segment in an arbitrary projective space.
@@ -127,8 +130,8 @@ class Segment(Polytope):
 
     """
 
-    def __init__(self, *args):
-        super(Segment, self).__init__(*args)
+    def __init__(self, *args, **kwargs):
+        super(Segment, self).__init__(*args, **kwargs)
         self._line = Line(Point(self.array[0]), Point(self.array[1]))
 
     def __apply__(self, transformation):
@@ -136,7 +139,7 @@ class Segment(Polytope):
         result._line = Line(Point(result.array[0]), Point(result.array[1]))
         return result
 
-    def contains(self, other, tol=1e-8):
+    def contains(self, other, tol=EQ_TOL_ABS):
         """Tests whether a point is contained in the segment.
 
         Parameters
@@ -223,16 +226,16 @@ class Simplex(Polytope):
 
     """
 
-    def __new__(cls, *args):
+    def __new__(cls, *args, **kwargs):
         if len(args) == 2:
-            return Segment(*args)
+            return Segment(*args, **kwargs)
 
         return super(Polytope, cls).__new__(cls)
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args)-1)]
-        super(Simplex, self).__init__(*args)
+        super(Simplex, self).__init__(*args, **kwargs)
 
     @property
     def volume(self):
@@ -266,10 +269,10 @@ class Polygon(Polytope):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         if all(isinstance(x, Segment) for x in args):
             args = (np.array([s.array[0] for s in args]),)
-        super(Polygon, self).__init__(*args)
+        super(Polygon, self).__init__(*args, **kwargs)
         self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
 
     def __apply__(self, transformation):
@@ -420,7 +423,7 @@ class RegularPolygon(Polygon):
 
     """
 
-    def __init__(self, center, radius, n, axis=None):
+    def __init__(self, center, radius, n, axis=None, **kwargs):
         if axis is None:
             p = Point(1, 0)
         else:
@@ -435,7 +438,7 @@ class RegularPolygon(Polygon):
             t = translation(center) * t * translation(-center)
             vertices.append(t*vertex)
 
-        super(RegularPolygon, self).__init__(*vertices)
+        super(RegularPolygon, self).__init__(*vertices, **kwargs)
 
     @property
     def radius(self):
@@ -533,9 +536,9 @@ class Cuboid(Polyhedron):
 
     """
 
-    def __init__(self, a, b, c, d):
+    def __init__(self, a, b, c, d, **kwargs):
         x, y, z = b-a, c-a, d-a
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)
         xy = Rectangle(a, a + x, a + x + y, a + y)
-        super(Cuboid, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z)
+        super(Cuboid, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z, **kwargs)

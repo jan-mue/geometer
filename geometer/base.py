@@ -24,6 +24,8 @@ class Tensor:
     covariant : :obj:`bool` or :obj:`list` of :obj:`int`, optional
         If False, all indices are contravariant. If a list of indices indices is supplied, the specified indices of the
         array will be covariant indices and all others contravariant indices. By default all indices are covariant.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes
     ----------
@@ -36,20 +38,20 @@ class Tensor:
 
     """
 
-    def __init__(self, *args, covariant=True):
+    def __init__(self, *args, covariant=True, **kwargs):
         if len(args) == 0:
             raise TypeError("At least one argument is required.")
 
         if len(args) == 1:
             if isinstance(args[0], Tensor):
-                self.array = args[0].array
+                self.array = np.array(args[0].array, **kwargs)
                 self._covariant_indices = args[0]._covariant_indices
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
             else:
-                self.array = np.atleast_1d(args[0])
+                self.array = np.array(args[0], **kwargs)
         else:
-            self.array = np.array(args)
+            self.array = np.array(args, **kwargs)
 
         self.array = np.real_if_close(self.array)
 
@@ -74,6 +76,11 @@ class Tensor:
     def shape(self):
         """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array, same as ``self.array.shape``."""
         return self.array.shape
+
+    @property
+    def dtype(self):
+        """numpy.dtype: The dtype of the underlying numpy array, same as ``self.array.dtype``."""
+        return self.array.dtype
 
     @property
     def tensor_shape(self):
@@ -175,7 +182,7 @@ class Tensor:
         return TensorDiagram((self, other)).calculate()
 
     def __pow__(self, power, modulo=None):
-        if modulo is not None or not isinstance(power, int) or power < 0:
+        if modulo is not None or not isinstance(power, int) or power < 1:
             return NotImplemented
 
         if power == 1:
@@ -188,7 +195,7 @@ class Tensor:
             d.add_edge(cur, prev)
             prev = cur
 
-        return Tensor(d.calculate())
+        return d.calculate()
 
     def __truediv__(self, other):
         if np.isscalar(other):
@@ -196,15 +203,17 @@ class Tensor:
         return NotImplemented
 
     def __add__(self, other):
-        other = Tensor(other)
-        return Tensor(self.array + other.array, covariant=self._covariant_indices)
+        if isinstance(other, Tensor):
+            other = other.array
+        return Tensor(self.array + other, covariant=self._covariant_indices)
 
     def __radd__(self, other):
         return self + other
 
     def __sub__(self, other):
-        other = Tensor(other)
-        return Tensor(self.array - other.array, covariant=self._covariant_indices)
+        if isinstance(other, Tensor):
+            other = other.array
+        return Tensor(self.array - other, covariant=self._covariant_indices)
 
     def __rsub__(self, other):
         return -self + other
@@ -259,7 +268,7 @@ class LeviCivitaTensor(Tensor):
             array[tuple(indices)] = np.prod(diff, axis=0)
 
             self._cache[size] = array
-        super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
+        super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant), copy=False)
 
 
 class KroneckerDelta(Tensor):
@@ -311,7 +320,7 @@ class KroneckerDelta(Tensor):
             f = np.vectorize(calc)
             array = np.fromfunction(f, tuple(2*p*[n]), dtype=int)
 
-        super(KroneckerDelta, self).__init__(array, covariant=range(p))
+        super(KroneckerDelta, self).__init__(array, covariant=range(p), copy=False)
 
 
 class TensorDiagram:
@@ -442,7 +451,7 @@ class TensorDiagram:
 
         temp = np.einsum(*args, result_indices[0] + result_indices[1])
 
-        return Tensor(temp, covariant=range(len(result_indices[0])))
+        return Tensor(temp, covariant=range(len(result_indices[0])), copy=False)
 
     def copy(self):
         result = TensorDiagram()
