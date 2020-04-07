@@ -184,7 +184,7 @@ class Transformation(ProjectiveElement):
         super(Transformation, self).__init__(*args, **kwargs)
 
     def __apply__(self, transformation):
-        return Transformation(transformation.array @ self.array)
+        return Transformation(transformation.array.dot(self.array), copy=False)
 
     @classmethod
     def from_points(cls, *args):
