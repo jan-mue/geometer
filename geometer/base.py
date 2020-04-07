@@ -11,7 +11,7 @@ EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
 
 
-class Tensor:
+class Tensor(np.lib.mixins.NDArrayOperatorsMixin):
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
     Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
@@ -44,7 +44,7 @@ class Tensor:
 
         if len(args) == 1:
             if isinstance(args[0], Tensor):
-                self.array = np.array(args[0].array, **kwargs)
+                self.array = np.array(args[0], **kwargs)
                 self._covariant_indices = args[0]._covariant_indices
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
@@ -71,6 +71,84 @@ class Tensor:
                 self._covariant_indices.add(idx)
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
+
+    def __array__(self):
+        return self.array
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if method != '__call__':
+            return NotImplemented
+
+        if ufunc is np.equal:
+            return np.allclose(*inputs, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+
+        if ufunc is np.not_equal:
+            return not self.__array_ufunc__(np.equal, method, *inputs, **kwargs)
+
+        if ufunc is np.multiply and isinstance(inputs[0], Tensor) and isinstance(inputs[1], Tensor):
+            return TensorDiagram((inputs[1], inputs[0])).calculate()
+
+        if ufunc is np.power:
+            x, power = inputs
+            if not isinstance(power, int) or power < 1:
+                return NotImplemented
+
+            if power == 1:
+                return x.copy()
+
+            d = TensorDiagram()
+            prev = x
+            for _ in range(power - 1):
+                cur = prev.copy()
+                d.add_edge(cur, prev)
+                prev = cur
+
+            return Tensor(d.calculate())
+
+        arrays = []
+        covariant = True
+        for obj in inputs:
+            if isinstance(obj, Tensor):
+                covariant = obj._covariant_indices
+                arrays.append(obj.array)
+            else:
+                arrays.append(obj)
+
+        outputs = kwargs.pop('out', None)
+        if outputs:
+            out_args = []
+            for output in outputs:
+                if isinstance(output, Tensor):
+                    out_args.append(output.array)
+                else:
+                    out_args.append(output)
+            kwargs['out'] = tuple(out_args)
+        else:
+            outputs = (None,) * ufunc.nout
+
+        results = ufunc(*arrays, **kwargs)
+
+        if ufunc.nout == 1:
+            results = (results,)
+
+        results = tuple((Tensor(result, covariant=covariant)
+                         if output is None else output)
+                        for result, output in zip(results, outputs))
+
+        return results[0] if len(results) == 1 else results
+
+    def __array_function__(self, func, types, args, kwargs):
+        if func == np.transpose:
+            return args[0].transpose(*args[1:], **kwargs)
+
+        if func not in {np.isclose, np.allclose, np.ndim, np.shape}:
+            return NotImplemented
+
+        args = list(args)
+        for i, a in enumerate(args):
+            if isinstance(a, Tensor):
+                args[i] = a.array
+        return func(*args, **kwargs)
 
     @property
     def shape(self):
@@ -168,63 +246,6 @@ class Tensor:
 
     def __copy__(self):
         return self.copy()
-
-    def __mul__(self, other):
-        if np.isscalar(other):
-            return Tensor(self.array * other, covariant=self._covariant_indices)
-        other = Tensor(other)
-        return TensorDiagram((other, self)).calculate()
-
-    def __rmul__(self, other):
-        if np.isscalar(other):
-            return self * other
-        other = Tensor(other)
-        return TensorDiagram((self, other)).calculate()
-
-    def __pow__(self, power, modulo=None):
-        if modulo is not None or not isinstance(power, int) or power < 1:
-            return NotImplemented
-
-        if power == 1:
-            return self.copy()
-
-        d = TensorDiagram()
-        prev = self
-        for _ in range(power-1):
-            cur = prev.copy()
-            d.add_edge(cur, prev)
-            prev = cur
-
-        return d.calculate()
-
-    def __truediv__(self, other):
-        if np.isscalar(other):
-            return Tensor(self.array / other, covariant=self._covariant_indices)
-        return NotImplemented
-
-    def __add__(self, other):
-        if isinstance(other, Tensor):
-            other = other.array
-        return Tensor(self.array + other, covariant=self._covariant_indices)
-
-    def __radd__(self, other):
-        return self + other
-
-    def __sub__(self, other):
-        if isinstance(other, Tensor):
-            other = other.array
-        return Tensor(self.array - other, covariant=self._covariant_indices)
-
-    def __rsub__(self, other):
-        return -self + other
-
-    def __neg__(self):
-        return self*(-1)
-
-    def __eq__(self, other):
-        if isinstance(other, Tensor):
-            other = other.array
-        return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
 
 class LeviCivitaTensor(Tensor):
@@ -471,15 +492,22 @@ class ProjectiveElement(Tensor, ABC):
 
     """
 
-    def __eq__(self, other):
-        if isinstance(other, Tensor):
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc is np.equal:
+            x, y = inputs
 
-            if self.shape != other.shape:
+            if isinstance(x, Tensor):
+                x = x.array
+
+            if isinstance(y, Tensor):
+                y = y.array
+
+            if x.shape != y.shape:
                 return False
 
-            return is_multiple(self.array, other.array, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+            return is_multiple(x, y, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
-        return super(ProjectiveElement, self).__eq__(other)
+        return super(ProjectiveElement, self).__array_ufunc__(ufunc, method, *inputs, **kwargs)
 
     @property
     def dim(self):

@@ -183,6 +183,28 @@ class Transformation(ProjectiveElement):
         kwargs.setdefault('covariant', [0])
         super(Transformation, self).__init__(*args, **kwargs)
 
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc is np.multiply:
+            x, y = inputs
+
+            if isinstance(x, Transformation):
+                try:
+                    return x.apply(y)
+                except NotImplementedError:
+                    pass
+
+        if ufunc is np.power:
+            x, power = inputs
+            if power == 0:
+                return identity(x.dim)
+            if power < 0:
+                x, power = x.inverse(), -power
+
+            result = super(Transformation, self).__array_ufunc__(ufunc, method, x, power, **kwargs)
+            return Transformation(result)
+
+        return super(Transformation, self).__array_ufunc__(ufunc, method, *inputs, **kwargs)
+
     def __apply__(self, transformation):
         return Transformation(transformation.array.dot(self.array), copy=False)
 
@@ -236,21 +258,6 @@ class Transformation(ProjectiveElement):
         if hasattr(other, '__apply__'):
             return other.__apply__(self)
         raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
-
-    def __mul__(self, other):
-        try:
-            return self.apply(other)
-        except NotImplementedError:
-            return super(Transformation, self).__mul__(other)
-
-    def __pow__(self, power, modulo=None):
-        if power == 0:
-            return identity(self.dim)
-        if power < 0:
-            return self.inverse().__pow__(-power, modulo)
-
-        result = super(Transformation, self).__pow__(power, modulo)
-        return Transformation(result, copy=False)
 
     def inverse(self):
         """Calculates the inverse projective transformation.

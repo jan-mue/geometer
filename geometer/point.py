@@ -134,35 +134,35 @@ class Point(ProjectiveElement):
         else:
             super(Point, self).__init__(*args, **kwargs)
 
-    def __add__(self, other):
-        if not isinstance(other, Point):
-            return super(Point, self).__add__(other)
-        a, b = self.normalized_array, other.normalized_array
-        result = a[:-1] + b[:-1]
-        result = np.append(result, max(a[-1], b[-1]))
-        return Point(result)
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc is np.add or ufunc is np.subtract:
+            x, y = inputs
 
-    def __sub__(self, other):
-        if not isinstance(other, Point):
-            return super(Point, self).__sub__(other)
-        a, b = self.normalized_array, other.normalized_array
-        result = a[:-1] - b[:-1]
-        result = np.append(result, max(a[-1], b[-1]))
-        return Point(result)
+            if isinstance(x, Point) and isinstance(y, Point):
+                x, y = x.normalized_array, y.normalized_array
+                result = ufunc(x[:-1], y[:-1])
+                result = np.append(result, max(x[-1], y[-1]))
+                return Point(result)
 
-    def __mul__(self, other):
-        if not np.isscalar(other):
-            return super(Point, self).__mul__(other)
-        result = self.normalized_array[:-1] * other
-        result = np.append(result, self.array[-1] and 1)
-        return Point(result)
+        if ufunc in {np.negative, np.positive, np.absolute, np.invert}:
+            x = inputs[0].normalized_array
+            result = ufunc(x[:-1])
+            result = np.append(result, x[-1] and 1)
+            return Point(result)
 
-    def __truediv__(self, other):
-        if not np.isscalar(other):
-            return super(Point, self).__truediv__(other)
-        result = self.normalized_array[:-1] / other
-        result = np.append(result, self.array[-1] and 1)
-        return Point(result)
+        if ufunc in {np.multiply, np.divide, np.true_divide, np.floor_divide, np.remainder, np.divmod}:
+            x, y = inputs
+
+            if np.isscalar(x) and ufunc is np.multiply:
+                x, y = y, x
+
+            if np.isscalar(y):
+                x = x.normalized_array
+                result = ufunc(x[:-1], y)
+                result = np.append(result, x[-1] and 1)
+                return Point(result)
+
+        return super(Point, self).__array_ufunc__(ufunc, method, *inputs, **kwargs)
 
     def __apply__(self, transformation):
         return type(self)(TensorDiagram((self, transformation)).calculate())
@@ -226,15 +226,24 @@ class Subspace(ProjectiveElement):
         kwargs.setdefault('covariant', False)
         super(Subspace, self).__init__(*args, **kwargs)
 
-    def __add__(self, other):
-        if not isinstance(other, Point):
-            return super(Subspace, self).__add__(other)
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc is np.add:
+            x, y = inputs
 
-        from .transformation import translation
-        return translation(other) * self
+            from .transformation import translation
 
-    def __sub__(self, other):
-        return self + (-other)
+            if isinstance(y, Point):
+                return translation(y) * x
+
+            if isinstance(x, Point):
+                return translation(x) * y
+
+        if ufunc is np.subtract:
+            x, y = inputs
+            if isinstance(y, Point):
+                return x + (-y)
+
+        return super(Subspace, self).__array_ufunc__(ufunc, method, *inputs, **kwargs)
 
     def __apply__(self, transformation):
         ts = self.tensor_shape

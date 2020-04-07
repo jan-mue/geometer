@@ -29,8 +29,42 @@ class Polytope(Tensor):
 
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
-            args = tuple(a.array for a in args)
-        super(Polytope, self).__init__(*args, covariant=[-1])
+            args = tuple(np.array(a) for a in args)
+        kwargs.setdefault('covariant', [-1])
+        super(Polytope, self).__init__(*args, **kwargs)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+
+        if ufunc is np.equal:
+            x, y = inputs
+            if isinstance(x, Polytope) and isinstance(y, Polytope):
+
+                if x.shape != y.shape:
+                    return False
+
+                if self.rank > 2:
+                    # facets equal up to reordering
+                    return all(f in y.facets for f in x.facets) and all(f in x.facets for f in y.facets)
+
+                return np.all(is_multiple(x.array, y.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+
+        if ufunc is np.add:
+            x, y = inputs
+
+            from .transformation import translation
+
+            if isinstance(y, Point):
+                return translation(y) * x
+
+            if isinstance(x, Point):
+                return translation(x) * y
+
+        if ufunc is np.subtract:
+            x, y = inputs
+            if isinstance(y, Point):
+                return x + (-y)
+
+        return super(Polytope, self).__array_ufunc__(ufunc, method, *inputs, **kwargs)
 
     def __apply__(self, transformation):
         result = self.copy()
@@ -86,28 +120,6 @@ class Polytope(Tensor):
                 return Polytope(array)
 
         return [poly(x) for x in self.array]
-
-    def __eq__(self, other):
-        if isinstance(other, Polytope):
-
-            if self.shape != other.shape:
-                return False
-
-            if self.rank > 2:
-                # facets equal up to reordering
-                return all(f in other.facets for f in self.facets) and all(f in self.facets for f in other.facets)
-
-            return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
-
-        return super(Polytope, self).__eq__(other)
-
-    def __add__(self, other):
-        if isinstance(other, Point):
-            return type(self)(*[f + other for f in self.facets])
-        return super(Polytope, self).__add__(other)
-
-    def __sub__(self, other):
-        return self + (-other)
 
 
 class Segment(Polytope):

@@ -37,14 +37,22 @@ class Quadric(ProjectiveElement):
         kwargs.setdefault('covariant', False)
         super(Quadric, self).__init__(matrix, **kwargs)
 
-    def __add__(self, other):
-        if not isinstance(other, Point):
-            return super(Quadric, self).__add__(other)
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc is np.add:
+            x, y = inputs
 
-        return translation(other) * self
+            if isinstance(x, Quadric) and isinstance(y, Point):
+                return translation(y) * x
 
-    def __sub__(self, other):
-        return self + (-other)
+            if isinstance(x, Point) and isinstance(y, Quadric):
+                return translation(x) * y
+
+        if ufunc is np.subtract:
+            x, y = inputs
+            if isinstance(y, Point):
+                return x + (-y)
+
+        return super(Quadric, self).__array_ufunc__(ufunc, method, *inputs, **kwargs)
 
     def __apply__(self, transformation):
         inv = transformation.inverse().array
