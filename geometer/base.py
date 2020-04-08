@@ -3,7 +3,7 @@ from itertools import permutations
 
 import numpy as np
 
-from .utils import is_multiple, posify_index, check_index, normalize_index, sanitize_index
+from .utils import is_multiple, posify_index, normalize_index, sanitize_index
 from .exceptions import TensorComputationError
 
 
@@ -62,7 +62,8 @@ class Tensor:
         else:
             self._covariant_indices = set()
             for idx, s in zip(covariant, self.array.shape):
-                check_index(idx, s)
+                if not -self.array.ndim <= idx < self.array.ndim:
+                    raise IndexError("Index out of range")
                 idx = sanitize_index(idx)
                 idx = posify_index(s, idx)
                 self._covariant_indices.add(idx)
