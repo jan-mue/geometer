@@ -1,3 +1,4 @@
+import numpy as np
 from geometer.base import TensorDiagram, Tensor, LeviCivitaTensor, KroneckerDelta
 
 
@@ -35,6 +36,10 @@ class TestTensor:
         assert a[None, 1].tensor_shape == (1, 1)
         assert a[::-1, 0] == [3, 1]
         assert a[::-1, 0].tensor_shape == (1, 0)
+
+    def test_dtype(self):
+        a = Tensor(2, 3, dtype=np.float32)
+        assert a.dtype == np.float32
 
 
 class TestTensorDiagram:

@@ -256,3 +256,14 @@ class TestCuboid:
 
         assert t*cube == Cuboid(a+x, b+x, c+x, d+x)
         assert isinstance(t*cube, Cuboid)
+
+    def test_add(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+        p = Point(1, 2, 3)
+
+        assert cube + p == Cuboid(a+p, b+p, c+p, d+p)
+        assert cube - p == Cuboid(a-p, b-p, c-p, d-p)

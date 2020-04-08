@@ -102,9 +102,9 @@ class Polytope(Tensor):
         return super(Polytope, self).__eq__(other)
 
     def __add__(self, other):
-        if isinstance(other, Point):
-            return type(self)(*[f + other for f in self.facets])
-        return super(Polytope, self).__add__(other)
+        if not isinstance(other, Point):
+            return super(Polytope, self).__add__(other)
+        return translation(other) * self
 
     def __sub__(self, other):
         return self + (-other)
