@@ -41,6 +41,9 @@ class TestTensor:
         a = Tensor(2, 3, dtype=np.float32)
         assert a.dtype == np.float32
 
+        a = Tensor(2, 3, dtype=np.complex64)
+        assert a.dtype == np.complex64
+
 
 class TestTensorDiagram:
 
