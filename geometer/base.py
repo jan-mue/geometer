@@ -3,7 +3,7 @@ from itertools import permutations
 
 import numpy as np
 
-from .utils import is_multiple
+from .utils import is_multiple, posify_index, check_index, normalize_index, sanitize_index
 from .exceptions import TensorComputationError
 
 
@@ -61,13 +61,10 @@ class Tensor:
             self._covariant_indices = set()
         else:
             self._covariant_indices = set()
-            for idx in covariant:
-                if not isinstance(idx, int):
-                    raise TypeError("Tensor indices must be integer, not " + str(type(idx)))
-                if idx < 0:
-                    idx += self.array.ndim
-                if not 0 <= idx < self.array.ndim:
-                    raise IndexError("Index out of range")
+            for idx, s in zip(covariant, self.array.shape):
+                check_index(idx, s)
+                idx = sanitize_index(idx)
+                idx = posify_index(s, idx)
                 self._covariant_indices.add(idx)
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
@@ -165,6 +162,40 @@ class Tensor:
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
+
+    def __getitem__(self, index):
+
+        index = normalize_index(index, self.shape)
+
+        covariant = []
+
+        old_axis = 0
+        new_axis = 0
+        for ind in index:
+
+            # new axis inserted by None index
+            if ind is None:
+                covariant.append(new_axis)
+                new_axis += 1
+                continue
+
+            # axis with integer index will be removed
+            if isinstance(ind, int):
+                old_axis += 1
+                continue
+
+            if old_axis in self._covariant_indices:
+                covariant.append(new_axis)
+
+            old_axis += 1
+            new_axis += 1
+
+        result = self.array[index]
+
+        if np.isscalar(result):
+            return result
+
+        return Tensor(result, covariant=covariant)
 
     def __copy__(self):
         return self.copy()

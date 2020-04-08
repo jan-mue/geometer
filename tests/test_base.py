@@ -26,6 +26,16 @@ class TestTensor:
         assert a.T._covariant_indices == {1}
         assert a.T.T == a
 
+    def test_getitem(self):
+        a = Tensor([[1, 2],
+                    [3, 4]], covariant=[0])
+
+        assert a[0, 1] == 2
+        assert a[None, 1] == [[3, 4]]
+        assert a[None, 1].tensor_shape == (1, 1)
+        assert a[::-1, 0] == [3, 1]
+        assert a[::-1, 0].tensor_shape == (1, 0)
+
 
 class TestTensorDiagram:
 
