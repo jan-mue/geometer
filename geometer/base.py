@@ -72,7 +72,9 @@ class Tensor(np.lib.mixins.NDArrayOperatorsMixin):
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
 
-    def __array__(self):
+    def __array__(self, dtype=None):
+        if dtype and self.dtype != dtype:
+            return self.array.astype(dtype)
         return self.array
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
