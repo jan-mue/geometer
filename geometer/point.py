@@ -178,7 +178,7 @@ def _meet_collections(a, b):
     else:
         raise ValueError("Operation not supported.")
 
-    return PointCollection(result)
+    return PointCollection(result, homogenize=False)
 
 
 def join(*args):
@@ -789,8 +789,49 @@ infty_plane = infty_hyperplane(3)
 
 class PointCollection(ProjectiveCollection):
 
-    def __init__(self, *args):
-        super(PointCollection, self).__init__(*args, covariant=[-1])
+    def __init__(self, elements, *, homogenize=True):
+        super(PointCollection, self).__init__(elements, covariant=[-1])
+        if isinstance(elements[0], Point):
+            return
+        if homogenize is True:
+            self.array = np.append(elements, np.ones(self.shape[:-1] + (1,), self.array.dtype), axis=1)
+
+    def __apply__(self, transformation):
+        return PointCollection(self.array @ transformation.array.T, homogenize=False)
+
+    def __add__(self, other):
+        if not isinstance(other, (Point, PointCollection)):
+            return super(PointCollection, self).__add__(other)
+        a, b = self.normalized_array, other.normalized_array
+        if not isinstance(other, PointCollection):
+            b = np.expand_dims(b, 0)
+        result = a[:, :-1] + b[:, :-1]
+        result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
+        return PointCollection(result, homogenize=False)
+
+    def __sub__(self, other):
+        if not isinstance(other, (Point, PointCollection)):
+            return super(PointCollection, self).__add__(other)
+        a, b = self.normalized_array, other.normalized_array
+        if not isinstance(other, PointCollection):
+            b = np.expand_dims(b, 0)
+        result = a[:, :-1] - b[:, :-1]
+        result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
+        return PointCollection(result, homogenize=False)
+
+    def __mul__(self, other):
+        if not np.isscalar(other):
+            return super(PointCollection, self).__mul__(other)
+        result = self.normalized_array[:, :-1] * other
+        result = np.append(result, self.array[:, -1:] != 0, axis=1)
+        return PointCollection(result, homogenize=False)
+
+    def __truediv__(self, other):
+        if not np.isscalar(other):
+            return super(PointCollection, self).__truediv__(other)
+        result = self.normalized_array[:, :-1] / other
+        result = np.append(result, self.array[:, -1:] != 0, axis=1)
+        return PointCollection(result, homogenize=False)
 
     def join(self, *others):
         return join(self, *others)
@@ -798,7 +839,7 @@ class PointCollection(ProjectiveCollection):
     def __getitem__(self, item):
         if isinstance(item, int):
             return Point(self.array[item])
-        return PointCollection(self.array[item])
+        return PointCollection(self.array[item], homogenize=False)
 
     @property
     def normalized_array(self):

@@ -1,4 +1,5 @@
-from geometer import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, join, meet, is_perpendicular
+import numpy as np
+from geometer import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, join, meet, is_perpendicular, translation, rotation
 
 
 class Test2D:
@@ -225,3 +226,26 @@ class TestCollections:
         b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
+
+    def test_homogenize(self):
+        a = PointCollection([(0, 0), (0, 1)])
+        b = PointCollection([Point(0, 0), Point(0, 1)])
+
+        assert a == b
+
+    def test_arithmetic(self):
+        a = PointCollection([Point(0, 1), Point(0, 1)])
+        b = PointCollection([Point(1, 0), Point(1, 0)])
+        c = PointCollection([Point(1, 1), Point(1, 1)])
+
+        assert a + b == c
+        assert a - c == -b
+        assert 2*a + 2*b == 2*c
+        assert (2*a + 2*b) / 2 == c
+        assert a + Point(1, 0) == c
+
+    def test_transform(self):
+        a = PointCollection([(1, 0), (0, 1)])
+
+        assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)])
+        assert rotation(np.pi/2) * a == PointCollection([(0, 1), (-1, 0)])
