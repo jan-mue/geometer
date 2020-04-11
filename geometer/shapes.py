@@ -54,14 +54,14 @@ def _general_direction(points, planes):
     planes = planes.array
 
     direction = np.zeros(points.shape, planes.dtype)
-    ind = np.isclose(planes.T[0], 0, atol=EQ_TOL_ABS)
+    ind = np.isclose(planes.T[0], 0, atol=EQ_TOL_ABS).T
     direction[ind, 0] = 1
     direction[~ind, 0] = planes[~ind, 1]
     direction[~ind, 1] = -planes[~ind, 0]
 
     ind = is_multiple(direction, points, axis=-1)
     direction[ind, 0] = 0
-    ind2 = np.isclose(planes.T[1], 0, atol=EQ_TOL_ABS)
+    ind2 = np.isclose(planes.T[1], 0, atol=EQ_TOL_ABS).T
     direction[ind & ind2, 1] = 1
     ind = ind & ~ind2
     direction[ind, 1] = planes[ind, 2]
@@ -585,7 +585,6 @@ class Polyhedron(Polytope):
 
         # intersect rays with the edge lines to see which points lie in the polygon
         directions = PointCollection(_general_direction(intersections, planes), homogenize=False)
-        assert all(e.contains(d) for e, d in zip(planes, directions))
 
         rays = intersections.join(directions)
         rays = LineCollection(np.repeat(rays.array, self.shape[1], axis=0))

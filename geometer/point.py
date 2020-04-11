@@ -111,10 +111,14 @@ def _meet_planes_lines(planes, lines):
     n = planes.shape[-1]
     e = LeviCivitaTensor(n)
 
-    x = Tensor(_outer_product(planes, lines), covariant=[0])
+    free_indices = list(range(planes.ndim - 1))
+
+    x = _outer_product(planes, lines, axes=free_indices)
+    x = Tensor(x, covariant=free_indices)
 
     diagram = TensorDiagram((e, x), *[(e, x)]*(n-2))
-    return diagram.calculate().array.T
+    result = diagram.calculate().array
+    return np.transpose(result, tuple(range(1, len(free_indices)+1))+(0,))
 
 
 def _meet_coplanar_lines(lines1, lines2):
@@ -140,6 +144,7 @@ def _meet_coplanar_lines(lines1, lines2):
 
 
 def _join_collections(*args):
+    args = [PointCollection([a]) if isinstance(a, Point) else a for a in args]
 
     if all(isinstance(a, PointCollection) for a in args):
         result = _join_points(*[a.array for a in args])
