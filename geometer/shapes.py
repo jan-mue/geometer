@@ -26,7 +26,7 @@ def _segments_contain(vertex1, vertex2, points, tol=1e-8):
     m = lines.basis_matrix
 
     def project(p):
-        return PointCollection(np.einsum('ijk,ik->ij', m, p.array), homogenize=False)
+        return PointCollection(np.squeeze(np.matmul(m, np.expand_dims(p.array, -1)), -1), homogenize=False)
 
     vertex1 = project(vertex1)
     vertex2 = project(vertex2)
@@ -34,10 +34,12 @@ def _segments_contain(vertex1, vertex2, points, tol=1e-8):
     points = project(points)
 
     def crossratio_collections(a, b, c, d):
-        ac = np.linalg.det(np.stack([a.array, c.array], axis=-1))
-        bd = np.linalg.det(np.stack([b.array, d.array], axis=-1))
-        ad = np.linalg.det(np.stack([a.array, d.array], axis=-1))
-        bc = np.linalg.det(np.stack([b.array, c.array], axis=-1))
+        a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
+
+        ac = np.linalg.det(np.stack([a, c], axis=-1))
+        bd = np.linalg.det(np.stack([b, d], axis=-1))
+        ad = np.linalg.det(np.stack([a, d], axis=-1))
+        bc = np.linalg.det(np.stack([b, c], axis=-1))
 
         with np.errstate(divide="ignore"):
             return ac * bd / (ad * bc)
@@ -579,23 +581,23 @@ class Polyhedron(Polytope):
         intersections = planes.meet(line)
 
         # calculate lines that the edges lie on
-        v1 = PointCollection(self.array.reshape(-1, self.shape[-1]), homogenize=False)
-        v2 = PointCollection(np.roll(self.array, -1, axis=1).reshape(-1, self.shape[-1]), homogenize=False)
+        v1 = PointCollection(self.array, homogenize=False)
+        v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False)
         edges = v1.join(v2)
 
         # intersect rays with the edge lines to see which points lie in the polygon
         directions = PointCollection(_general_direction(intersections, planes), homogenize=False)
 
         rays = intersections.join(directions)
-        rays = LineCollection(np.repeat(rays.array, self.shape[1], axis=0))
+        rays = LineCollection(np.expand_dims(rays.array, 1))
         edge_intersections = edges.meet(rays)
 
-        start_points = PointCollection(np.repeat(intersections.array, self.shape[1], axis=0), homogenize=False)
-        directions = PointCollection(np.repeat(directions.array, self.shape[1], axis=0), homogenize=False)
+        start_points = PointCollection(np.expand_dims(intersections.array, 1), homogenize=False)
+        directions = PointCollection(np.expand_dims(directions.array, 1), homogenize=False)
 
         ind = _segments_contain(v1, v2, edge_intersections)
         ind = ind & _segments_contain(start_points, directions, edge_intersections)
-        ind = np.sum(ind.reshape(self.shape[:-1]), axis=1) % 2 == 1
+        ind = np.sum(ind, axis=1) % 2 == 1
 
         return intersections[ind]
 

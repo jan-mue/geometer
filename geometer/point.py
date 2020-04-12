@@ -126,19 +126,24 @@ def _meet_coplanar_lines(lines1, lines2):
     n = lines1.shape[-1]
     e = LeviCivitaTensor(n)
 
-    x = Tensor(_outer_product(lines1, lines2), covariant=range(lines1.ndim + lines2.ndim - 2*n + 3))
-    free_indices = list(range(1, lines1.ndim + lines2.ndim - 2*n + 4))
+    free_indices = list(range(lines1.ndim - n + 2))
+    x = _outer_product(lines1, lines2, axes=free_indices)
+    x = Tensor(x, covariant=range(lines1.ndim + lines2.ndim - 2*n + 4 - len(free_indices)))
 
     diagram = TensorDiagram(*[(e, x)]*(n-2), (e, x))
     points = diagram.calculate().array
 
+    # Levi-Civita tensor is added first and we have to move its remaining covariant index
+    free_indices = [i+1 for i in free_indices]
     points = points.transpose(free_indices + [0] + list(range(len(free_indices)+1, points.ndim)))
 
     if n > 3:
         max_ind = np.abs(points).reshape((np.prod(points.shape[:len(free_indices)]), -1)).argmax(1)
         i = np.unravel_index(max_ind, points.shape[len(free_indices):])
-        indices = tuple(x.flatten() for x in np.indices(points.shape[:len(free_indices)]))
-        points = points[indices + (slice(None),) + i[1:]].reshape(points.shape[:len(free_indices)+1])
+        if len(free_indices) > 1:
+            i = tuple(np.reshape(x, points.shape[:len(free_indices)]) for x in i)
+        indices = tuple(np.indices(points.shape[:len(free_indices)]))
+        points = points[indices + (slice(None),) + i[1:]]
 
     return points
 
@@ -872,7 +877,7 @@ class LineCollection(SubspaceCollection):
     @property
     def basis_matrix(self):
         x = self.array
-        x = self.array.reshape(x.shape[0], -1, x.shape[-1])
+        x = x.reshape(x.shape[:self.rank-self.dim+1] + (-1, x.shape[-1]))
         u, s, vh = np.linalg.svd(x)
         return vh.T[:, -2:].T
 

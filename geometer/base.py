@@ -497,3 +497,7 @@ class ProjectiveCollection(Tensor, ABC):
 
     def __len__(self):
         return self.shape[0]
+
+    @property
+    def dim(self):
+        return self.shape[-1] - 1
