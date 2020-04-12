@@ -1,4 +1,4 @@
-from .math import null_space, hat_matrix, is_multiple, orth, adjugate
+from .math import null_space, hat_matrix, is_multiple, orth, adjugate, det
 
 
 def distinct(iterable):

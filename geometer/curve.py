@@ -8,7 +8,7 @@ from .point import Point, Line, Plane, I, J, infty_plane
 from .transformation import rotation, translation
 from .base import ProjectiveElement, Tensor, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import hat_matrix, is_multiple, adjugate
+from .utils import hat_matrix, is_multiple, adjugate, det
     
     
 class Quadric(ProjectiveElement):
@@ -114,7 +114,7 @@ class Quadric(ProjectiveElement):
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return np.isclose(np.linalg.det(self.array), 0, atol=EQ_TOL_ABS)
+        return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
     def components(self):
@@ -127,7 +127,7 @@ class Quadric(ProjectiveElement):
             # calculate all principal minors of order 2
             row_ind = [[j] for j in range(n) if j not in ind]
             col_ind = [j for j in range(n) if j not in ind]
-            x.append(csqrt(-np.linalg.det(self.array[row_ind, col_ind])))
+            x.append(csqrt(-det(self.array[row_ind, col_ind])))
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
         m = hat_matrix(x)
@@ -222,10 +222,10 @@ class Conic(Quadric):
 
         """
         a, b, c, d, e = a.normalized_array, b.normalized_array, c.normalized_array, d.normalized_array, e.normalized_array
-        ace = np.linalg.det([a, c, e])
-        bde = np.linalg.det([b, d, e])
-        ade = np.linalg.det([a, d, e])
-        bce = np.linalg.det([b, c, e])
+        ace = det([a, c, e])
+        bde = det([b, d, e])
+        ade = det([a, d, e])
+        bce = det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
         return cls(m+m.T)
 
@@ -271,10 +271,10 @@ class Conic(Quadric):
 
         o = tangent.general_point.array
 
-        a2b1 = np.linalg.det([o, a2, b1])
-        a2b2 = np.linalg.det([o, a2, b2])
-        a1b1 = np.linalg.det([o, a1, b1])
-        a1b2 = np.linalg.det([o, a1, b2])
+        a2b1 = det([o, a2, b1])
+        a2b2 = det([o, a2, b2])
+        a1b1 = det([o, a1, b1])
+        a1b2 = det([o, a1, b2])
 
         c1 = csqrt(a2b1*a2b2)
         c2 = csqrt(a1b1*a1b2)
@@ -366,10 +366,10 @@ class Conic(Quadric):
             else:
                 a1, a2, a3 = self.array
                 b1, b2, b3 = other.array
-                alpha = np.linalg.det(self.array)
-                beta = np.linalg.det([a1, a2, b3]) + np.linalg.det([a1, b2, a3]) + np.linalg.det([b1, a2, a3])
-                gamma = np.linalg.det([a1, b2, b3]) + np.linalg.det([b1, a2, b3]) + np.linalg.det([b1, b2, a3])
-                delta = np.linalg.det(other.array)
+                alpha = det(self.array)
+                beta = det([a1, a2, b3]) + det([a1, b2, a3]) + det([b1, a2, a3])
+                gamma = det([a1, b2, b3]) + det([b1, a2, b3]) + det([b1, b2, a3])
+                delta = det(other.array)
 
                 roots = np.roots([alpha, beta, gamma, delta])
                 c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)

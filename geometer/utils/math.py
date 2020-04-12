@@ -120,6 +120,34 @@ def adjugate(A):
     return diagram.calculate().array.T / math.factorial(n-1)
 
 
+def det(A):
+    """Computes the determinant of A.
+
+    Parameters
+    ----------
+    A : array_like
+        The input matrix.
+
+    Returns
+    -------
+    float
+        The determinant of A.
+
+    """
+    A = np.asarray(A)
+    n = A.shape[-1]
+
+    if n == 2:
+        return A[..., 0, 0]*A[..., 1, 1] - A[..., 1, 0]*A[..., 0, 1]
+
+    if n == 3 and A.size >= 9*64:
+        return A[..., 0, 0]*A[..., 1, 1]*A[..., 2, 2] + A[..., 0, 1]*A[..., 1, 2]*A[..., 2, 0]\
+               + A[..., 0, 2]*A[..., 1, 0]*A[..., 2, 1] - A[..., 2, 0]*A[..., 1, 1]*A[..., 0, 2]\
+               - A[..., 2, 1]*A[..., 1, 2]*A[..., 0, 0] - A[..., 2, 2]*A[..., 1, 0]*A[..., 0, 1]
+
+    return np.linalg.det(A)
+
+
 def null_space(A):
     """Constructs an orthonormal basis for the null space of a A using SVD.
 

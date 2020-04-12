@@ -3,7 +3,7 @@ from itertools import combinations
 import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
-from .utils import distinct, is_multiple
+from .utils import distinct, is_multiple, det
 from .point import Line, Plane, Point, PointCollection, LineCollection, infty_hyperplane
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
@@ -36,10 +36,10 @@ def _segments_contain(vertex1, vertex2, points, tol=1e-8):
     def crossratio_collections(a, b, c, d):
         a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
 
-        ac = np.linalg.det(np.stack([a, c], axis=-1))
-        bd = np.linalg.det(np.stack([b, d], axis=-1))
-        ad = np.linalg.det(np.stack([a, d], axis=-1))
-        bc = np.linalg.det(np.stack([b, c], axis=-1))
+        ac = det(np.stack([a, c], axis=-1))
+        bd = det(np.stack([b, d], axis=-1))
+        ad = det(np.stack([a, d], axis=-1))
+        bc = det(np.stack([b, c], axis=-1))
 
         with np.errstate(divide="ignore"):
             return ac * bd / (ad * bc)
@@ -304,7 +304,7 @@ class Simplex(Polytope):
         n, k = points.shape
 
         if n == k:
-            return 1 / np.math.factorial(n-1) * abs(np.linalg.det(points))
+            return 1 / np.math.factorial(n-1) * abs(det(points))
 
         indices = np.triu_indices(n)
         distances = points[indices[0]] - points[indices[1]]
@@ -315,7 +315,7 @@ class Simplex(Polytope):
         m[-1, :-1] = 1
         m[:-1, -1] = 1
 
-        return np.sqrt((-1)**n/(np.math.factorial(n-1)**2 * 2**(n-1)) * np.linalg.det(m))
+        return np.sqrt((-1)**n/(np.math.factorial(n-1)**2 * 2**(n-1)) * det(m))
 
 
 class Polygon(Polytope):
@@ -451,7 +451,7 @@ class Polygon(Polytope):
     def area(self):
         """float: The area of the polygon."""
         points = self._normalized_projection()
-        a = sum(np.linalg.det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
+        a = sum(det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
         return 1/2 * abs(a)
 
     @property
@@ -459,7 +459,7 @@ class Polygon(Polytope):
         """Point: The centroid (center of mass) of the polygon."""
         points = self.normalized_array
         centroids = [np.average(points[[0, i, i + 1], :-1], axis=0) for i in range(1, points.shape[0] - 1)]
-        weights = [np.linalg.det(self._normalized_projection()[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
+        weights = [det(self._normalized_projection()[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
         return Point(*np.average(centroids, weights=weights, axis=0))
 
     @property

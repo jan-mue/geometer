@@ -3,7 +3,7 @@ from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
 from .base import LeviCivitaTensor, TensorDiagram
 from .exceptions import IncidenceError, NotCollinear
-from .utils import orth
+from .utils import orth, det
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -58,10 +58,10 @@ def crossratio(a, b, c, d, from_point=None):
         d = Point(basis.dot(d.array))
 
     o = (from_point or []) and [from_point.array]
-    ac = np.linalg.det(o + [a.array, c.array])
-    bd = np.linalg.det(o + [b.array, d.array])
-    ad = np.linalg.det(o + [a.array, d.array])
-    bc = np.linalg.det(o + [b.array, c.array])
+    ac = det(o + [a.array, c.array])
+    bd = det(o + [b.array, d.array])
+    ad = det(o + [a.array, d.array])
+    bc = det(o + [b.array, c.array])
 
     with np.errstate(divide="ignore"):
         return ac * bd / (ad * bc)
@@ -208,10 +208,10 @@ def angle_bisectors(l, m):
         L, M = l.meet(infty), m.meet(infty)
 
     p = Point(0, 0)
-    li = np.linalg.det([p.array, L.array, I.array])
-    lj = np.linalg.det([p.array, L.array, J.array])
-    mi = np.linalg.det([p.array, M.array, I.array])
-    mj = np.linalg.det([p.array, M.array, J.array])
+    li = det([p.array, L.array, I.array])
+    lj = det([p.array, L.array, J.array])
+    mi = det([p.array, M.array, I.array])
+    mj = det([p.array, M.array, J.array])
     a, b = np.sqrt(lj*mj), np.sqrt(li*mi)
     r, s = a*I+b*J, a*I-b*J
 
@@ -256,10 +256,10 @@ def dist(p, q):
         x = np.append(x, [z], axis=0).T
         p, q = Point(x[0]), Point(x[1])
 
-    pqi = np.linalg.det([p.array, q.array, I.array])
-    pqj = np.linalg.det([p.array, q.array, J.array])
-    pij = np.linalg.det([p.array, I.array, J.array])
-    qij = np.linalg.det([q.array, I.array, J.array])
+    pqi = det([p.array, q.array, I.array])
+    pqj = det([p.array, q.array, J.array])
+    pij = det([p.array, I.array, J.array])
+    qij = det([q.array, I.array, J.array])
 
     with np.errstate(divide="ignore", invalid="ignore"):
         return 4*abs(np.sqrt(pqi * pqj)/(pij*qij))
@@ -363,7 +363,7 @@ def is_coplanar(*args, tol=1.e-8):
 
     """
     n = args[0].dim + 1
-    if not np.isclose(np.linalg.det([a.array for a in args[:n]]), 0, atol=tol):
+    if not np.isclose(det([a.array for a in args[:n]]), 0, atol=tol):
         return False
     if len(args) == n:
         return True
