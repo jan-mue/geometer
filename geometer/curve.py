@@ -156,6 +156,8 @@ class Quadric(ProjectiveElement):
         if self.dim > 2 and not is_multiple(np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
             raise NotReducible("Quadric has no decomposition in 2 components.")
 
+        p, q = np.real_if_close(p), np.real_if_close(q)
+
         if self.is_dual:
             return [Point(p), Point(q)]
         elif n == 3:
@@ -164,6 +166,9 @@ class Quadric(ProjectiveElement):
 
     def intersect(self, other):
         """Calculates points of intersection of a line with the quadric.
+
+        This method also returns complex points of intersection, even if the quadric and the line do not intersect in
+        any real points.
 
         Parameters
         ----------
