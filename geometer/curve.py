@@ -392,8 +392,15 @@ class Conic(Quadric):
                 gamma = np.linalg.det([a1, b2, b3]) + np.linalg.det([b1, a2, b3]) + np.linalg.det([b1, b2, a3])
                 delta = np.linalg.det(other.array)
 
-                roots = np.roots([alpha, beta, gamma, delta])
-                c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)
+                W = -2*beta**3 + 9*alpha*beta*gamma - 27*alpha**2*delta
+                D = -beta**2*gamma**2 + 4*alpha*gamma**3 + 4*beta**3*delta - 18*alpha*beta*gamma*delta + 27*alpha**2*delta**3
+                Q = W - alpha*csqrt(27*D)
+                R = np.complex128(4*Q)**(1/3)
+
+                lam = 2*beta**2 - 6*alpha*gamma - beta + R
+                mu = 3*alpha*(R + 3)
+
+                c = Conic(lam*self.array + mu*other.array, is_dual=self.is_dual)
                 g, h = c.components
 
             result = self.intersect(g)
@@ -475,6 +482,9 @@ class Ellipse(Conic):
     """
 
     def __init__(self, center=Point(0, 0), hradius=1, vradius=1, **kwargs):
+        if hradius == vradius == 0:
+            raise ValueError('hradius and vradius can not both be zero.')
+
         r = np.array([vradius ** 2, hradius ** 2, 1])
         c = -center.normalized_array
         d = c * r
@@ -483,6 +493,10 @@ class Ellipse(Conic):
         m[2, :] = d
         m[:, 2] = d
         m[2, 2] = d.dot(c) - (r[0] * r[1] + 1)
+
+        # normalize with abs(det(m))
+        m = m / (np.prod(np.maximum(r[:2], 1)))**(2/3)
+
         kwargs['copy'] = False
         super(Ellipse, self).__init__(m, **kwargs)
 
