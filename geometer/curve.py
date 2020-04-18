@@ -248,7 +248,7 @@ class Conic(Quadric):
         ade = np.linalg.det([a, d, e])
         bce = np.linalg.det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return cls(m+m.T, copy=False)
+        return cls(np.real_if_close(m+m.T), copy=False)
 
     @classmethod
     def from_lines(cls, g, h):
