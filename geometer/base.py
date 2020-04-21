@@ -239,6 +239,14 @@ class TensorCollection(Tensor):
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
         return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
+    def expand_dims(self, axis):
+        result = self.copy()
+        result.array = np.expand_dims(self.array, axis)
+        result._covariant_indices = set(i+1 if i >= axis else i for i in self._covariant_indices)
+        result._contravariant_indices = set(i+1 if i >= axis else i for i in self._contravariant_indices)
+        result._collection_indices.add(axis)
+        return result
+
     def __len__(self):
         return self.shape[0]
 
@@ -362,7 +370,6 @@ class TensorDiagram:
 
     def __init__(self, *edges):
         self._nodes = []
-        self._collection_indices = []
         self._free_indices = []
         self._node_positions = []
         self._contraction_list = []
@@ -388,11 +395,6 @@ class TensorDiagram:
         self._index_count += node.rank
         ind = (list(node._covariant_indices), list(node._contravariant_indices))
         self._free_indices.append(ind)
-
-        if isinstance(node, TensorCollection):
-            self._collection_indices.append(list(node._collection_indices))
-        else:
-            self._collection_indices.append([])
 
         return ind
 
@@ -462,30 +464,26 @@ class TensorDiagram:
             j = self._node_positions[target_index] + j
             indices[max(i, j)] = min(i, j)
 
-        collection_indices = []
-        for ind, offset in zip(self._collection_indices, self._node_positions):
-            if len(ind) == 0:
-                continue
-            if len(collection_indices) == 0:
-                collection_indices = [offset+i for i in ind]
-                continue
-            for i, j in enumerate(ind):
-                indices[offset+j] = collection_indices[i]
-
         # Split the indices and insert the arrays
         args = []
-        result_indices = ([], [])
+        result_indices = ([], [], [])
         for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
-            result_indices[0].extend(offset + x for x in ind[0])
-            result_indices[1].extend(offset + x for x in ind[1])
+            if isinstance(node, TensorCollection):
+                if len(result_indices[0]) == 0:
+                    result_indices[0].extend(offset + i for i in node._collection_indices)
+                else:
+                    for j, k in enumerate(node._collection_indices):
+                        indices[offset + k] = result_indices[0][j]
+            result_indices[1].extend(offset + x for x in ind[0])
+            result_indices[2].extend(offset + x for x in ind[1])
             args.append(node.array)
             s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
             args.append(indices[s])
 
-        temp = np.einsum(*args, collection_indices + result_indices[0] + result_indices[1])
+        temp = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
 
-        n_cov = len(result_indices[0])
-        n_col = len(collection_indices)
+        n_col = len(result_indices[0])
+        n_cov = len(result_indices[1])
 
         if n_col > 0:
             return TensorCollection(temp, covariant=range(n_col, n_col+n_cov), tensor_rank=temp.ndim-n_col)

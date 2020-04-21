@@ -4,7 +4,7 @@ import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
 from .utils import distinct, is_multiple, det
-from .point import Line, Plane, Point, PointCollection, LineCollection, infty_hyperplane
+from .point import Line, Plane, Point, PointCollection, infty_hyperplane
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
@@ -588,12 +588,11 @@ class Polyhedron(Polytope):
         # intersect rays with the edge lines to see which points lie in the polygon
         directions = PointCollection(_general_direction(intersections, planes), homogenize=False)
 
-        rays = intersections.join(directions)
-        rays = LineCollection(np.expand_dims(rays.array, 1))
+        rays = intersections.join(directions).expand_dims(1)
         edge_intersections = edges.meet(rays)
 
-        start_points = PointCollection(np.expand_dims(intersections.array, 1), homogenize=False)
-        directions = PointCollection(np.expand_dims(directions.array, 1), homogenize=False)
+        start_points = intersections.expand_dims(1)
+        directions = directions.expand_dims(1)
 
         ind = _segments_contain(v1, v2, edge_intersections)
         ind = ind & _segments_contain(start_points, directions, edge_intersections)
