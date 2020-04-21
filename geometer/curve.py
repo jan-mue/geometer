@@ -24,6 +24,8 @@ class Quadric(ProjectiveElement):
         A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
     is_dual : bool, optional
         If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
+    normalize_matrix : bool, optional
+        If true, normalize matrix using the (n+1)-th root of the absolute value of its pseudo-determinant
 
     Attributes
     ----------
@@ -32,8 +34,15 @@ class Quadric(ProjectiveElement):
 
     """
 
-    def __init__(self, matrix, is_dual=False, **kwargs):
+    def __init__(self, matrix, is_dual=False, normalize_matrix=False, **kwargs):
         self.is_dual = is_dual
+
+        if normalize_matrix is True:
+            matrix = matrix.array if isinstance(matrix, Tensor) else matrix
+            w = np.abs(np.linalg.eigvalsh(matrix))
+            matrix = matrix / np.prod(w[w > EQ_TOL_ABS])**(1/matrix.shape[-1])
+            kwargs['copy'] = False
+
         kwargs.setdefault('covariant', False)
         super(Quadric, self).__init__(matrix, **kwargs)
 
@@ -68,7 +77,7 @@ class Quadric(ProjectiveElement):
 
         """
         m = np.outer(e.array, f.array)
-        return cls(m + m.T, copy=False)
+        return cls(m + m.T, normalize_matrix=True)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -248,7 +257,7 @@ class Conic(Quadric):
         ade = np.linalg.det([a, d, e])
         bce = np.linalg.det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return cls(np.real_if_close(m+m.T), copy=False)
+        return cls(np.real_if_close(m+m.T), normalize_matrix=True)
 
     @classmethod
     def from_lines(cls, g, h):
@@ -266,7 +275,7 @@ class Conic(Quadric):
 
         """
         m = np.outer(g.array, h.array)
-        return cls(m + m.T, copy=False)
+        return cls(m + m.T, normalize_matrix=True)
 
     @classmethod
     def from_tangent(cls, tangent, a, b, c, d):
@@ -327,7 +336,7 @@ class Conic(Quadric):
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
         c = cls.from_tangent(Line(bound.array), Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array))
-        return cls(np.linalg.inv(c.array), copy=False)
+        return cls(np.linalg.inv(c.array), normalize_matrix=True)
 
     @classmethod
     def from_crossratio(cls, cr, a, b, c, d):
@@ -361,7 +370,7 @@ class Conic(Quadric):
 
         matrix = np.outer(ac, bd) - cr * np.outer(ad, bc)
 
-        return cls(matrix + matrix.T, copy=False)
+        return cls(matrix + matrix.T, normalize_matrix=True)
 
     def intersect(self, other):
         """Calculates points of intersection with the conic.
@@ -577,11 +586,18 @@ class Sphere(Quadric):
     """
 
     def __init__(self, center=Point(0, 0, 0), radius=1, **kwargs):
+        if radius == 0:
+            raise ValueError('Sphere radius cannot be 0.')
+
         c = -center.normalized_array
         m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
+
+        # normalize with abs(det(m))
+        m = m / radius ** (2 / 3)
+
         kwargs['copy'] = False
         super(Sphere, self).__init__(m, **kwargs)
 
@@ -628,6 +644,9 @@ class Cone(Quadric):
     """
 
     def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs):
+        if radius == 0:
+            raise ValueError('The radius of a cone can not be zero.')
+
         from .operators import dist, angle
 
         h = dist(vertex, base_center)
@@ -662,7 +681,7 @@ class Cone(Quadric):
             t = translation(Point(v)) * t * translation(-Point(v))
             m = t.array.T.dot(m).dot(t.array)
 
-        kwargs['copy'] = False
+        kwargs['normalize_matrix'] = True
         super(Cone, self).__init__(m, **kwargs)
 
 
