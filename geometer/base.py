@@ -156,6 +156,9 @@ class Tensor:
         result.__dict__.update(self.__dict__)
         return result
 
+    def is_zero(self, tol=EQ_TOL_ABS):
+        return np.allclose(self.array, 0, atol=tol)
+
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
 
@@ -165,13 +168,15 @@ class Tensor:
     def __mul__(self, other):
         if np.isscalar(other):
             return Tensor(self.array * other, covariant=self._covariant_indices)
-        other = Tensor(other)
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other):
         if np.isscalar(other):
             return self * other
-        other = Tensor(other)
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
         return TensorDiagram((self, other)).calculate()
 
     def __pow__(self, power, modulo=None):
@@ -216,6 +221,26 @@ class Tensor:
         if isinstance(other, Tensor):
             other = other.array
         return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+
+
+class TensorCollection(Tensor):
+
+    def __init__(self, elements, *, covariant=True, tensor_rank=1):
+        if not isinstance(elements, (np.ndarray, Tensor)):
+            elements = [x.array if isinstance(x, Tensor) else x for x in elements]
+        super(TensorCollection, self).__init__(elements, covariant=covariant)
+        if tensor_rank < 0:
+            tensor_rank += self.shape[-1]
+        self._collection_indices = set(range(self.rank-tensor_rank))
+        self._covariant_indices -= self._collection_indices
+        self._contravariant_indices -= self._collection_indices
+
+    def is_zero(self, tol=EQ_TOL_ABS):
+        axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
+        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
+
+    def __len__(self):
+        return self.shape[0]
 
 
 class LeviCivitaTensor(Tensor):
@@ -337,6 +362,7 @@ class TensorDiagram:
 
     def __init__(self, *edges):
         self._nodes = []
+        self._collection_indices = []
         self._free_indices = []
         self._node_positions = []
         self._contraction_list = []
@@ -362,6 +388,12 @@ class TensorDiagram:
         self._index_count += node.rank
         ind = (list(node._covariant_indices), list(node._contravariant_indices))
         self._free_indices.append(ind)
+
+        if isinstance(node, TensorCollection):
+            self._collection_indices.append(list(node._collection_indices))
+        else:
+            self._collection_indices.append([])
+
         return ind
 
     def add_edge(self, source, target):
@@ -430,6 +462,16 @@ class TensorDiagram:
             j = self._node_positions[target_index] + j
             indices[max(i, j)] = min(i, j)
 
+        collection_indices = []
+        for ind, offset in zip(self._collection_indices, self._node_positions):
+            if len(ind) == 0:
+                continue
+            if len(collection_indices) == 0:
+                collection_indices = [offset+i for i in ind]
+                continue
+            for i, j in enumerate(ind):
+                indices[offset+j] = collection_indices[i]
+
         # Split the indices and insert the arrays
         args = []
         result_indices = ([], [])
@@ -440,9 +482,15 @@ class TensorDiagram:
             s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
             args.append(indices[s])
 
-        temp = np.einsum(*args, result_indices[0] + result_indices[1])
+        temp = np.einsum(*args, collection_indices + result_indices[0] + result_indices[1])
 
-        return Tensor(temp, covariant=range(len(result_indices[0])))
+        n_cov = len(result_indices[0])
+        n_col = len(collection_indices)
+
+        if n_col > 0:
+            return TensorCollection(temp, covariant=range(n_col, n_col+n_cov), tensor_rank=temp.ndim-n_col)
+
+        return Tensor(temp, covariant=range(n_cov))
 
     def copy(self):
         result = TensorDiagram()
@@ -478,12 +526,7 @@ class ProjectiveElement(Tensor, ABC):
         return self.shape[0] - 1
 
 
-class ProjectiveCollection(Tensor, ABC):
-
-    def __init__(self, elements, *, covariant=True):
-        if not isinstance(elements, (np.ndarray, Tensor)):
-            elements = [x.array if isinstance(x, Tensor) else x for x in elements]
-        super(ProjectiveCollection, self).__init__(elements, covariant=covariant)
+class ProjectiveCollection(TensorCollection, ABC):
 
     def __eq__(self, other):
         if isinstance(other, Tensor):
@@ -494,9 +537,6 @@ class ProjectiveCollection(Tensor, ABC):
             return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
 
         return super(ProjectiveCollection, self).__eq__(other)
-
-    def __len__(self):
-        return self.shape[0]
 
     @property
     def dim(self):
