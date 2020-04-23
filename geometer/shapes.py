@@ -2,15 +2,77 @@ from itertools import combinations
 
 import numpy as np
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
-from .utils import distinct, is_multiple
-from .point import Line, Plane, Point, infty_hyperplane
+from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveCollection
+from .utils import distinct, is_multiple, det
+from .point import Line, Plane, Point, PointCollection, infty_hyperplane
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
-class Polytope(Tensor):
+def _segments_contain(vertex1, vertex2, points, tol=1e-8):
+    if len(points) == 0:
+        return np.empty((0,), dtype=bool)
+
+    if isinstance(vertex1, Point):
+        vertex1 = PointCollection(np.tile(vertex1.array[np.newaxis, :], (len(points), 1)), homogenize=False)
+    if isinstance(vertex2, Point):
+        vertex2 = PointCollection(np.tile(vertex2.array[np.newaxis, :], (len(points), 1)), homogenize=False)
+
+    lines = vertex1.join(vertex2)
+
+    d = PointCollection(vertex2.normalized_array - vertex1.normalized_array, homogenize=False)
+
+    m = lines.basis_matrix
+
+    def project(p):
+        return PointCollection(np.squeeze(np.matmul(m, np.expand_dims(p.array, -1)), -1), homogenize=False)
+
+    vertex1 = project(vertex1)
+    vertex2 = project(vertex2)
+    d = project(d)
+    points = project(points)
+
+    def crossratio_collections(a, b, c, d):
+        a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
+
+        ac = det(np.stack([a, c], axis=-1))
+        bd = det(np.stack([b, d], axis=-1))
+        ad = det(np.stack([a, d], axis=-1))
+        bc = det(np.stack([b, c], axis=-1))
+
+        with np.errstate(divide="ignore"):
+            return ac * bd / (ad * bc)
+
+    cr = crossratio_collections(d, vertex1, vertex2, points)
+
+    return (0 <= cr + tol) & (cr <= 1 + tol)
+
+
+def _general_direction(points, planes):
+    # build array of directions for point in polygon problem
+
+    points = points.array
+    planes = planes.array
+
+    direction = np.zeros(points.shape, planes.dtype)
+    ind = np.isclose(planes.T[0], 0, atol=EQ_TOL_ABS).T
+    direction[ind, 0] = 1
+    direction[~ind, 0] = planes[~ind, 1]
+    direction[~ind, 1] = -planes[~ind, 0]
+
+    ind = is_multiple(direction, points, axis=-1)
+    direction[ind, 0] = 0
+    ind2 = np.isclose(planes.T[1], 0, atol=EQ_TOL_ABS).T
+    direction[ind & ind2, 1] = 1
+    ind = ind & ~ind2
+    direction[ind, 1] = planes[ind, 2]
+    direction[ind, 2] = -planes[ind, 1]
+
+    return direction / np.linalg.norm(direction[..., :-1], axis=-1)
+
+
+class Polytope(ProjectiveCollection):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
     line segments.
@@ -28,22 +90,17 @@ class Polytope(Tensor):
     """
 
     def __init__(self, *args, **kwargs):
-        if len(args) > 1:
-            args = tuple(a.array for a in args)
-        super(Polytope, self).__init__(*args, covariant=[-1])
+        if len(args) == 1:
+            args = args[0]
+        super(Polytope, self).__init__(args, **kwargs)
 
     def __apply__(self, transformation):
         result = self.copy()
-        result.array = self.array @ transformation.array.T
+        result.array = self.array.dot(transformation.array.T)
         return result
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
-
-    @property
-    def dim(self):
-        """int: The dimension of the space that the polytope lives in."""
-        return self.shape[-1] - 1
 
     @staticmethod
     def _normalize_array(array):
@@ -245,7 +302,7 @@ class Simplex(Polytope):
         n, k = points.shape
 
         if n == k:
-            return 1 / np.math.factorial(n-1) * abs(np.linalg.det(points))
+            return 1 / np.math.factorial(n-1) * abs(det(points))
 
         indices = np.triu_indices(n)
         distances = points[indices[0]] - points[indices[1]]
@@ -256,7 +313,7 @@ class Simplex(Polytope):
         m[-1, :-1] = 1
         m[:-1, -1] = 1
 
-        return np.sqrt((-1)**n/(np.math.factorial(n-1)**2 * 2**(n-1)) * np.linalg.det(m))
+        return np.sqrt((-1)**n/(np.math.factorial(n-1)**2 * 2**(n-1)) * det(m))
 
 
 class Polygon(Polytope):
@@ -297,6 +354,16 @@ class Polygon(Polytope):
         """list of Segment: The edges of the polygon."""
         return self.facets
 
+    def _intersect_coplanar_line(self, line):
+        v1 = PointCollection(self.array, homogenize=False)
+        v2 = PointCollection(np.roll(self.array, -1, axis=0), homogenize=False)
+
+        edges = v1.join(v2)
+        points = edges.meet(line)
+
+        ind = _segments_contain(v1, v2, points)
+        return points[ind]
+
     def contains(self, other):
         """Tests whether a point is contained in the polygon.
 
@@ -315,22 +382,14 @@ class Polygon(Polytope):
         if self.dim > 2 and not self._plane.contains(other):
             return False
 
-        if other.isinf:
-            direction = Point([1] + [0]*self.dim)
-            if direction == other:
-                direction = Point([1, 1] + [0]*(self.dim-1))
-        elif self.dim == 2:
-            direction = Point([1, 0, 0])
+        if self.dim == 2:
+            direction = [1, 0, 0]
         else:
-            a = self._plane.array
-            if np.isclose(a[0], 0, atol=EQ_TOL_ABS):
-                direction = Point([1] + [0] * self.dim)
-            else:
-                norm = np.linalg.norm(a[:2])
-                direction = Point([a[1]/norm, -a[0]/norm] + [0]*(self.dim-1))
+            direction = _general_direction(other, self._plane)
 
-        ray = Segment(other, direction)
-        intersection_count = sum(len(s.intersect(ray)) for s in self.edges)
+        ray = Segment(other, Point(direction))
+        intersections = self._intersect_coplanar_line(ray._line)
+        intersection_count = np.sum(_segments_contain(*ray.vertices, intersections))
 
         return intersection_count % 2 == 1
 
@@ -364,7 +423,13 @@ class Polygon(Polytope):
                 i = other.intersect(self._plane)
                 return i if i and self.contains(i[0]) else []
 
-        return list(distinct(x for f in self.edges for x in f.intersect(other)))
+        if isinstance(other, Segment):
+            intersections = self._intersect_coplanar_line(other._line)
+            intersections = intersections[_segments_contain(*other.vertices, intersections)]
+        else:
+            intersections = self._intersect_coplanar_line(other)
+
+        return list(distinct(intersections))
 
     def _normalized_projection(self):
         points = self.array
@@ -384,7 +449,7 @@ class Polygon(Polytope):
     def area(self):
         """float: The area of the polygon."""
         points = self._normalized_projection()
-        a = sum(np.linalg.det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
+        a = sum(det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
         return 1/2 * abs(a)
 
     @property
@@ -392,7 +457,7 @@ class Polygon(Polytope):
         """Point: The centroid (center of mass) of the polygon."""
         points = self.normalized_array
         centroids = [np.average(points[[0, i, i + 1], :-1], axis=0) for i in range(1, points.shape[0] - 1)]
-        weights = [np.linalg.det(self._normalized_projection()[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
+        weights = [det(self._normalized_projection()[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
         return Point(*np.average(centroids, weights=weights, axis=0))
 
     @property
@@ -503,6 +568,36 @@ class Polyhedron(Polytope):
         """float: The surface area of the polyhedron."""
         return sum(s.area for s in self.faces)
 
+    def _intersect_line(self, line):
+        # create collection of planes that the faces lie in
+        v1 = PointCollection(self.array[:, 0, :], homogenize=False)
+        v2 = PointCollection(self.array[:, 1, :], homogenize=False)
+        v3 = PointCollection(self.array[:, 2, :], homogenize=False)
+        planes = v1.join(v2, v3)
+
+        # intersect line with the planes
+        intersections = planes.meet(line)
+
+        # calculate lines that the edges lie on
+        v1 = PointCollection(self.array, homogenize=False)
+        v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False)
+        edges = v1.join(v2)
+
+        # intersect rays with the edge lines to see which points lie in the polygon
+        directions = PointCollection(_general_direction(intersections, planes), homogenize=False)
+
+        rays = intersections.join(directions).expand_dims(1)
+        edge_intersections = edges.meet(rays)
+
+        start_points = intersections.expand_dims(1)
+        directions = directions.expand_dims(1)
+
+        ind = _segments_contain(v1, v2, edge_intersections)
+        ind = ind & _segments_contain(start_points, directions, edge_intersections)
+        ind = np.sum(ind, axis=1) % 2 == 1
+
+        return intersections[ind]
+
     def intersect(self, other):
         """Intersect the polyhedron with another object.
 
@@ -517,7 +612,13 @@ class Polyhedron(Polytope):
             The points of intersection.
 
         """
-        return list(distinct(x for f in self.faces for x in f.intersect(other)))
+        if isinstance(other, Segment):
+            intersections = self._intersect_line(other._line)
+            intersections = intersections[_segments_contain(*other.vertices, intersections)]
+        else:
+            intersections = self._intersect_line(other)
+
+        return list(distinct(intersections))
 
 
 class Cuboid(Polyhedron):

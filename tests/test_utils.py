@@ -1,4 +1,4 @@
-from geometer.utils import null_space, adjugate
+from geometer.utils import null_space, adjugate, det
 import numpy as np
 
 
@@ -10,6 +10,14 @@ def test_adjugate():
 
     adj = adjugate(a)
     assert np.allclose(np.linalg.inv(a)*np.linalg.det(a), adj)
+
+
+def test_det():
+    matrices = np.random.rand(10, 2, 2)
+    assert np.allclose(np.linalg.det(matrices), det(matrices))
+
+    matrices = np.random.rand(10, 3, 3)
+    assert np.allclose(np.linalg.det(matrices), det(matrices))
 
 
 def test_null_space():

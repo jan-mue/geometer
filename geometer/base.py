@@ -159,6 +159,9 @@ class Tensor:
         result.__dict__.update(self.__dict__)
         return result
 
+    def is_zero(self, tol=EQ_TOL_ABS):
+        return np.allclose(self.array, 0, atol=tol)
+
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
 
@@ -202,13 +205,15 @@ class Tensor:
     def __mul__(self, other):
         if np.isscalar(other):
             return Tensor(self.array * other, covariant=self._covariant_indices)
-        other = Tensor(other)
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other):
         if np.isscalar(other):
             return self * other
-        other = Tensor(other)
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
         return TensorDiagram((self, other)).calculate()
 
     def __pow__(self, power, modulo=None):
@@ -255,6 +260,84 @@ class Tensor:
         if isinstance(other, Tensor):
             other = other.array
         return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+
+
+class TensorCollection(Tensor):
+    """A collection of Tensor objects with identical kinds of indices and shape stored in a tensor.
+
+    Parameters
+    ----------
+    elements : array_like
+        A (nested) sequence of Tensor objects, a numpy array or a (nested) sequence of numbers.
+        If the sequence contains Tensor objects, they must all have the same shape and the same
+        covariant/contravariant indices.
+    covariant : :obj:`bool` or :obj:`list` of :obj:`int`, optional
+        This parameter is used when elements is a general array or sequence of numbers, to determine the covariant
+        indices of tensors contained in the collection. If False, all indices of all tensors in the collection are
+        contravariant. If instead a sequence of indices is supplied, the specified indices of all tensors in the
+        collection will be covariant indices and the rest of the indices of each tensor will be contravariant.
+        By default all indices are covariant.
+    tensor_rank : int, optional
+        The rank of the tensors contained in the collection. This parameter is only used if elements is not a sequence
+        of Tensor objects.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
+    """
+
+    def __init__(self, elements, *, covariant=True, tensor_rank=1, **kwargs):
+        if isinstance(elements, TensorCollection):
+            self.array = np.array(elements.array, **kwargs)
+            self._collection_indices = elements._collection_indices
+            self._covariant_indices = elements._covariant_indices
+            self._contravariant_indices = elements._contravariant_indices
+            return
+
+        elements = np.asarray(elements)
+
+        # unpack tensors contained in elements
+        if elements.dtype.hasobject:
+            flat_elements = []
+            for t in elements.flat:
+                if not isinstance(t, Tensor):
+                    break
+                flat_elements.append(t.array)
+            else:
+                flat_elements = np.array(flat_elements)
+                tensor_rank = t.rank
+                covariant = t._covariant_indices
+                elements = flat_elements.reshape(elements.shape + t.shape)
+
+        super(TensorCollection, self).__init__(elements, covariant=covariant, **kwargs)
+
+        if tensor_rank < 0:
+            tensor_rank += self.shape[-1]
+
+        n_col = self.rank - tensor_rank
+        self._collection_indices = set(range(n_col))
+        self._covariant_indices = set(n_col + i for i in self._covariant_indices if n_col+i < self.rank)
+        self._contravariant_indices = set(n_col + i for i in self._contravariant_indices if n_col+i < self.rank)
+
+
+
+    def is_zero(self, tol=EQ_TOL_ABS):
+        axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
+        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
+
+    def expand_dims(self, axis):
+        result = self.copy()
+        result.array = np.expand_dims(self.array, axis)
+        result._covariant_indices = set(i+1 if i >= axis else i for i in self._covariant_indices)
+        result._contravariant_indices = set(i+1 if i >= axis else i for i in self._contravariant_indices)
+        result._collection_indices.add(axis)
+        return result
+
+    @property
+    def size(self):
+        return np.prod([self.shape[i] for i in self._collection_indices], dtype=int)
+
+    def __len__(self):
+        return self.shape[0]
 
 
 class LeviCivitaTensor(Tensor):
@@ -471,17 +554,29 @@ class TensorDiagram:
 
         # Split the indices and insert the arrays
         args = []
-        result_indices = ([], [])
+        result_indices = ([], [], [])
         for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
-            result_indices[0].extend(offset + x for x in ind[0])
-            result_indices[1].extend(offset + x for x in ind[1])
+            if isinstance(node, TensorCollection):
+                if len(result_indices[0]) == 0:
+                    result_indices[0].extend(offset + i for i in node._collection_indices)
+                else:
+                    for j, k in enumerate(node._collection_indices):
+                        indices[offset + k] = result_indices[0][j]
+            result_indices[1].extend(offset + x for x in ind[0])
+            result_indices[2].extend(offset + x for x in ind[1])
             args.append(node.array)
             s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
             args.append(indices[s])
 
-        temp = np.einsum(*args, result_indices[0] + result_indices[1])
+        temp = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
 
-        return Tensor(temp, covariant=range(len(result_indices[0])), copy=False)
+        n_col = len(result_indices[0])
+        n_cov = len(result_indices[1])
+
+        if n_col > 0:
+            return TensorCollection(temp, covariant=range(0, n_cov), tensor_rank=temp.ndim-n_col, copy=False)
+
+        return Tensor(temp, covariant=range(n_cov), copy=False)
 
     def copy(self):
         result = TensorDiagram()
@@ -515,3 +610,20 @@ class ProjectiveElement(Tensor, ABC):
     def dim(self):
         """int: The dimension of the tensor."""
         return self.shape[0] - 1
+
+
+class ProjectiveCollection(TensorCollection, ABC):
+
+    def __eq__(self, other):
+        if isinstance(other, Tensor):
+
+            if self.shape != other.shape:
+                return False
+
+            return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+
+        return super(ProjectiveCollection, self).__eq__(other)
+
+    @property
+    def dim(self):
+        return self.shape[-1] - 1

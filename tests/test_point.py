@@ -1,4 +1,5 @@
-from geometer import Point, Line, Plane, join, meet, is_perpendicular
+import numpy as np
+from geometer import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, join, meet, is_perpendicular, translation, rotation
 
 
 class Test2D:
@@ -193,3 +194,58 @@ class Test4D:
 
         l = Line(p1, p2)
         assert l.project(Point(0, 0, 0, 0)) == Point(0.5, 0.5, 0, 0)
+
+
+class TestCollections:
+
+    def test_join(self):
+        a = PointCollection([Point(0, 0), Point(0, 1)])
+        b = PointCollection([Point(1, 0), Point(1, 1)])
+
+        assert a.join(b) == LineCollection([Line(0, 1, 0), Line(0, 1, -1)])
+
+        a = PointCollection([Point(0, 0, 0), Point(0, 0, 1)])
+        b = PointCollection([Point(1, 0, 0), Point(1, 0, 1)])
+        c = PointCollection([Point(0, 1, 0), Point(0, 1, 1)])
+
+        assert join(a, b, c) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+        assert join(a, b.join(c)) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+
+    def test_meet(self):
+        a = LineCollection([Line(0, 1, 0), Line(0, 1, -1)])
+        b = LineCollection([Line(1, 0, 0), Line(1, 0, -1)])
+
+        assert a.meet(b) == PointCollection([Point(0, 0), Point(1, 1)])
+
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
+        b = LineCollection([Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))])
+
+        assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 0)])
+
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
+        b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+
+        assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
+
+    def test_homogenize(self):
+        a = PointCollection([(0, 0), (0, 1)])
+        b = PointCollection([Point(0, 0), Point(0, 1)])
+
+        assert a == b
+
+    def test_arithmetic(self):
+        a = PointCollection([Point(0, 1), Point(0, 1)])
+        b = PointCollection([Point(1, 0), Point(1, 0)])
+        c = PointCollection([Point(1, 1), Point(1, 1)])
+
+        assert a + b == c
+        assert a - c == -b
+        assert 2*a + 2*b == 2*c
+        assert (2*a + 2*b) / 2 == c
+        assert a + Point(1, 0) == c
+
+    def test_transform(self):
+        a = PointCollection([(1, 0), (0, 1)])
+
+        assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)])
+        assert rotation(np.pi/2) * a == PointCollection([(0, 1), (-1, 0)])

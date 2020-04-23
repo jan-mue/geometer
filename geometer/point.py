@@ -1,7 +1,7 @@
 import numpy as np
 
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, EQ_TOL_ABS
-from .exceptions import LinearDependenceError, NotCoplanar
+from .base import ProjectiveElement, ProjectiveCollection, TensorDiagram, LeviCivitaTensor, TensorCollection, Tensor, EQ_TOL_ABS
+from .exceptions import LinearDependenceError, NotCoplanar, GeometryException
 from .utils import null_space
 
 
@@ -22,35 +22,51 @@ def _join_meet_duality(*args, intersect_lines=True):
     # two lines/planes
     elif len(args) == 2:
         a, b = args
-        if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
+        if isinstance(a, (Line, LineCollection)) and isinstance(b, (Plane, PlaneCollection)) or \
+                isinstance(b, (Line, LineCollection)) and isinstance(a, (Plane, PlaneCollection)):
             e = LeviCivitaTensor(n)
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
-        elif isinstance(a, Subspace) and isinstance(b, Point):
+        elif isinstance(a, (Subspace, SubspaceCollection)) and isinstance(b, (Point, PointCollection)):
             result = a * b
-        elif isinstance(a, Point) and isinstance(b, Subspace):
+        elif isinstance(a, (Point, PointCollection)) and isinstance(b, (Subspace, SubspaceCollection)):
             result = b * a
-        elif isinstance(a, Line) and isinstance(b, Line):
+        elif isinstance(a, (Line, LineCollection)) and isinstance(b, (Line, LineCollection)):
             # can assume that n >= 4, because for n = 3 lines are 1-tensors
             e = LeviCivitaTensor(n)
 
             # if this is zero, the lines are coplanar
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * (n-a.tensor_shape[1])).calculate()
+            coplanar = result.is_zero()
 
-            if result == 0:
+            if np.all(coplanar):
                 # this part is inspired by Jim Blinn, Lines in Space: A Tale of Two Lines
                 diagram = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b))
                 array = diagram.calculate().array
-                i = np.unravel_index(np.abs(array).argmax(), array.shape)
-                if not intersect_lines:
-                    # extract the common subspace
-                    result = Tensor(array[i[0], ...], covariant=False, copy=False)
+
+                if np.isscalar(coplanar):
+                    i = np.unravel_index(np.abs(array).argmax(), array.shape)
+                    if not intersect_lines:
+                        # extract the common subspace
+                        result = Tensor(array[i[0], ...], covariant=False, copy=False)
+                    else:
+                        # extract the point of intersection
+                        result = Tensor(array[(slice(None),) + i[1:]], copy=False)
                 else:
-                    # extract the point of intersection
-                    result = Tensor(array[(slice(None),) + i[1:]], copy=False)
+                    max_ind = np.abs(array).reshape((np.prod(array.shape[:coplanar.ndim]), -1)).argmax(1)
+                    i = np.unravel_index(max_ind, array.shape[coplanar.ndim:])
+                    i = tuple(np.reshape(x, array.shape[:coplanar.ndim]) for x in i)
+                    indices = tuple(np.indices(array.shape[:coplanar.ndim]))
+                    if not intersect_lines:
+                        result = array[indices + (i[0], Ellipsis)]
+                        result = TensorCollection(result, covariant=False, tensor_rank=result.ndim-coplanar.ndim, copy=False)
+                    else:
+                        result = TensorCollection(array[indices + (slice(None),) + i[1:]], copy=False)
 
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
-                raise NotCoplanar("The given lines are not coplanar.")
+                raise NotCoplanar("The given lines are not all coplanar.")
+            elif np.any(coplanar) and (isinstance(a, TensorCollection) or isinstance(b, TensorCollection)):
+                raise GeometryException("Can only join tensors that are either all coplanar or all not coplanar.")
 
         else:
             # TODO: intersect arbitrary subspaces (use GA)
@@ -59,11 +75,24 @@ def _join_meet_duality(*args, intersect_lines=True):
     else:
         raise ValueError("Wrong number of arguments.")
 
-    if result == 0:
+    if np.any(result.is_zero()):
         raise LinearDependenceError("Arguments are not linearly independent.")
 
     # normalize result to avoid large values
     result.array = result.array / np.max(np.abs(result.array))
+
+    if isinstance(result, TensorCollection):
+
+        if result.tensor_shape == (0, 1):
+            return LineCollection(result, copy=False) if n == 3 else PlaneCollection(result, copy=False)
+        if result.tensor_shape == (1, 0):
+            return PointCollection(result, copy=False)
+        if result.tensor_shape == (2, 0):
+            return LineCollection(result, copy=False).contravariant_tensor
+        if result.tensor_shape == (0, n - 2):
+            return LineCollection(result, copy=False)
+
+        return SubspaceCollection(result, copy=False)
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
@@ -696,3 +725,115 @@ def infty_hyperplane(dimension):
 
 
 infty_plane = infty_hyperplane(3)
+
+
+class PointCollection(ProjectiveCollection):
+
+    def __init__(self, elements, *, homogenize=True, **kwargs):
+        super(PointCollection, self).__init__(elements, **kwargs)
+        if isinstance(elements, TensorCollection) or isinstance(elements[0], Point):
+            return
+        if homogenize is True:
+            self.array = np.append(elements, np.ones(self.shape[:-1] + (1,), self.array.dtype), axis=1)
+
+    def __apply__(self, transformation):
+        return PointCollection(self.array @ transformation.array.T, homogenize=False)
+
+    def __add__(self, other):
+        if not isinstance(other, (Point, PointCollection)):
+            return super(PointCollection, self).__add__(other)
+        a, b = self.normalized_array, other.normalized_array
+        if not isinstance(other, PointCollection):
+            b = np.expand_dims(b, 0)
+        result = a[:, :-1] + b[:, :-1]
+        result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
+        return PointCollection(result, homogenize=False)
+
+    def __sub__(self, other):
+        if not isinstance(other, (Point, PointCollection)):
+            return super(PointCollection, self).__add__(other)
+        a, b = self.normalized_array, other.normalized_array
+        if not isinstance(other, PointCollection):
+            b = np.expand_dims(b, 0)
+        result = a[:, :-1] - b[:, :-1]
+        result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
+        return PointCollection(result, homogenize=False)
+
+    def __mul__(self, other):
+        if not np.isscalar(other):
+            return super(PointCollection, self).__mul__(other)
+        result = self.normalized_array[:, :-1] * other
+        result = np.append(result, self.array[:, -1:] != 0, axis=1)
+        return PointCollection(result, homogenize=False)
+
+    def __truediv__(self, other):
+        if not np.isscalar(other):
+            return super(PointCollection, self).__truediv__(other)
+        result = self.normalized_array[:, :-1] / other
+        result = np.append(result, self.array[:, -1:] != 0, axis=1)
+        return PointCollection(result, homogenize=False)
+
+    def join(self, *others):
+        return join(self, *others)
+
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return Point(self.array[item])
+        return PointCollection(self.array[item], homogenize=False)
+
+    @property
+    def normalized_array(self):
+        array = self.array.T.astype(complex)
+        isinf = np.isclose(array[-1], 0, atol=EQ_TOL_ABS)
+        array[:, ~isinf] = array[:, ~isinf] / array[-1, ~isinf]
+        array = np.real_if_close(array)
+        return array.T
+
+
+class SubspaceCollection(ProjectiveCollection):
+
+    def __init__(self, *args, **kwargs):
+        super(SubspaceCollection, self).__init__(*args, covariant=False, **kwargs)
+
+
+class LineCollection(SubspaceCollection):
+
+    def __init__(self, *args, **kwargs):
+        super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
+
+    def meet(self, other):
+        return meet(self, other)
+
+    def join(self, *others):
+        return join(self, *others)
+
+    @property
+    def basis_matrix(self):
+        x = self.array
+        x = x.reshape(x.shape[:self.rank-self.dim+1] + (-1, x.shape[-1]))
+        u, s, vh = np.linalg.svd(x)
+        return vh.T[:, -2:].T
+
+    @property
+    def contravariant_tensor(self):
+        if self.tensor_shape[1] > 0:
+            return self
+        e = LeviCivitaTensor(4, False)
+        diagram = TensorDiagram((self, e), (self, e))
+        return LineCollection(diagram.calculate())
+
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return Line(self.array[item])
+        return LineCollection(self.array[item])
+
+
+class PlaneCollection(SubspaceCollection):
+
+    def meet(self, other):
+        return meet(self, other)
+
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return Plane(self.array[item])
+        return PlaneCollection(self.array[item])
