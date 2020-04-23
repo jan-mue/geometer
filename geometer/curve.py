@@ -93,7 +93,7 @@ class Quadric(ProjectiveElement):
             The tangent plane at the given point.
 
         """
-        return Plane(self.array.dot(at.array))
+        return Plane(self.array.dot(at.array), copy=False)
 
     def is_tangent(self, plane):
         """Tests if a given hyperplane is tangent to the quadric.
@@ -168,10 +168,10 @@ class Quadric(ProjectiveElement):
         p, q = np.real_if_close(p), np.real_if_close(q)
 
         if self.is_dual:
-            return [Point(p), Point(q)]
+            return [Point(p, copy=False), Point(q, copy=False)]
         elif n == 3:
-            return [Line(p), Line(q)]
-        return [Plane(p), Plane(q)]
+            return [Line(p, copy=False), Line(q, copy=False)]
+        return [Plane(p, copy=False), Plane(q, copy=False)]
 
     def intersect(self, other):
         """Calculates points of intersection of a line with the quadric.
@@ -206,15 +206,15 @@ class Quadric(ProjectiveElement):
                 if self.dim > 2:
                     arr = other.array.reshape((-1, self.dim + 1))
                     i = np.where(arr != 0)[0][0]
-                    m = Plane(arr[i]).basis_matrix
-                    q = Quadric(m.dot(self.array).dot(m.T))
+                    m = Plane(arr[i], copy=False).basis_matrix
+                    q = Quadric(m.dot(self.array).dot(m.T), copy=False)
                     line_base = other.basis_matrix.T
-                    line = Line(*[Point(x) for x in m.dot(line_base).T])
-                    return [Point(m.T.dot(p.array)) for p in q.intersect(line)]
+                    line = Line(*[Point(x, copy=False) for x in m.dot(line_base).T])
+                    return [Point(m.T.dot(p.array), copy=False) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
                     b = m.T.dot(self.array).dot(m)
-                    p, q = Conic(b, is_dual=not self.is_dual).components
+                    p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)
@@ -309,8 +309,8 @@ class Conic(Quadric):
         c1 = csqrt(a2b1*a2b2)
         c2 = csqrt(a1b1*a1b2)
 
-        x = Point(c1 * a1 + c2 * a2)
-        y = Point(c1 * a1 - c2 * a2)
+        x = Point(c1 * a1 + c2 * a2, copy=False)
+        y = Point(c1 * a1 - c2 * a2, copy=False)
 
         conic = cls.from_points(a, b, c, d, x)
         if np.all(np.isreal(conic.array)):
@@ -335,7 +335,9 @@ class Conic(Quadric):
 
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
-        c = cls.from_tangent(Line(bound.array), Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array))
+        p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
+        p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
+        c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)
         return cls(np.linalg.inv(c.array), normalize_matrix=True)
 
     @classmethod
@@ -451,7 +453,7 @@ class Conic(Quadric):
             The polar line.
 
         """
-        return Line(self.array.dot(pt.array))
+        return Line(self.array.dot(pt.array), copy=False)
 
     @property
     def foci(self):

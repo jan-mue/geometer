@@ -112,12 +112,12 @@ def adjugate(A):
     """
     from ..base import TensorDiagram, Tensor, LeviCivitaTensor
 
-    A = np.array(A)
+    A = np.asarray(A)
     n = A.shape[0]
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
-    tensors = [Tensor(A) for _ in range(n-1)]
+    tensors = [Tensor(A, copy=False) for _ in range(n-1)]
     diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
 
     return diagram.calculate().array.T / math.factorial(n-1)

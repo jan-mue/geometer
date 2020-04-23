@@ -86,7 +86,7 @@ def rotation(angle, axis=None):
     e = LeviCivitaTensor(dimension, False)
     a = axis.normalized_array[:-1]
     a = a / np.linalg.norm(a)
-    d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
+    d = TensorDiagram(*[(Tensor(a, copy=False), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = np.outer(a, a)
     result = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v

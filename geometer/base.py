@@ -112,7 +112,7 @@ class Tensor:
 
         result = np.tensordot(self.array, other.array, 0)
         result = np.transpose(result, axes=covariant + contravariant)
-        return Tensor(result, covariant=range(len(covariant)))
+        return Tensor(result, covariant=range(len(covariant)), copy=False)
 
     def transpose(self, perm=None):
         """Permute the indices of the tensor.
@@ -146,7 +146,7 @@ class Tensor:
             if j in self._covariant_indices:
                 covariant.append(i)
 
-        return Tensor(np.transpose(self.array, perm), covariant=covariant)
+        return Tensor(np.transpose(self.array, perm), covariant=covariant, copy=False)
 
     @property
     def T(self):
@@ -197,23 +197,23 @@ class Tensor:
         if np.isscalar(result):
             return result
 
-        return Tensor(result, covariant=covariant)
+        return Tensor(result, covariant=covariant, copy=False)
 
     def __copy__(self):
         return self.copy()
 
     def __mul__(self, other):
         if np.isscalar(other):
-            return Tensor(self.array * other, covariant=self._covariant_indices)
+            return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)
         if not isinstance(other, Tensor):
-            other = Tensor(other)
+            other = Tensor(other, copy=False)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other):
         if np.isscalar(other):
             return self * other
         if not isinstance(other, Tensor):
-            other = Tensor(other)
+            other = Tensor(other, copy=False)
         return TensorDiagram((self, other)).calculate()
 
     def __pow__(self, power, modulo=None):
@@ -234,13 +234,13 @@ class Tensor:
 
     def __truediv__(self, other):
         if np.isscalar(other):
-            return Tensor(self.array / other, covariant=self._covariant_indices)
+            return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)
         return NotImplemented
 
     def __add__(self, other):
         if isinstance(other, Tensor):
             other = other.array
-        return Tensor(self.array + other, covariant=self._covariant_indices)
+        return Tensor(self.array + other, covariant=self._covariant_indices, copy=False)
 
     def __radd__(self, other):
         return self + other
@@ -248,7 +248,7 @@ class Tensor:
     def __sub__(self, other):
         if isinstance(other, Tensor):
             other = other.array
-        return Tensor(self.array - other, covariant=self._covariant_indices)
+        return Tensor(self.array - other, covariant=self._covariant_indices, copy=False)
 
     def __rsub__(self, other):
         return -self + other

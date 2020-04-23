@@ -35,15 +35,15 @@ def crossratio(a, b, c, d, from_point=None):
 
     if isinstance(a, Plane):
         l = a.meet(b)
-        e = Plane(l.direction.array)
+        e = Plane(l.direction.array, copy=False)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
-        from_point = Point(m.dot(p.array))
-        a = Point(m.dot((p + a.direction).array))
-        b = Point(m.dot((p + b.direction).array))
-        c = Point(m.dot((p + c.direction).array))
-        d = Point(m.dot((p + d.direction).array))
+        from_point = Point(m.dot(p.array), copy=False)
+        a = Point(m.dot((p + a.direction).array), copy=False)
+        b = Point(m.dot((p + b.direction).array), copy=False)
+        c = Point(m.dot((p + c.direction).array), copy=False)
+        d = Point(m.dot((p + d.direction).array), copy=False)
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
@@ -52,10 +52,10 @@ def crossratio(a, b, c, d, from_point=None):
 
         l = a.join(b)
         basis = l.basis_matrix
-        a = Point(basis.dot(a.array))
-        b = Point(basis.dot(b.array))
-        c = Point(basis.dot(c.array))
-        d = Point(basis.dot(d.array))
+        a = Point(basis.dot(a.array), copy=False)
+        b = Point(basis.dot(b.array), copy=False)
+        c = Point(basis.dot(c.array), copy=False)
+        d = Point(basis.dot(d.array), copy=False)
 
     o = (from_point or []) and [from_point.array]
     ac = det(o + [a.array, c.array])
@@ -151,7 +151,7 @@ def angle(*args):
         if isinstance(x, Plane) and isinstance(y, Plane):
             l = x.meet(y)
             p = l.meet(infty_plane)
-            polar = Line(p.array[:-1])
+            polar = Line(p.array[:-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
             i = l.join(p.join(tangent_points[0]))
@@ -330,7 +330,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     elif isinstance(l, Plane) and isinstance(m, Plane):
         x = l.meet(m)
         p = x.meet(infty_plane)
-        polar = Line(p.array[:-1])
+        polar = Line(p.array[:-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
         i = x.join(p.join(tangent_points[0]))

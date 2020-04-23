@@ -15,18 +15,18 @@ def _segments_contain(vertex1, vertex2, points, tol=1e-8):
         return np.empty((0,), dtype=bool)
 
     if isinstance(vertex1, Point):
-        vertex1 = PointCollection(np.tile(vertex1.array[np.newaxis, :], (len(points), 1)), homogenize=False)
+        vertex1 = PointCollection(np.tile(vertex1.array[np.newaxis, :], (len(points), 1)), homogenize=False, copy=False)
     if isinstance(vertex2, Point):
-        vertex2 = PointCollection(np.tile(vertex2.array[np.newaxis, :], (len(points), 1)), homogenize=False)
+        vertex2 = PointCollection(np.tile(vertex2.array[np.newaxis, :], (len(points), 1)), homogenize=False, copy=False)
 
     lines = vertex1.join(vertex2)
 
-    d = PointCollection(vertex2.normalized_array - vertex1.normalized_array, homogenize=False)
+    d = PointCollection(vertex2.normalized_array - vertex1.normalized_array, homogenize=False, copy=False)
 
     m = lines.basis_matrix
 
     def project(p):
-        return PointCollection(np.squeeze(np.matmul(m, np.expand_dims(p.array, -1)), -1), homogenize=False)
+        return PointCollection(np.squeeze(np.matmul(m, np.expand_dims(p.array, -1)), -1), homogenize=False, copy=False)
 
     vertex1 = project(vertex1)
     vertex2 = project(vertex2)
@@ -69,7 +69,7 @@ def _general_direction(points, planes):
     direction[ind, 1] = planes[ind, 2]
     direction[ind, 2] = -planes[ind, 1]
 
-    return direction / np.linalg.norm(direction[..., :-1], axis=-1)
+    return direction / np.linalg.norm(direction[..., :-1], axis=-1, keepdims=True)
 
 
 class Polytope(ProjectiveCollection):
@@ -119,28 +119,28 @@ class Polytope(ProjectiveCollection):
     def vertices(self):
         """list of Point: The vertices of the polytope."""
         vertices = self.array.reshape(-1, self.shape[-1])
-        return list(distinct(Point(x) for x in vertices))
+        return list(distinct(Point(x, copy=False) for x in vertices))
 
     @property
     def facets(self):
         """list of Polytope: The facets of the polytope."""
         def poly(array):
             if array.ndim == 1:
-                return Point(array)
+                return Point(array, copy=False)
             if array.ndim == 2:
                 if len(array) == 2:
-                    return Segment(array)
+                    return Segment(array, copy=False)
                 if len(array) == 3:
-                    return Triangle(array)
+                    return Triangle(array, copy=False)
                 elif len(array) == 4:
                     try:
-                        return Rectangle(array)
+                        return Rectangle(array, copy=False)
                     except NotCoplanar:
-                        return Polytope(array)
+                        return Polytope(array, copy=False)
             try:
-                return Polygon(array)
+                return Polygon(array, copy=False)
             except NotCoplanar:
-                return Polytope(array)
+                return Polytope(array, copy=False)
 
         return [poly(x) for x in self.array]
 
@@ -189,7 +189,7 @@ class Segment(Polytope):
 
     def __init__(self, *args, **kwargs):
         super(Segment, self).__init__(*args, **kwargs)
-        self._line = Line(Point(self.array[0]), Point(self.array[1]))
+        self._line = Line(Point(self.array[0], copy=False), Point(self.array[1], copy=False))
 
     def __apply__(self, transformation):
         result = super(Segment, self).__apply__(transformation)
@@ -355,8 +355,8 @@ class Polygon(Polytope):
         return self.facets
 
     def _intersect_coplanar_line(self, line):
-        v1 = PointCollection(self.array, homogenize=False)
-        v2 = PointCollection(np.roll(self.array, -1, axis=0), homogenize=False)
+        v1 = PointCollection(self.array, homogenize=False, copy=False)
+        v2 = PointCollection(np.roll(self.array, -1, axis=0), homogenize=False, copy=False)
 
         edges = v1.join(v2)
         points = edges.meet(line)
@@ -492,8 +492,8 @@ class RegularPolygon(Polygon):
         if axis is None:
             p = Point(1, 0)
         else:
-            e = Plane(np.append(axis.array[:-1], [0]))
-            p = Point(*e.basis_matrix[0, :-1])
+            e = Plane(np.append(axis.array[:-1], [0]), copy=False)
+            p = Point(*e.basis_matrix[0, :-1], copy=False)
 
         vertex = center + radius*p
 
@@ -570,21 +570,21 @@ class Polyhedron(Polytope):
 
     def _intersect_line(self, line):
         # create collection of planes that the faces lie in
-        v1 = PointCollection(self.array[:, 0, :], homogenize=False)
-        v2 = PointCollection(self.array[:, 1, :], homogenize=False)
-        v3 = PointCollection(self.array[:, 2, :], homogenize=False)
+        v1 = PointCollection(self.array[:, 0, :], homogenize=False, copy=False)
+        v2 = PointCollection(self.array[:, 1, :], homogenize=False, copy=False)
+        v3 = PointCollection(self.array[:, 2, :], homogenize=False, copy=False)
         planes = v1.join(v2, v3)
 
         # intersect line with the planes
         intersections = planes.meet(line)
 
         # calculate lines that the edges lie on
-        v1 = PointCollection(self.array, homogenize=False)
-        v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False)
+        v1 = PointCollection(self.array, homogenize=False, copy=False)
+        v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False, copy=False)
         edges = v1.join(v2)
 
         # intersect rays with the edge lines to see which points lie in the polygon
-        directions = PointCollection(_general_direction(intersections, planes), homogenize=False)
+        directions = PointCollection(_general_direction(intersections, planes), homogenize=False, copy=False)
 
         rays = intersections.join(directions).expand_dims(1)
         edge_intersections = edges.meet(rays)

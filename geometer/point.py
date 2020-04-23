@@ -78,21 +78,24 @@ def _join_meet_duality(*args, intersect_lines=True):
     if np.any(result.is_zero()):
         raise LinearDependenceError("Arguments are not linearly independent.")
 
-    # normalize result to avoid large values
-    result.array = result.array / np.max(np.abs(result.array))
-
     if isinstance(result, TensorCollection):
+
+        axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
+        result.array = result.array / np.max(np.abs(result.array), axis=axes, keepdims=True)
 
         if result.tensor_shape == (0, 1):
             return LineCollection(result, copy=False) if n == 3 else PlaneCollection(result, copy=False)
         if result.tensor_shape == (1, 0):
-            return PointCollection(result, copy=False)
+            return PointCollection(result, homogenize=False, copy=False)
         if result.tensor_shape == (2, 0):
             return LineCollection(result, copy=False).contravariant_tensor
         if result.tensor_shape == (0, n - 2):
             return LineCollection(result, copy=False)
 
         return SubspaceCollection(result, copy=False)
+
+    # normalize result to avoid large values
+    result.array = result.array / np.max(np.abs(result.array))
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
@@ -169,7 +172,7 @@ class Point(ProjectiveElement):
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] + b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
-        return Point(result)
+        return Point(result, copy=False)
 
     def __sub__(self, other):
         if not isinstance(other, Point):
@@ -177,21 +180,21 @@ class Point(ProjectiveElement):
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] - b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
-        return Point(result)
+        return Point(result, copy=False)
 
     def __mul__(self, other):
         if not np.isscalar(other):
             return super(Point, self).__mul__(other)
         result = self.normalized_array[:-1] * other
         result = np.append(result, self.array[-1] and 1)
-        return Point(result)
+        return Point(result, copy=False)
 
     def __truediv__(self, other):
         if not np.isscalar(other):
             return super(Point, self).__truediv__(other)
         result = self.normalized_array[:-1] / other
         result = np.append(result, self.array[-1] and 1)
-        return Point(result)
+        return Point(result, copy=False)
 
     def __apply__(self, transformation):
         return type(self)(TensorDiagram((self, transformation)).calculate())
@@ -289,7 +292,7 @@ class Subspace(ProjectiveElement):
         arr = np.zeros(n, dtype=int)
         for i in range(n):
             arr[-i - 1] = 1
-            p = Point(arr)
+            p = Point(arr, copy=False)
             if not self.contains(p):
                 return p
 
@@ -421,7 +424,7 @@ class Line(Subspace):
             return self
         e = LeviCivitaTensor(4)
         diagram = TensorDiagram((e, self), (e, self))
-        return Line(diagram.calculate())
+        return Line(diagram.calculate(), copy=False)
 
     @property
     def contravariant_tensor(self):
@@ -430,7 +433,7 @@ class Line(Subspace):
             return self
         e = LeviCivitaTensor(4, False)
         diagram = TensorDiagram((self, e), (self, e))
-        return Line(diagram.calculate())
+        return Line(diagram.calculate(), copy=False)
 
     def is_coplanar(self, other):
         """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect.
@@ -482,14 +485,14 @@ class Line(Subspace):
 
                 basis = e.basis_matrix
                 line_pts = basis.dot(self.basis_matrix.T)
-                l = Line(np.cross(*line_pts.T))
+                l = Line(np.cross(*line_pts.T), copy=False)
 
             from .operators import harmonic_set
             p = l.meet(infty)
             q = harmonic_set(I, J, p)
 
             if n > 3:
-                q = Point(basis.T.dot(q.array))
+                q = Point(basis.T.dot(q.array), copy=False)
 
             return Line(through, q)
 
@@ -644,9 +647,9 @@ class Plane(Subspace):
 
         """
         l = self.meet(infty_plane)
-        l = Line(np.cross(*l.basis_matrix[:, :-1]))
+        l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
         p = l.base_point
-        polar = Line(p.array)
+        polar = Line(p.array, copy=False)
 
         from .curve import absolute_conic
         tangent_points = absolute_conic.intersect(polar)
@@ -697,10 +700,10 @@ class Plane(Subspace):
         """
         if self.contains(through):
             l = self.meet(infty_plane)
-            l = Line(np.cross(*l.basis_matrix[:, :-1]))
+            l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
             p1, p2 = [Point(a) for a in l.basis_matrix]
-            polar1 = Line(p1.array)
-            polar2 = Line(p2.array)
+            polar1 = Line(p1.array, copy=False)
+            polar2 = Line(p2.array, copy=False)
 
             from .curve import absolute_conic
             tangent_points1 = absolute_conic.intersect(polar1)
@@ -737,7 +740,7 @@ class PointCollection(ProjectiveCollection):
             self.array = np.append(elements, np.ones(self.shape[:-1] + (1,), self.array.dtype), axis=1)
 
     def __apply__(self, transformation):
-        return PointCollection(self.array @ transformation.array.T, homogenize=False)
+        return PointCollection(self.array @ transformation.array.T, homogenize=False, copy=False)
 
     def __add__(self, other):
         if not isinstance(other, (Point, PointCollection)):
@@ -747,7 +750,7 @@ class PointCollection(ProjectiveCollection):
             b = np.expand_dims(b, 0)
         result = a[:, :-1] + b[:, :-1]
         result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
-        return PointCollection(result, homogenize=False)
+        return PointCollection(result, homogenize=False, copy=False)
 
     def __sub__(self, other):
         if not isinstance(other, (Point, PointCollection)):
@@ -757,21 +760,21 @@ class PointCollection(ProjectiveCollection):
             b = np.expand_dims(b, 0)
         result = a[:, :-1] - b[:, :-1]
         result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
-        return PointCollection(result, homogenize=False)
+        return PointCollection(result, homogenize=False, copy=False)
 
     def __mul__(self, other):
         if not np.isscalar(other):
             return super(PointCollection, self).__mul__(other)
         result = self.normalized_array[:, :-1] * other
         result = np.append(result, self.array[:, -1:] != 0, axis=1)
-        return PointCollection(result, homogenize=False)
+        return PointCollection(result, homogenize=False, copy=False)
 
     def __truediv__(self, other):
         if not np.isscalar(other):
             return super(PointCollection, self).__truediv__(other)
         result = self.normalized_array[:, :-1] / other
         result = np.append(result, self.array[:, -1:] != 0, axis=1)
-        return PointCollection(result, homogenize=False)
+        return PointCollection(result, homogenize=False, copy=False)
 
     def join(self, *others):
         return join(self, *others)
@@ -779,7 +782,7 @@ class PointCollection(ProjectiveCollection):
     def __getitem__(self, item):
         if isinstance(item, int):
             return Point(self.array[item])
-        return PointCollection(self.array[item], homogenize=False)
+        return PointCollection(self.array[item], homogenize=False, copy=False)
 
     @property
     def normalized_array(self):
@@ -820,12 +823,12 @@ class LineCollection(SubspaceCollection):
             return self
         e = LeviCivitaTensor(4, False)
         diagram = TensorDiagram((self, e), (self, e))
-        return LineCollection(diagram.calculate())
+        return LineCollection(diagram.calculate(), copy=False)
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return Line(self.array[item])
-        return LineCollection(self.array[item])
+            return Line(self.array[item], copy=False)
+        return LineCollection(self.array[item], copy=False)
 
 
 class PlaneCollection(SubspaceCollection):
@@ -835,5 +838,5 @@ class PlaneCollection(SubspaceCollection):
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return Plane(self.array[item])
-        return PlaneCollection(self.array[item])
+            return Plane(self.array[item], copy=False)
+        return PlaneCollection(self.array[item], copy=False)
