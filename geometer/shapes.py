@@ -2,7 +2,7 @@ from itertools import combinations
 
 import numpy as np
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor
+from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveCollection
 from .utils import distinct, is_multiple, det
 from .point import Line, Plane, Point, PointCollection, infty_hyperplane
 from .transformation import rotation, translation
@@ -72,7 +72,7 @@ def _general_direction(points, planes):
     return direction
 
 
-class Polytope(Tensor):
+class Polytope(ProjectiveCollection):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
     line segments.
@@ -90,9 +90,9 @@ class Polytope(Tensor):
     """
 
     def __init__(self, *args):
-        if len(args) > 1:
-            args = tuple(a.array for a in args)
-        super(Polytope, self).__init__(*args, covariant=[-1])
+        if len(args) == 1:
+            args = args[0]
+        super(Polytope, self).__init__(args)
 
     def __apply__(self, transformation):
         result = self.copy()
@@ -101,11 +101,6 @@ class Polytope(Tensor):
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
-
-    @property
-    def dim(self):
-        """int: The dimension of the space that the polytope lives in."""
-        return self.shape[-1] - 1
 
     @staticmethod
     def _normalize_array(array):

@@ -1,4 +1,5 @@
-from geometer.base import TensorDiagram, Tensor, LeviCivitaTensor, KroneckerDelta
+import numpy as np
+from geometer.base import TensorDiagram, Tensor, TensorCollection, LeviCivitaTensor, KroneckerDelta
 
 
 class TestTensor:
@@ -25,6 +26,39 @@ class TestTensor:
         assert a.transpose() == Tensor([[1, 3], [2, 4]])
         assert a.T._covariant_indices == {1}
         assert a.T.T == a
+
+
+class TestTensorCollection:
+
+    def test_init(self):
+        # numpy array
+        a = TensorCollection(np.ones((1, 2, 3)))
+        assert len(a) == 1
+        assert a.size == 2
+
+        # nested list of numbers
+        a = TensorCollection([[1, 2], [3, 4]])
+        assert len(a) == 2
+        assert a.size == 2
+
+        # nested tuple of numbers
+        a = TensorCollection(((1, 2), (3, 4)))
+        assert len(a) == 2
+        assert a.size == 2
+
+        # nested list of Tensor objects
+        a = TensorCollection([[Tensor(1, 2, 3), Tensor(3, 4, 5)]])
+        assert a.shape == (1, 2, 3)
+        assert len(a) == 1
+        assert a.size == 2
+
+        # object with __array__ function
+        class A:
+            def __array__(self):
+                return np.array([Tensor(1, 2), Tensor(3, 4)])
+        a = TensorCollection(A())
+        assert len(a) == 2
+        assert a.size == 2
 
 
 class TestTensorDiagram:
