@@ -15,8 +15,8 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
     ----------
     a, b : array_like
         Input arrays to compare.
-    axis : None or int
-        The axis along which the two arrays are compared.
+    axis : None or int or tuple of ints, optional
+        The axis or axes along which the two arrays are compared.
         The default axis=None will compare the whole arrays and return only a single boolean value.
     rtol : float, optional
         The relative tolerance parameter.

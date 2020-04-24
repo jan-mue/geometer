@@ -650,7 +650,8 @@ class ProjectiveCollection(TensorCollection, ABC):
             if self.shape != other.shape:
                 return False
 
-            return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+            axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
+            return np.all(is_multiple(self.array, other.array, axis=axes, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
 
         return super(ProjectiveCollection, self).__eq__(other)
 

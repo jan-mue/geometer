@@ -1,5 +1,5 @@
 import numpy as np
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
+from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, ProjectiveCollection
 from .point import Point, Subspace, infty_hyperplane
 
 
@@ -262,3 +262,51 @@ class Transformation(ProjectiveElement):
 
         """
         return Transformation(np.linalg.inv(self.array))
+
+
+class TransformationCollection(ProjectiveCollection):
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('covariant', [0])
+        super(TransformationCollection, self).__init__(*args, tensor_rank=2, **kwargs)
+
+    def apply(self, other):
+        """Apply the transformations to another object.
+
+        Parameters
+        ----------
+        other : Point, Transformation, Subspace, PointCollection, TransformationCollection or SubspaceCollection
+            The object to apply the transformation to.
+
+        Returns
+        -------
+        PointCollection, TransformationCollection or SubspaceCollection
+            The result of applying the transformations to the supplied object.
+
+        """
+        if hasattr(other, '__apply__'):
+            return other.__apply__(self)
+        raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
+
+    def __pow__(self, power, modulo=None):
+        if power == 0:
+            e = np.eye(self.dim+1)
+            e = e.reshape((1,)*len(self._collection_indices) + e.shape)
+            e = np.tile(e, self.shape[:len(self._collection_indices)] + (1, 1))
+            return TransformationCollection(e)
+        if power < 0:
+            return self.inverse().__pow__(-power, modulo)
+
+        result = super(TransformationCollection, self).__pow__(power, modulo)
+        return TransformationCollection(result, copy=False)
+
+    def inverse(self):
+        """Calculates the inverse projective transformations.
+
+        Returns
+        -------
+        TransformationCollection
+            The inverse transformations.
+
+        """
+        return TransformationCollection(np.linalg.inv(self.array))
