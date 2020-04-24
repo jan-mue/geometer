@@ -815,7 +815,7 @@ class LineCollection(SubspaceCollection):
         x = self.array
         x = x.reshape(x.shape[:self.rank-self.dim+1] + (-1, x.shape[-1]))
         u, s, vh = np.linalg.svd(x)
-        return vh.T[:, -2:].T
+        return vh[..., -2:, :]
 
     @property
     def contravariant_tensor(self):

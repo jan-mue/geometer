@@ -56,14 +56,14 @@ def _general_direction(points, planes):
     planes = planes.array
 
     direction = np.zeros(points.shape, planes.dtype)
-    ind = np.isclose(planes.T[0], 0, atol=EQ_TOL_ABS).T
+    ind = np.isclose(planes[..., 0], 0, atol=EQ_TOL_ABS)
     direction[ind, 0] = 1
     direction[~ind, 0] = planes[~ind, 1]
     direction[~ind, 1] = -planes[~ind, 0]
 
     ind = is_multiple(direction, points, axis=-1)
     direction[ind, 0] = 0
-    ind2 = np.isclose(planes.T[1], 0, atol=EQ_TOL_ABS).T
+    ind2 = np.isclose(planes[..., 1], 0, atol=EQ_TOL_ABS)
     direction[ind & ind2, 1] = 1
     ind = ind & ~ind2
     direction[ind, 1] = planes[ind, 2]
