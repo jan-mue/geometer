@@ -731,13 +731,26 @@ infty_plane = infty_hyperplane(3)
 
 
 class PointCollection(ProjectiveCollection):
+    """A collection of points.
+
+    Parameters
+    ----------
+    elements : array_like
+        A (nested) sequence of points or a numpy array that contains the coordinates of multiple points.
+    homogenize : bool, optional
+        If True, all points in the array will be converted to homogeneous coordinates, i.e. 1 will be added to
+        the coordinates of each point in elements. Only arrays or sequences that do not contain Point objects will
+        be converted. By default homogenize is True.
+
+    """
+    _element_class = Point
 
     def __init__(self, elements, *, homogenize=True, **kwargs):
+        if not isinstance(elements, (np.ndarray, TensorCollection)):
+            elements = np.asarray(elements)
         super(PointCollection, self).__init__(elements, **kwargs)
-        if isinstance(elements, TensorCollection) or isinstance(elements[0], Point):
-            return
-        if homogenize is True:
-            self.array = np.append(elements, np.ones(self.shape[:-1] + (1,), self.array.dtype), axis=1)
+        if homogenize is True and not (elements.dtype.hasobject and elements.size != 0 and isinstance(elements.flat[0], Point)):
+            self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=1)
 
     def __apply__(self, transformation):
         return PointCollection(self.array @ transformation.array.T, homogenize=False, copy=False)
@@ -794,21 +807,23 @@ class PointCollection(ProjectiveCollection):
 
 
 class SubspaceCollection(ProjectiveCollection):
+    _element_class = Subspace
 
     def __init__(self, *args, **kwargs):
         super(SubspaceCollection, self).__init__(*args, covariant=False, **kwargs)
-
-
-class LineCollection(SubspaceCollection):
-
-    def __init__(self, *args, **kwargs):
-        super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
 
     def meet(self, other):
         return meet(self, other)
 
     def join(self, *others):
         return join(self, *others)
+
+
+class LineCollection(SubspaceCollection):
+    _element_class = Line
+
+    def __init__(self, *args, **kwargs):
+        super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
 
     @property
     def basis_matrix(self):
@@ -825,18 +840,6 @@ class LineCollection(SubspaceCollection):
         diagram = TensorDiagram((self, e), (self, e))
         return LineCollection(diagram.calculate(), copy=False)
 
-    def __getitem__(self, item):
-        if isinstance(item, int):
-            return Line(self.array[item], copy=False)
-        return LineCollection(self.array[item], copy=False)
-
 
 class PlaneCollection(SubspaceCollection):
-
-    def meet(self, other):
-        return meet(self, other)
-
-    def __getitem__(self, item):
-        if isinstance(item, int):
-            return Plane(self.array[item], copy=False)
-        return PlaneCollection(self.array[item], copy=False)
+    _element_class = Plane

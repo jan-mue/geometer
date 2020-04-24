@@ -346,7 +346,7 @@ class Polygon(Polytope):
     def facets(self):
         segments = []
         for i in range(len(self.array)):
-            segments.append(Segment(self.array[[i, (i + 1) % len(self.array)]]))
+            segments.append(Segment(self.array[[i, (i + 1) % len(self.array)]], copy=False))
         return segments
 
     @property
@@ -388,7 +388,13 @@ class Polygon(Polytope):
             direction = _general_direction(other, self._plane)
 
         ray = Segment(other, Point(direction))
-        intersections = self._intersect_coplanar_line(ray._line)
+        try:
+            intersections = self._intersect_coplanar_line(ray._line)
+        except LinearDependenceError:
+            # TODO: find a better solution
+            r = rotation(np.random.rand() * np.pi, axis=Point(*self._plane[:-1]) if self.dim > 2 else None)
+            r = translation(other) * r * translation(-other)
+            intersections = self._intersect_coplanar_line(r * ray._line)
         intersection_count = np.sum(_segments_contain(*ray.vertices, intersections))
 
         return intersection_count % 2 == 1

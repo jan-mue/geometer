@@ -77,6 +77,25 @@ class TestTensorCollection:
         assert len(a) == 2
         assert a.size == 2
 
+    def test_flat(self):
+        a = [Tensor([[1, 2], [3, 4]]), Tensor([[5, 6], [7, 8]])]
+        b = TensorCollection([a], tensor_rank=2)
+
+        assert list(b.flat) == a
+
+    def test_getitem(self):
+        a = Tensor([[1, 2],
+                    [3, 4]])
+        b = Tensor([[5, 6],
+                    [7, 8]])
+        c = TensorCollection([a, b])
+
+        assert c[0] == a
+        assert c[1] == b
+        assert list(c) == [a, b]
+        assert c[:, 1] == TensorCollection([Tensor([3, 4]), Tensor([7, 8])])
+        assert c[:, 0, 0] == [1, 5]
+
 
 class TestTensorDiagram:
 

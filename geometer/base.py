@@ -45,6 +45,7 @@ class Tensor:
         if len(args) == 1:
             if isinstance(args[0], Tensor):
                 self.array = np.array(args[0].array, **kwargs)
+                self._collection_indices = args[0]._collection_indices
                 self._covariant_indices = args[0]._covariant_indices
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
@@ -67,6 +68,7 @@ class Tensor:
                 self._covariant_indices.add(idx)
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
+        self._collection_indices = set()
 
     @property
     def shape(self):
@@ -160,7 +162,8 @@ class Tensor:
         return result
 
     def is_zero(self, tol=EQ_TOL_ABS):
-        return np.allclose(self.array, 0, atol=tol)
+        axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
+        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
@@ -170,6 +173,7 @@ class Tensor:
         index = normalize_index(index, self.shape)
 
         covariant = []
+        collection_indices = []
 
         old_axis = 0
         new_axis = 0
@@ -177,7 +181,10 @@ class Tensor:
 
             # new axis inserted by None index
             if ind is None:
-                covariant.append(new_axis)
+                if old_axis < len(self._collection_indices):
+                    collection_indices.append(new_axis)
+                elif old_axis < len(self._collection_indices) + len(self._covariant_indices):
+                    covariant.append(new_axis)
                 new_axis += 1
                 continue
 
@@ -186,7 +193,9 @@ class Tensor:
                 old_axis += 1
                 continue
 
-            if old_axis in self._covariant_indices:
+            if old_axis in self._collection_indices:
+                collection_indices.append(new_axis)
+            elif old_axis in self._covariant_indices:
                 covariant.append(new_axis)
 
             old_axis += 1
@@ -284,13 +293,11 @@ class TensorCollection(Tensor):
         Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
+    _element_class = Tensor
 
     def __init__(self, elements, *, covariant=True, tensor_rank=1, **kwargs):
         if isinstance(elements, TensorCollection):
-            self.array = np.array(elements.array, **kwargs)
-            self._collection_indices = elements._collection_indices
-            self._covariant_indices = elements._covariant_indices
-            self._contravariant_indices = elements._contravariant_indices
+            super(TensorCollection, self).__init__(elements, **kwargs)
             return
 
         elements = np.asarray(elements)
@@ -318,12 +325,6 @@ class TensorCollection(Tensor):
         self._covariant_indices = set(n_col + i for i in self._covariant_indices if n_col+i < self.rank)
         self._contravariant_indices = set(n_col + i for i in self._contravariant_indices if n_col+i < self.rank)
 
-
-
-    def is_zero(self, tol=EQ_TOL_ABS):
-        axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
-        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
-
     def expand_dims(self, axis):
         result = self.copy()
         result.array = np.expand_dims(self.array, axis)
@@ -335,6 +336,24 @@ class TensorCollection(Tensor):
     @property
     def size(self):
         return np.prod([self.shape[i] for i in self._collection_indices], dtype=int)
+
+    @property
+    def flat(self):
+        n_col = len(self._collection_indices)
+        covariant = set(i - n_col for i in self._covariant_indices)
+        for idx in np.ndindex(self.shape[:n_col]):
+            yield self._element_class(self.array[idx], covariant=covariant, copy=False)
+
+    def __getitem__(self, index):
+        result = super(TensorCollection, self).__getitem__(index)
+
+        if not isinstance(result, Tensor):
+            return result
+
+        if len(result._collection_indices) > 0:
+            return TensorCollection(result)
+
+        return self._element_class(result)
 
     def __len__(self):
         return self.shape[0]
@@ -556,7 +575,7 @@ class TensorDiagram:
         args = []
         result_indices = ([], [], [])
         for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
-            if isinstance(node, TensorCollection):
+            if len(node._collection_indices) > 0:
                 if len(result_indices[0]) == 0:
                     result_indices[0].extend(offset + i for i in node._collection_indices)
                 else:
