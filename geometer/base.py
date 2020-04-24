@@ -70,6 +70,17 @@ class Tensor:
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
         self._collection_indices = set()
 
+    def __apply__(self, transformation):
+        ts = self.tensor_shape
+        edges = [(self, transformation.copy()) for _ in range(ts[0])]
+        if ts[1] > 0:
+            inv = transformation.inverse()
+            edges.extend((inv.copy(), self) for _ in range(ts[1]))
+        diagram = TensorDiagram(*edges)
+        result = self.copy()
+        result.array = diagram.calculate().array
+        return result
+
     @property
     def shape(self):
         """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array, same as ``self.array.shape``."""

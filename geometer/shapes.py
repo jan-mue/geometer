@@ -94,11 +94,6 @@ class Polytope(ProjectiveCollection):
             args = args[0]
         super(Polytope, self).__init__(args, **kwargs)
 
-    def __apply__(self, transformation):
-        result = self.copy()
-        result.array = self.array.dot(transformation.array.T)
-        return result
-
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
 

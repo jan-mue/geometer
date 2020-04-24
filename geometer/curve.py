@@ -50,16 +50,10 @@ class Quadric(ProjectiveElement):
         if not isinstance(other, Point):
             return super(Quadric, self).__add__(other)
 
-        return translation(other) * self
+        return translation(other).apply(self)
 
     def __sub__(self, other):
         return self + (-other)
-
-    def __apply__(self, transformation):
-        inv = transformation.inverse().array
-        result = self.copy()
-        result.array = inv.T @ self.array @ inv
-        return result
 
     @classmethod
     def from_planes(cls, e, f):

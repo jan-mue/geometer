@@ -196,9 +196,6 @@ class Point(ProjectiveElement):
         result = np.append(result, self.array[-1] and 1)
         return Point(result, copy=False)
 
-    def __apply__(self, transformation):
-        return type(self)(TensorDiagram((self, transformation)).calculate())
-
     def __repr__(self):
         return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (" at Infinity" if self.isinf else "")
 
@@ -263,19 +260,10 @@ class Subspace(ProjectiveElement):
             return super(Subspace, self).__add__(other)
 
         from .transformation import translation
-        return translation(other) * self
+        return translation(other).apply(self)
 
     def __sub__(self, other):
         return self + (-other)
-
-    def __apply__(self, transformation):
-        ts = self.tensor_shape
-        edges = [(self, transformation.copy()) for _ in range(ts[0])]
-        if ts[1] > 0:
-            inv = transformation.inverse()
-            edges.extend((inv.copy(), self) for _ in range(ts[1]))
-        diagram = TensorDiagram(*edges)
-        return type(self)(diagram.calculate())
 
     @property
     def basis_matrix(self):
@@ -751,9 +739,6 @@ class PointCollection(ProjectiveCollection):
         super(PointCollection, self).__init__(elements, **kwargs)
         if homogenize is True and not (elements.dtype.hasobject and elements.size != 0 and isinstance(elements.flat[0], Point)):
             self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=1)
-
-    def __apply__(self, transformation):
-        return PointCollection(self.array @ transformation.array.T, homogenize=False, copy=False)
 
     def __add__(self, other):
         if not isinstance(other, (Point, PointCollection)):
