@@ -71,7 +71,7 @@ class Quadric(ProjectiveElement):
 
         """
         m = np.outer(e.array, f.array)
-        return cls(m + m.T, normalize_matrix=True)
+        return Quadric(m + m.T, normalize_matrix=True)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -251,7 +251,7 @@ class Conic(Quadric):
         ade = det([a, d, e])
         bce = det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return cls(np.real_if_close(m+m.T), normalize_matrix=True)
+        return Conic(np.real_if_close(m+m.T), normalize_matrix=True)
 
     @classmethod
     def from_lines(cls, g, h):
@@ -269,7 +269,7 @@ class Conic(Quadric):
 
         """
         m = np.outer(g.array, h.array)
-        return cls(m + m.T, normalize_matrix=True)
+        return Conic(m + m.T, normalize_matrix=True)
 
     @classmethod
     def from_tangent(cls, tangent, a, b, c, d):
@@ -332,7 +332,7 @@ class Conic(Quadric):
         p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
         p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
         c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)
-        return cls(np.linalg.inv(c.array), normalize_matrix=True)
+        return Conic(np.linalg.inv(c.array), copy=False)
 
     @classmethod
     def from_crossratio(cls, cr, a, b, c, d):
@@ -464,8 +464,15 @@ class Conic(Quadric):
         f1, f2 = i1.meet(j1), i2.meet(j2)
         g1, g2 = i1.meet(j2), i2.meet(j1)
 
-        if np.all(np.isreal(f1.normalized_array)):
+        f1.array = np.real_if_close(f1.normalized_array)
+        f2.array = np.real_if_close(f2.normalized_array)
+
+        if np.all(np.isreal(f1)):
             return f1, f2
+
+        g1.array = np.real_if_close(g1.normalized_array)
+        g2.array = np.real_if_close(g2.normalized_array)
+
         return g1, g2
 
 
