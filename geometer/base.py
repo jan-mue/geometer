@@ -24,6 +24,9 @@ class Tensor:
     covariant : :obj:`bool` or :obj:`list` of :obj:`int`, optional
         If False, all indices are contravariant. If a list of indices indices is supplied, the specified indices of the
         array will be covariant indices and all others contravariant indices. By default all indices are covariant.
+    tensor_rank : int or None, optional
+        If the object contains multiple tensors, this parameter specifies the rank of the tensors contained in the
+        collection. By default only a single tensor is contained in a Tensor object.
     **kwargs
         Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
@@ -38,7 +41,7 @@ class Tensor:
 
     """
 
-    def __init__(self, *args, covariant=True, **kwargs):
+    def __init__(self, *args, covariant=True, tensor_rank=None, **kwargs):
         if len(args) == 0:
             raise TypeError("At least one argument is required.")
 
@@ -54,21 +57,31 @@ class Tensor:
         else:
             self.array = np.array(args, **kwargs)
 
+        if tensor_rank is None:
+            tensor_rank = self.rank
+        elif tensor_rank < 0:
+            tensor_rank += self.shape[-1]
+
+        if self.rank < tensor_rank:
+            raise ValueError("tensor_rank must be smaller than or equal to the number of array dimensions.")
+
+        n_col = self.rank - tensor_rank
+        self._collection_indices = set(range(n_col))
+
         if covariant is True:
-            self._covariant_indices = set(range(self.rank))
+            self._covariant_indices = set(range(n_col, self.rank))
         elif covariant is False:
             self._covariant_indices = set()
         else:
             self._covariant_indices = set()
-            for idx, s in zip(covariant, self.array.shape):
-                if not -self.array.ndim <= idx < self.array.ndim:
+            for idx in covariant:
+                if not -tensor_rank <= idx < tensor_rank:
                     raise IndexError("Index out of range")
                 idx = sanitize_index(idx)
-                idx = posify_index(s, idx)
-                self._covariant_indices.add(idx)
+                idx = posify_index(tensor_rank, idx)
+                self._covariant_indices.add(n_col + idx)
 
-        self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
-        self._collection_indices = set()
+        self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - self._collection_indices
 
     def __apply__(self, transformation):
         ts = self.tensor_shape
@@ -314,7 +327,7 @@ class TensorCollection(Tensor):
         elements = np.asarray(elements)
 
         # unpack tensors contained in elements
-        if elements.dtype.hasobject:
+        if elements.dtype.hasobject and elements.size > 0:
             flat_elements = []
             for t in elements.flat:
                 if not isinstance(t, Tensor):
@@ -326,15 +339,7 @@ class TensorCollection(Tensor):
                 covariant = t._covariant_indices
                 elements = flat_elements.reshape(elements.shape + t.shape)
 
-        super(TensorCollection, self).__init__(elements, covariant=covariant, **kwargs)
-
-        if tensor_rank < 0:
-            tensor_rank += self.shape[-1]
-
-        n_col = self.rank - tensor_rank
-        self._collection_indices = set(range(n_col))
-        self._covariant_indices = set(n_col + i for i in self._covariant_indices if n_col+i < self.rank)
-        self._contravariant_indices = set(n_col + i for i in self._contravariant_indices if n_col+i < self.rank)
+        super(TensorCollection, self).__init__(elements, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
 
     def expand_dims(self, axis):
         result = self.copy()
@@ -367,7 +372,7 @@ class TensorCollection(Tensor):
         return self._element_class(result)
 
     def __len__(self):
-        return self.shape[0]
+        return len(self.array)
 
 
 class LeviCivitaTensor(Tensor):

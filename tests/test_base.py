@@ -48,6 +48,10 @@ class TestTensor:
 class TestTensorCollection:
 
     def test_init(self):
+        # empty list
+        a = TensorCollection([])
+        assert len(a) == 0
+
         # numpy array
         a = TensorCollection(np.ones((1, 2, 3)))
         assert len(a) == 1
