@@ -186,6 +186,20 @@ class Tensor:
         return result
 
     def is_zero(self, tol=EQ_TOL_ABS):
+        """Test whether the tensor is zero with respect to covariant and contravariant indices.
+
+        Parameters
+        ----------
+        tol : float, optional
+            The accepted tolerance.
+
+        Returns
+        -------
+        bool
+            True if the tensor is zero. If there are more indices than the covariant and contravariant indices,
+            a boolean array is returned.
+
+        """
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
         return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
@@ -342,6 +356,19 @@ class TensorCollection(Tensor):
         super(TensorCollection, self).__init__(elements, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
 
     def expand_dims(self, axis):
+        """Add a new index to the collection.
+
+        Parameters
+        ----------
+        axis : int
+            Position in the new shape where the new axis is placed.
+
+        Returns
+        -------
+        TensorCollection
+            The tensor collection with an additional index.
+
+        """
         result = self.copy()
         result.array = np.expand_dims(self.array, axis)
         result._covariant_indices = set(i+1 if i >= axis else i for i in self._covariant_indices)
@@ -351,10 +378,12 @@ class TensorCollection(Tensor):
 
     @property
     def size(self):
+        """int: The number of tensors in the collection."""
         return np.prod([self.shape[i] for i in self._collection_indices], dtype=int)
 
     @property
     def flat(self):
+        """generator: A flat iterator of the collection that yields Tensor objects."""
         n_col = len(self._collection_indices)
         covariant = set(i - n_col for i in self._covariant_indices)
         for idx in np.ndindex(self.shape[:n_col]):
@@ -648,6 +677,9 @@ class ProjectiveElement(Tensor, ABC):
 
 
 class ProjectiveCollection(TensorCollection, ABC):
+    """Base class for collections of projective elements.
+
+    """
 
     def __eq__(self, other):
         if isinstance(other, Tensor):
@@ -662,4 +694,5 @@ class ProjectiveCollection(TensorCollection, ABC):
 
     @property
     def dim(self):
+        """int: The dimension tensors in the collection."""
         return self.shape[-1] - 1

@@ -252,7 +252,7 @@ class Subspace(ProjectiveElement):
     """
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('covariant', False)
+        kwargs.setdefault("covariant", False)
         super(Subspace, self).__init__(*args, **kwargs)
 
     def __add__(self, other):
@@ -400,7 +400,7 @@ class Line(Subspace):
 
     def __init__(self, *args, **kwargs):
         if len(args) == 2:
-            kwargs['copy'] = False
+            kwargs["copy"] = False
             super(Line, self).__init__(join(*args), **kwargs)
         else:
             super(Line, self).__init__(*args, **kwargs)
@@ -598,7 +598,7 @@ class Plane(Subspace):
 
     def __init__(self, *args, **kwargs):
         if all(isinstance(o, (Line, Point)) for o in args):
-            kwargs['copy'] = False
+            kwargs["copy"] = False
             super(Plane, self).__init__(join(*args), **kwargs)
         else:
             super(Plane, self).__init__(*args, **kwargs)

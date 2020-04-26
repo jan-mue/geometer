@@ -41,9 +41,9 @@ class Quadric(ProjectiveElement):
             matrix = matrix.array if isinstance(matrix, Tensor) else matrix
             w = np.abs(np.linalg.eigvalsh(matrix))
             matrix = matrix / np.prod(w[w > EQ_TOL_ABS])**(1/matrix.shape[-1])
-            kwargs['copy'] = False
+            kwargs["copy"] = False
 
-        kwargs.setdefault('covariant', False)
+        kwargs.setdefault("covariant", False)
         super(Quadric, self).__init__(matrix, **kwargs)
 
     def __add__(self, other):
@@ -495,7 +495,7 @@ class Ellipse(Conic):
 
     def __init__(self, center=Point(0, 0), hradius=1, vradius=1, **kwargs):
         if hradius == vradius == 0:
-            raise ValueError('hradius and vradius can not both be zero.')
+            raise ValueError("hradius and vradius can not both be zero.")
 
         r = np.array([vradius ** 2, hradius ** 2, 1])
         c = -center.normalized_array
@@ -509,7 +509,7 @@ class Ellipse(Conic):
         # normalize with abs(det(m))
         m = m / (np.prod(np.maximum(r[:2], 1)))**(2/3)
 
-        kwargs['copy'] = False
+        kwargs["copy"] = False
         super(Ellipse, self).__init__(m, **kwargs)
 
 
@@ -590,7 +590,7 @@ class Sphere(Quadric):
 
     def __init__(self, center=Point(0, 0, 0), radius=1, **kwargs):
         if radius == 0:
-            raise ValueError('Sphere radius cannot be 0.')
+            raise ValueError("Sphere radius cannot be 0.")
 
         c = -center.normalized_array
         m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
@@ -601,7 +601,7 @@ class Sphere(Quadric):
         # normalize with abs(det(m))
         m = m / radius ** (2 / 3)
 
-        kwargs['copy'] = False
+        kwargs["copy"] = False
         super(Sphere, self).__init__(m, **kwargs)
 
     @property
@@ -648,7 +648,7 @@ class Cone(Quadric):
 
     def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs):
         if radius == 0:
-            raise ValueError('The radius of a cone can not be zero.')
+            raise ValueError("The radius of a cone can not be zero.")
 
         from .operators import dist, angle
 
@@ -684,7 +684,7 @@ class Cone(Quadric):
             t = translation(Point(v)) * t * translation(-Point(v))
             m = t.array.T.dot(m).dot(t.array)
 
-        kwargs['normalize_matrix'] = True
+        kwargs["normalize_matrix"] = True
         super(Cone, self).__init__(m, **kwargs)
 
 

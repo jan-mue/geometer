@@ -180,7 +180,7 @@ class Transformation(ProjectiveElement):
     """
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('covariant', [0])
+        kwargs.setdefault("covariant", [0])
         super(Transformation, self).__init__(*args, **kwargs)
 
     def __apply__(self, transformation):
@@ -224,16 +224,16 @@ class Transformation(ProjectiveElement):
 
         Parameters
         ----------
-        other : Point, Transformation, Subspace, Quadric or Polytope
+        other : Tensor
             The object to apply the transformation to.
 
         Returns
         -------
-        Point, Transformation, Subspace, Quadric or Polytope
+        Tensor
             The result of applying this transformation to the supplied object.
 
         """
-        if hasattr(other, '__apply__'):
+        if hasattr(other, "__apply__"):
             return other.__apply__(self)
         raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
 
@@ -265,9 +265,12 @@ class Transformation(ProjectiveElement):
 
 
 class TransformationCollection(ProjectiveCollection):
+    """A Collection of transformations.
+
+    """
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('covariant', [0])
+        kwargs.setdefault("covariant", [0])
         super(TransformationCollection, self).__init__(*args, tensor_rank=2, **kwargs)
 
     def apply(self, other):
@@ -275,16 +278,16 @@ class TransformationCollection(ProjectiveCollection):
 
         Parameters
         ----------
-        other : Point, Transformation, Subspace, PointCollection, TransformationCollection or SubspaceCollection
-            The object to apply the transformation to.
+        other : Tensor
+            The object to apply the transformations to.
 
         Returns
         -------
-        PointCollection, TransformationCollection or SubspaceCollection
+        TensorCollection
             The result of applying the transformations to the supplied object.
 
         """
-        if hasattr(other, '__apply__'):
+        if hasattr(other, "__apply__"):
             return other.__apply__(self)
         raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
 
