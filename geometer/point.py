@@ -607,7 +607,7 @@ class Plane(Subspace):
     def basis_matrix(self):
         """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
         n = self.dim + 1
-        i = np.where(self.array != 0)[0][0]
+        i = self.array.nonzero()[0][0]
         result = np.zeros((n, n - 1), dtype=self.dtype)
         a = [j for j in range(n) if j != i]
         result[i, :] = self.array[a]
@@ -792,6 +792,9 @@ class PointCollection(ProjectiveCollection):
 
 
 class SubspaceCollection(ProjectiveCollection):
+    """A collection of subspaces.
+
+    """
     _element_class = Subspace
 
     def __init__(self, *args, **kwargs):
@@ -805,6 +808,9 @@ class SubspaceCollection(ProjectiveCollection):
 
 
 class LineCollection(SubspaceCollection):
+    """A collection of lines.
+
+    """
     _element_class = Line
 
     def __init__(self, *args, **kwargs):
@@ -827,4 +833,27 @@ class LineCollection(SubspaceCollection):
 
 
 class PlaneCollection(SubspaceCollection):
+    """A collection of planes.
+
+    """
     _element_class = Plane
+
+    @property
+    def basis_matrix(self):
+        n = self.dim + 1
+        result = np.zeros(self.shape[:-1] + (n, n - 1), dtype=self.dtype)
+
+        i = (self.array != 0).argmax(axis=-1)
+        a = np.arange(n).reshape((1,)*(self.rank-1) + (n,))
+        a = np.tile(a, self.shape[:-1] + (1,))
+        b = a[..., :-1]
+        a = a != np.expand_dims(i, -1)
+
+        ind = tuple(np.indices(self.shape[:-1])) + (i,)
+        ind_shape = self.shape[:-1] + (n - 1,)
+        result[ind] = self.array[a].reshape(ind_shape)
+        result[tuple(x.reshape(ind_shape) for x in a.nonzero()) + (b,)] = -self.array[ind + (None,)]
+
+        u, s, vh = np.linalg.svd(result, full_matrices=False)
+        q = u[..., :n-1]
+        return np.swapaxes(q, -1, -2)

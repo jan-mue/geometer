@@ -199,7 +199,7 @@ class Quadric(ProjectiveElement):
             if not reducible:
                 if self.dim > 2:
                     arr = other.array.reshape((-1, self.dim + 1))
-                    i = np.where(arr != 0)[0][0]
+                    i = arr.nonzero()[0][0]
                     m = Plane(arr[i], copy=False).basis_matrix
                     q = Quadric(m.dot(self.array).dot(m.T), copy=False)
                     line_base = other.basis_matrix.T

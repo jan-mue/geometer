@@ -249,3 +249,9 @@ class TestCollections:
 
         assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)])
         assert rotation(np.pi/2) * a == PointCollection([(0, 1), (-1, 0)])
+
+    def test_basis_matrix(self):
+        a = PlaneCollection([Plane(1, 0, 0, 0), Plane(0, 1, 0, 0), Plane(0, 0, 1, 0)])
+        bases = [e.basis_matrix for e in a]
+
+        assert np.allclose(a.basis_matrix, np.stack(bases))

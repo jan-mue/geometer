@@ -158,7 +158,7 @@ def reflection(axis):
     p = affine_transform(np.eye(axis.dim) - 2*np.outer(v, v.conj()))
 
     base = axis.basis_matrix
-    ind = np.where(base[:, -1] != 0)[0][0]
+    ind = base[:, -1].nonzero()[0][0]
     x = base[ind, :-1] / base[ind, -1]
     x = Point(*x)
 

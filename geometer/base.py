@@ -167,12 +167,24 @@ class Tensor:
                 a[i] = j
             perm = a
 
-        covariant = []
+        covariant_indices = []
+        contravariant_indices = []
+        collection_indices = []
         for i, j in enumerate(perm):
             if j in self._covariant_indices:
-                covariant.append(i)
+                covariant_indices.append(i)
+            elif j in self._contravariant_indices:
+                contravariant_indices.append(i)
+            elif j in self._collection_indices:
+                collection_indices.append(i)
 
-        return Tensor(np.transpose(self.array, perm), covariant=covariant, copy=False)
+        result = self.copy()
+        result.array = self.array.transpose(perm)
+        result._covariant_indices = set(covariant_indices)
+        result._contravariant_indices = set(contravariant_indices)
+        result._collection_indices = set(collection_indices)
+
+        return result
 
     @property
     def T(self):
@@ -310,7 +322,7 @@ class Tensor:
 
 
 class TensorCollection(Tensor):
-    """A collection of Tensor objects with identical kinds of indices and shape stored in a tensor.
+    """A collection of Tensor objects with identical covariant/contravariant indices and shape stored in a tensor.
 
     Parameters
     ----------
