@@ -166,9 +166,11 @@ def null_space(A):
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=True)
-    tol = max(A.shape) * np.spacing(np.max(s))
-    dim = np.sum(s > tol, dtype=int)
-    Q = vh[dim:, :].T.conj()
+    tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
+    dim = np.sum(s > tol, axis=-1, dtype=int)
+    if not np.all(dim == dim.flat[0]):
+        raise ValueError('Cannot calculate the null spaces of matrices when the spaces have different dimensions.')
+    Q = np.swapaxes(vh[..., dim.flat[0]:, :], -1, -2).conj()
     return Q
 
 
@@ -187,7 +189,9 @@ def orth(A):
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=False)
-    tol = max(A.shape) * np.spacing(np.max(s))
-    dim = np.sum(s > tol, dtype=int)
-    Q = u[:, :dim]
+    tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
+    dim = np.sum(s > tol, axis=-1, dtype=int)
+    if not np.all(dim == dim.flat[0]):
+        raise ValueError('Cannot calculate the image spaces of matrices when the spaces have different dimensions.')
+    Q = u[:, :dim.flat[0]]
     return Q

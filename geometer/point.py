@@ -806,6 +806,12 @@ class SubspaceCollection(ProjectiveCollection):
     def join(self, *others):
         return join(self, *others)
 
+    @property
+    def basis_matrix(self):
+        x = self.array
+        x = x.reshape(x.shape[:len(self._collection_indices)] + (-1, x.shape[-1]))
+        return np.swapaxes(null_space(x), -1, -2)
+
 
 class LineCollection(SubspaceCollection):
     """A collection of lines.
@@ -815,13 +821,6 @@ class LineCollection(SubspaceCollection):
 
     def __init__(self, *args, **kwargs):
         super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
-
-    @property
-    def basis_matrix(self):
-        x = self.array
-        x = x.reshape(x.shape[:self.rank-self.dim+1] + (-1, x.shape[-1]))
-        u, s, vh = np.linalg.svd(x)
-        return vh[..., -2:, :]
 
     @property
     def contravariant_tensor(self):
@@ -837,23 +836,3 @@ class PlaneCollection(SubspaceCollection):
 
     """
     _element_class = Plane
-
-    @property
-    def basis_matrix(self):
-        n = self.dim + 1
-        result = np.zeros(self.shape[:-1] + (n, n - 1), dtype=self.dtype)
-
-        i = (self.array != 0).argmax(axis=-1)
-        a = np.arange(n).reshape((1,)*(self.rank-1) + (n,))
-        a = np.tile(a, self.shape[:-1] + (1,))
-        b = a[..., :-1]
-        a = a != np.expand_dims(i, -1)
-
-        ind = tuple(np.indices(self.shape[:-1])) + (i,)
-        ind_shape = self.shape[:-1] + (n - 1,)
-        result[ind] = self.array[a].reshape(ind_shape)
-        result[tuple(x.reshape(ind_shape) for x in a.nonzero()) + (b,)] = -self.array[ind + (None,)]
-
-        u, s, vh = np.linalg.svd(result, full_matrices=False)
-        q = u[..., :n-1]
-        return np.swapaxes(q, -1, -2)

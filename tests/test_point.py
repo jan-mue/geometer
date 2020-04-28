@@ -252,6 +252,6 @@ class TestCollections:
 
     def test_basis_matrix(self):
         a = PlaneCollection([Plane(1, 0, 0, 0), Plane(0, 1, 0, 0), Plane(0, 0, 1, 0)])
-        bases = [e.basis_matrix for e in a]
 
-        assert np.allclose(a.basis_matrix, np.stack(bases))
+        assert a.basis_matrix.shape == (3, 3, 4)
+        assert np.allclose(np.matmul(a.basis_matrix, a.array[..., None]), 0)
