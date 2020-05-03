@@ -401,6 +401,16 @@ class TensorCollection(Tensor):
         for idx in np.ndindex(self.shape[:n_col]):
             yield self._element_class(self.array[idx], covariant=covariant, copy=False)
 
+    @property
+    def distinct(self):
+        """generator: A flat iterator of the collection that yields distinct Tensor objects."""
+        seen = []
+        for x in self.flat:
+            if x in seen:
+                continue
+            yield x
+            seen.append(x)
+
     def __getitem__(self, index):
         result = super(TensorCollection, self).__getitem__(index)
 
@@ -684,7 +694,7 @@ class ProjectiveElement(Tensor, ABC):
 
     @property
     def dim(self):
-        """int: The dimension of the tensor."""
+        """int: The ambient dimension of the tensor."""
         return self.shape[0] - 1
 
 
@@ -706,5 +716,5 @@ class ProjectiveCollection(TensorCollection, ABC):
 
     @property
     def dim(self):
-        """int: The dimension tensors in the collection."""
+        """int: The ambient dimension tensors in the collection."""
         return self.shape[-1] - 1

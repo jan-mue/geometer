@@ -300,17 +300,18 @@ class Subspace(ProjectiveElement):
             True, if the given point/line lies in the subspace.
 
         """
-        if isinstance(other, Point):
+        if isinstance(other, (Point, PointCollection)):
             result = self * other
 
-        elif isinstance(other, Line):
+        elif isinstance(other, (Line, LineCollection)):
             result = self * other.covariant_tensor
 
         else:
             # TODO: test subspace
             raise ValueError("argument of type %s not supported" % str(type(other)))
 
-        return np.allclose(result.array, 0, atol=tol)
+        axes = tuple(set(range(result.rank)) - other._collection_indices)
+        return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
 
     def meet(self, *others):
         """Intersect the subspace with other objects.
@@ -737,7 +738,7 @@ class PointCollection(ProjectiveCollection):
         if not isinstance(elements, (np.ndarray, TensorCollection)):
             elements = np.asarray(elements)
         super(PointCollection, self).__init__(elements, **kwargs)
-        if homogenize is True and not (elements.dtype.hasobject and elements.size != 0 and isinstance(elements.flat[0], Point)):
+        if homogenize is True and not (elements.dtype.hasobject and elements.size != 0 and isinstance(elements.flat[0], (Point, PointCollection))):
             self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=1)
 
     def __add__(self, other):
@@ -812,6 +813,20 @@ class SubspaceCollection(ProjectiveCollection):
         x = x.reshape(x.shape[:len(self._collection_indices)] + (-1, x.shape[-1]))
         return np.swapaxes(null_space(x), -1, -2)
 
+    def contains(self, other, tol=EQ_TOL_ABS):
+        if isinstance(other, (Point, PointCollection)):
+            result = self * other
+
+        elif isinstance(other, (Line, LineCollection)):
+            result = self * other.covariant_tensor
+
+        else:
+            # TODO: test subspace
+            raise ValueError("argument of type %s not supported" % str(type(other)))
+
+        axes = tuple(set(range(result.rank)) - self._collection_indices)
+        return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
+
 
 class LineCollection(SubspaceCollection):
     """A collection of lines.
@@ -821,6 +836,14 @@ class LineCollection(SubspaceCollection):
 
     def __init__(self, *args, **kwargs):
         super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
+
+    @property
+    def covariant_tensor(self):
+        if self.tensor_shape[0] > 0:
+            return self
+        e = LeviCivitaTensor(4)
+        diagram = TensorDiagram((e, self), (e, self))
+        return LineCollection(diagram.calculate(), copy=False)
 
     @property
     def contravariant_tensor(self):

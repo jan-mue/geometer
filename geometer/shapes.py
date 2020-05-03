@@ -2,51 +2,12 @@ from itertools import combinations
 
 import numpy as np
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveCollection
-from .utils import distinct, is_multiple, det
-from .point import Line, Plane, Point, PointCollection, infty_hyperplane
+from .base import EQ_TOL_ABS, EQ_TOL_REL
+from .utils import is_multiple, det
+from .point import Line, Plane, Point, PointCollection, infty_hyperplane, join
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
-
-
-def _segments_contain(vertex1, vertex2, points, tol=1e-8):
-    if len(points) == 0:
-        return np.empty((0,), dtype=bool)
-
-    if isinstance(vertex1, Point):
-        vertex1 = PointCollection(np.tile(vertex1.array[np.newaxis, :], (len(points), 1)), homogenize=False, copy=False)
-    if isinstance(vertex2, Point):
-        vertex2 = PointCollection(np.tile(vertex2.array[np.newaxis, :], (len(points), 1)), homogenize=False, copy=False)
-
-    lines = vertex1.join(vertex2)
-
-    d = PointCollection(vertex2.normalized_array - vertex1.normalized_array, homogenize=False, copy=False)
-
-    m = lines.basis_matrix
-
-    def project(p):
-        return PointCollection(np.squeeze(np.matmul(m, np.expand_dims(p.array, -1)), -1), homogenize=False, copy=False)
-
-    vertex1 = project(vertex1)
-    vertex2 = project(vertex2)
-    d = project(d)
-    points = project(points)
-
-    def crossratio_collections(a, b, c, d):
-        a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
-
-        ac = det(np.stack([a, c], axis=-1))
-        bd = det(np.stack([b, d], axis=-1))
-        ad = det(np.stack([a, d], axis=-1))
-        bc = det(np.stack([b, c], axis=-1))
-
-        with np.errstate(divide="ignore"):
-            return ac * bd / (ad * bc)
-
-    cr = crossratio_collections(d, vertex1, vertex2, points)
-
-    return (0 <= cr + tol) & (cr <= 1 + tol)
 
 
 def _general_direction(points, planes):
@@ -72,7 +33,7 @@ def _general_direction(points, planes):
     return direction / np.linalg.norm(direction[..., :-1], axis=-1, keepdims=True)
 
 
-class Polytope(ProjectiveCollection):
+class Polytope(PointCollection):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
     line segments.
@@ -92,6 +53,7 @@ class Polytope(ProjectiveCollection):
     def __init__(self, *args, **kwargs):
         if len(args) == 1:
             args = args[0]
+        kwargs.setdefault('homogenize', False)
         super(Polytope, self).__init__(args, **kwargs)
 
     def __repr__(self):
@@ -106,15 +68,9 @@ class Polytope(ProjectiveCollection):
         return array.T
 
     @property
-    def normalized_array(self):
-        """numpy.ndarray: Array containing only normalized vertex coordinates."""
-        return self._normalize_array(self.array)
-
-    @property
     def vertices(self):
         """list of Point: The vertices of the polytope."""
-        vertices = self.array.reshape(-1, self.shape[-1])
-        return list(distinct(Point(x, copy=False) for x in vertices))
+        return list(self.distinct)
 
     @property
     def facets(self):
@@ -207,21 +163,26 @@ class Segment(Polytope):
             True if the point is contained in the segment.
 
         """
-        if not self._line.contains(other):
+        result = self._line.contains(other)
+
+        if np.isscalar(result) and not result:
             return False
 
-        p, q = self.vertices
-        d = Point(q.normalized_array - p.normalized_array)
-
         m = self._line.basis_matrix
-        p = Point(m.dot(p.array))
-        q = Point(m.dot(q.array))
-        d = Point(m.dot(d.array))
-        other = Point(m.dot(other.array))
+        arr = self.normalized_array.dot(m.T)
+
+        p, q = Point(arr[0], copy=False), Point(arr[1], copy=False)
+        d = Point(arr[1] - arr[0], copy=False)
+
+        if isinstance(other, PointCollection):
+            other = np.squeeze(np.matmul(m, np.expand_dims(other.array, -1)), -1)
+            other = PointCollection(other, homogenize=False, copy=False)
+        else:
+            other = Point(m.dot(other.array), copy=False)
 
         cr = crossratio(d, p, q, other)
 
-        return 0 <= cr + tol and cr <= 1 + tol
+        return result & (0 <= cr + tol) & (cr <= 1 + tol)
 
     def intersect(self, other):
         """Intersect the line segment with another object.
@@ -349,15 +310,12 @@ class Polygon(Polytope):
         """list of Segment: The edges of the polygon."""
         return self.facets
 
-    def _intersect_coplanar_line(self, line):
+    def _intersect_edges(self, other):
         v1 = PointCollection(self.array, homogenize=False, copy=False)
         v2 = PointCollection(np.roll(self.array, -1, axis=0), homogenize=False, copy=False)
 
-        edges = v1.join(v2)
-        points = edges.meet(line)
-
-        ind = _segments_contain(v1, v2, points)
-        return points[ind]
+        edges = SegmentCollection(v1, v2)
+        return edges.intersect(other)
 
     def contains(self, other):
         """Tests whether a point is contained in the polygon.
@@ -384,15 +342,14 @@ class Polygon(Polytope):
 
         ray = Segment(other, Point(direction))
         try:
-            intersections = self._intersect_coplanar_line(ray._line)
+            intersections = self._intersect_edges(ray)
         except LinearDependenceError:
             # TODO: find a better solution
             r = rotation(np.random.rand() * np.pi, axis=Point(*self._plane[:-1]) if self.dim > 2 else None)
             r = translation(other) * r * translation(-other)
-            intersections = self._intersect_coplanar_line(r * ray._line)
-        intersection_count = np.sum(_segments_contain(*ray.vertices, intersections))
+            intersections = self._intersect_edges(r * ray)
 
-        return intersection_count % 2 == 1
+        return len(intersections) % 2 == 1
 
     def intersect(self, other):
         """Intersect the polygon with another object.
@@ -424,13 +381,8 @@ class Polygon(Polytope):
                 i = other.intersect(self._plane)
                 return i if i and self.contains(i[0]) else []
 
-        if isinstance(other, Segment):
-            intersections = self._intersect_coplanar_line(other._line)
-            intersections = intersections[_segments_contain(*other.vertices, intersections)]
-        else:
-            intersections = self._intersect_coplanar_line(other)
-
-        return list(distinct(intersections))
+        intersections = self._intersect_edges(other)
+        return list(intersections.distinct)
 
     def _normalized_projection(self):
         points = self.array
@@ -562,7 +514,10 @@ class Polyhedron(Polytope):
     @property
     def edges(self):
         """list of Segment: The edges of the polyhedron."""
-        return list(distinct(s for f in self.faces for s in f.edges))
+        v1 = PointCollection(self.array, homogenize=False, copy=False)
+        v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False, copy=False)
+        edges = SegmentCollection(v1, v2)
+        return list(edges.distinct)
 
     @property
     def area(self):
@@ -582,19 +537,16 @@ class Polyhedron(Polytope):
         # calculate lines that the edges lie on
         v1 = PointCollection(self.array, homogenize=False, copy=False)
         v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False, copy=False)
-        edges = v1.join(v2)
+        edges = SegmentCollection(v1, v2)
 
         # intersect rays with the edge lines to see which points lie in the polygon
         directions = PointCollection(_general_direction(intersections, planes), homogenize=False, copy=False)
 
-        rays = intersections.join(directions).expand_dims(1)
-        edge_intersections = edges.meet(rays)
+        rays = SegmentCollection(intersections, directions).expand_dims(1)
+        edge_intersections = edges._line.meet(rays._line)
 
-        start_points = intersections.expand_dims(1)
-        directions = directions.expand_dims(1)
-
-        ind = _segments_contain(v1, v2, edge_intersections)
-        ind = ind & _segments_contain(start_points, directions, edge_intersections)
+        ind = edges.contains(edge_intersections)
+        ind = ind & rays.contains(edge_intersections)
         ind = np.sum(ind, axis=1) % 2 == 1
 
         return intersections[ind]
@@ -615,11 +567,11 @@ class Polyhedron(Polytope):
         """
         if isinstance(other, Segment):
             intersections = self._intersect_line(other._line)
-            intersections = intersections[_segments_contain(*other.vertices, intersections)]
+            intersections = intersections[other.contains(intersections)]
         else:
             intersections = self._intersect_line(other)
 
-        return list(distinct(intersections))
+        return list(intersections.distinct)
 
 
 class Cuboid(Polyhedron):
@@ -644,3 +596,53 @@ class Cuboid(Polyhedron):
         xz = Rectangle(a, a + x, a + x + z, a + z)
         xy = Rectangle(a, a + x, a + x + y, a + y)
         super(Cuboid, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z, **kwargs)
+
+
+class SegmentCollection(PointCollection):
+    _element_class = Segment
+
+    def __init__(self, *args, **kwargs):
+        if len(args) == 1:
+            args = args[0]
+        super(SegmentCollection, self).__init__(args, **kwargs)
+        self.array = self.array.transpose(tuple(range(1, self.rank-1)) + (0, self.rank-1))
+        self._line = join(*self.vertices)
+
+    @property
+    def vertices(self):
+        a = PointCollection(self.array[..., 0, :], copy=False, homogenize=False)
+        b = PointCollection(self.array[..., 1, :], copy=False, homogenize=False)
+        return a, b
+
+    def expand_dims(self, axis):
+        result = super(SegmentCollection, self).expand_dims(axis)
+        result._line = result._line.expand_dims(axis)
+        return result
+
+    def contains(self, points, tol=1e-8):
+        if len(points) == 0:
+            return np.empty((0,), dtype=bool)
+
+        result = self._line.contains(points)
+
+        m = self._line.basis_matrix
+        arr = self.normalized_array
+        arr = np.squeeze(np.matmul(np.expand_dims(m, -3), np.expand_dims(arr, -1)), -1)
+
+        p = PointCollection(arr[..., 0, :], homogenize=False, copy=False)
+        q = PointCollection(arr[..., 1, :], homogenize=False, copy=False)
+        d = PointCollection(arr[..., 1, :] - arr[..., 0, :], homogenize=False, copy=False)
+
+        points = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(points.array, -1)), -1), homogenize=False, copy=False)
+
+        cr = crossratio(d, p, q, points)
+
+        return result & (0 <= cr + tol) & (cr <= 1 + tol)
+
+    def intersect(self, other):
+        if isinstance(other, (Segment, SegmentCollection)):
+            result = self._line.meet(other._line)
+            return result[self.contains(result) & other.contains(result)]
+
+        result = self._line.meet(other)
+        return result[self.contains(result)]

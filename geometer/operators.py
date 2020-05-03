@@ -11,10 +11,10 @@ def crossratio(a, b, c, d, from_point=None):
 
     Parameters
     ----------
-    a, b, c, d : Point, Line or Plane
+    a, b, c, d : Point, PointCollection, Line or Plane
         The points, lines or planes (any dimension) to calculate the cross ratio of.
-    from_point : Point, optional
-        A 2D point, only possible if the other arguments are also 2D points.
+    from_point : Point or PointCollection, optional
+        A 2D point, only allowed if the other arguments are also 2D points.
 
     Returns
     -------
@@ -47,6 +47,7 @@ def crossratio(a, b, c, d, from_point=None):
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
+        # TODO: implement this for collections
         if not is_collinear(a, b, c, d):
             raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
 
@@ -57,11 +58,17 @@ def crossratio(a, b, c, d, from_point=None):
         c = Point(basis.dot(c.array), copy=False)
         d = Point(basis.dot(d.array), copy=False)
 
-    o = (from_point or []) and [from_point.array]
-    ac = det(o + [a.array, c.array])
-    bd = det(o + [b.array, d.array])
-    ad = det(o + [a.array, d.array])
-    bc = det(o + [b.array, c.array])
+    if from_point is not None:
+        a, b, c, d, from_point = np.broadcast_arrays(a.array, b.array, c.array, d.array, from_point.array)
+        o = [from_point]
+    else:
+        a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
+        o = []
+
+    ac = det(np.stack(o + [a, c], axis=-1))
+    bd = det(np.stack(o + [b, d], axis=-1))
+    ad = det(np.stack(o + [a, d], axis=-1))
+    bc = det(np.stack(o + [b, c], axis=-1))
 
     with np.errstate(divide="ignore"):
         return ac * bd / (ad * bc)
@@ -346,8 +353,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 def is_coplanar(*args, tol=EQ_TOL_ABS):
     """Tests whether the given points or lines are collinear, coplanar or concurrent. Works in any dimension.
 
-    Due to line point duality this function has dual versions :obj:`is_collinear`, :obj:`is_collinear` and
-    :obj:`is_concurrent`.
+    Due to line point duality this function has dual versions :obj:`is_collinear` and :obj:`is_concurrent`.
 
     Parameters
     ----------
