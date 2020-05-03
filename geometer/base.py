@@ -364,6 +364,7 @@ class TensorCollection(Tensor):
                 tensor_rank = t.rank
                 covariant = t._covariant_indices
                 elements = flat_elements.reshape(elements.shape + t.shape)
+                kwargs['copy'] = False
 
         super(TensorCollection, self).__init__(elements, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
 

@@ -228,7 +228,7 @@ class TestCollections:
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
 
     def test_homogenize(self):
-        a = PointCollection([(0, 0), (0, 1)])
+        a = PointCollection([(0, 0), (0, 1)], homogenize=True)
         b = PointCollection([Point(0, 0), Point(0, 1)])
 
         assert a == b
@@ -245,10 +245,10 @@ class TestCollections:
         assert a + Point(1, 0) == c
 
     def test_transform(self):
-        a = PointCollection([(1, 0), (0, 1)])
+        a = PointCollection([(1, 0), (0, 1)], homogenize=True)
 
-        assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)])
-        assert rotation(np.pi/2) * a == PointCollection([(0, 1), (-1, 0)])
+        assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)], homogenize=True)
+        assert rotation(np.pi/2) * a == PointCollection([(0, 1), (-1, 0)], homogenize=True)
 
     def test_basis_matrix(self):
         a = PlaneCollection([Plane(1, 0, 0, 0), Plane(0, 1, 0, 0), Plane(0, 0, 1, 0)])

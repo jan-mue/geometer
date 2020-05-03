@@ -86,7 +86,7 @@ def _join_meet_duality(*args, intersect_lines=True):
         if result.tensor_shape == (0, 1):
             return LineCollection(result, copy=False) if n == 3 else PlaneCollection(result, copy=False)
         if result.tensor_shape == (1, 0):
-            return PointCollection(result, homogenize=False, copy=False)
+            return PointCollection(result, copy=False)
         if result.tensor_shape == (2, 0):
             return LineCollection(result, copy=False).contravariant_tensor
         if result.tensor_shape == (0, n - 2):
@@ -728,18 +728,17 @@ class PointCollection(ProjectiveCollection):
         A (nested) sequence of points or a numpy array that contains the coordinates of multiple points.
     homogenize : bool, optional
         If True, all points in the array will be converted to homogeneous coordinates, i.e. 1 will be added to
-        the coordinates of each point in elements. Only arrays or sequences that do not contain Point objects will
-        be converted. By default homogenize is True.
+        the coordinates of each point in elements. By default homogenize is False.
 
     """
     _element_class = Point
 
-    def __init__(self, elements, *, homogenize=True, **kwargs):
+    def __init__(self, elements, *, homogenize=False, **kwargs):
         if not isinstance(elements, (np.ndarray, TensorCollection)):
             elements = np.asarray(elements)
         super(PointCollection, self).__init__(elements, **kwargs)
-        if homogenize is True and not (elements.dtype.hasobject and elements.size != 0 and isinstance(elements.flat[0], (Point, PointCollection))):
-            self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=1)
+        if homogenize is True:
+            self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=-1)
 
     def __add__(self, other):
         if not isinstance(other, (Point, PointCollection)):
@@ -749,7 +748,7 @@ class PointCollection(ProjectiveCollection):
             b = np.expand_dims(b, 0)
         result = a[:, :-1] + b[:, :-1]
         result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
-        return PointCollection(result, homogenize=False, copy=False)
+        return PointCollection(result, copy=False)
 
     def __sub__(self, other):
         if not isinstance(other, (Point, PointCollection)):
@@ -759,21 +758,21 @@ class PointCollection(ProjectiveCollection):
             b = np.expand_dims(b, 0)
         result = a[:, :-1] - b[:, :-1]
         result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
-        return PointCollection(result, homogenize=False, copy=False)
+        return PointCollection(result, copy=False)
 
     def __mul__(self, other):
         if not np.isscalar(other):
             return super(PointCollection, self).__mul__(other)
         result = self.normalized_array[:, :-1] * other
         result = np.append(result, self.array[:, -1:] != 0, axis=1)
-        return PointCollection(result, homogenize=False, copy=False)
+        return PointCollection(result, copy=False)
 
     def __truediv__(self, other):
         if not np.isscalar(other):
             return super(PointCollection, self).__truediv__(other)
         result = self.normalized_array[:, :-1] / other
         result = np.append(result, self.array[:, -1:] != 0, axis=1)
-        return PointCollection(result, homogenize=False, copy=False)
+        return PointCollection(result, copy=False)
 
     def join(self, *others):
         return join(self, *others)
@@ -781,15 +780,18 @@ class PointCollection(ProjectiveCollection):
     def __getitem__(self, item):
         if isinstance(item, int):
             return Point(self.array[item])
-        return PointCollection(self.array[item], homogenize=False, copy=False)
+        return PointCollection(self.array[item], copy=False)
+
+    @staticmethod
+    def _normalize_array(array):
+        isinf = np.isclose(array[..., -1], 0, atol=EQ_TOL_ABS)
+        result = array.astype(np.complex128)
+        result[~isinf] /= array[~isinf, -1, None]
+        return np.real_if_close(result)
 
     @property
     def normalized_array(self):
-        array = self.array.T.astype(complex)
-        isinf = np.isclose(array[-1], 0, atol=EQ_TOL_ABS)
-        array[:, ~isinf] = array[:, ~isinf] / array[-1, ~isinf]
-        array = np.real_if_close(array)
-        return array.T
+        return self._normalize_array(self.array)
 
 
 class SubspaceCollection(ProjectiveCollection):

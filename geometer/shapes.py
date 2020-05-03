@@ -51,21 +51,10 @@ class Polytope(PointCollection):
     """
 
     def __init__(self, *args, **kwargs):
-        if len(args) == 1:
-            args = args[0]
-        kwargs.setdefault('homogenize', False)
-        super(Polytope, self).__init__(args, **kwargs)
+        super(Polytope, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
-
-    @staticmethod
-    def _normalize_array(array):
-        array = array.T.astype(complex)
-        isinf = np.isclose(array[-1], 0, atol=EQ_TOL_ABS)
-        array[:, ~isinf] = array[:, ~isinf] / array[-1, ~isinf]
-        array = np.real_if_close(array)
-        return array.T
 
     @property
     def vertices(self):
@@ -176,7 +165,7 @@ class Segment(Polytope):
 
         if isinstance(other, PointCollection):
             other = np.squeeze(np.matmul(m, np.expand_dims(other.array, -1)), -1)
-            other = PointCollection(other, homogenize=False, copy=False)
+            other = PointCollection(other, copy=False)
         else:
             other = Point(m.dot(other.array), copy=False)
 
@@ -285,6 +274,7 @@ class Polygon(Polytope):
     def __init__(self, *args, **kwargs):
         if all(isinstance(x, Segment) for x in args):
             args = (np.array([s.array[0] for s in args]),)
+            kwargs['copy'] = False
         super(Polygon, self).__init__(*args, **kwargs)
         self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
 
@@ -311,10 +301,9 @@ class Polygon(Polytope):
         return self.facets
 
     def _intersect_edges(self, other):
-        v1 = PointCollection(self.array, homogenize=False, copy=False)
-        v2 = PointCollection(np.roll(self.array, -1, axis=0), homogenize=False, copy=False)
-
-        edges = SegmentCollection(v1, v2)
+        v1 = self.array
+        v2 = np.roll(v1, -1, axis=0)
+        edges = SegmentCollection(np.stack([v1, v2], axis=-2), copy=False)
         return edges.intersect(other)
 
     def contains(self, other):
@@ -340,7 +329,7 @@ class Polygon(Polytope):
         else:
             direction = _general_direction(other, self._plane)
 
-        ray = Segment(other, Point(direction))
+        ray = Segment(np.stack([other.array, direction], axis=-2), copy=False)
         try:
             intersections = self._intersect_edges(ray)
         except LinearDependenceError:
@@ -514,9 +503,9 @@ class Polyhedron(Polytope):
     @property
     def edges(self):
         """list of Segment: The edges of the polyhedron."""
-        v1 = PointCollection(self.array, homogenize=False, copy=False)
-        v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False, copy=False)
-        edges = SegmentCollection(v1, v2)
+        v1 = self.array
+        v2 = np.roll(v1, -1, axis=1)
+        edges = SegmentCollection(np.stack([v1, v2], axis=-2), copy=False)
         return list(edges.distinct)
 
     @property
@@ -526,21 +515,21 @@ class Polyhedron(Polytope):
 
     def _intersect_line(self, line):
         # create collection of planes that the faces lie in
-        v1 = PointCollection(self.array[:, 0, :], homogenize=False, copy=False)
-        v2 = PointCollection(self.array[:, 1, :], homogenize=False, copy=False)
-        v3 = PointCollection(self.array[:, 2, :], homogenize=False, copy=False)
-        planes = v1.join(v2, v3)
+        v1 = PointCollection(self.array[:, 0, :], copy=False)
+        v2 = PointCollection(self.array[:, 1, :], copy=False)
+        v3 = PointCollection(self.array[:, 2, :], copy=False)
+        planes = join(v1, v2, v3)
 
         # intersect line with the planes
         intersections = planes.meet(line)
 
         # calculate lines that the edges lie on
-        v1 = PointCollection(self.array, homogenize=False, copy=False)
-        v2 = PointCollection(np.roll(self.array, -1, axis=1), homogenize=False, copy=False)
-        edges = SegmentCollection(v1, v2)
+        v1 = self.array
+        v2 = np.roll(v1, -1, axis=1)
+        edges = SegmentCollection(np.stack([v1, v2], axis=-2), copy=False)
 
         # intersect rays with the edge lines to see which points lie in the polygon
-        directions = PointCollection(_general_direction(intersections, planes), homogenize=False, copy=False)
+        directions = PointCollection(_general_direction(intersections, planes), copy=False)
 
         rays = SegmentCollection(intersections, directions).expand_dims(1)
         edge_intersections = edges._line.meet(rays._line)
@@ -602,16 +591,15 @@ class SegmentCollection(PointCollection):
     _element_class = Segment
 
     def __init__(self, *args, **kwargs):
-        if len(args) == 1:
-            args = args[0]
-        super(SegmentCollection, self).__init__(args, **kwargs)
-        self.array = self.array.transpose(tuple(range(1, self.rank-1)) + (0, self.rank-1))
+        super(SegmentCollection, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
+        if len(args) > 1:
+            self.array = self.array.transpose(tuple(range(1, self.rank-1)) + (0, self.rank-1))
         self._line = join(*self.vertices)
 
     @property
     def vertices(self):
-        a = PointCollection(self.array[..., 0, :], copy=False, homogenize=False)
-        b = PointCollection(self.array[..., 1, :], copy=False, homogenize=False)
+        a = PointCollection(self.array[..., 0, :], copy=False)
+        b = PointCollection(self.array[..., 1, :], copy=False)
         return a, b
 
     def expand_dims(self, axis):
@@ -629,11 +617,11 @@ class SegmentCollection(PointCollection):
         arr = self.normalized_array
         arr = np.squeeze(np.matmul(np.expand_dims(m, -3), np.expand_dims(arr, -1)), -1)
 
-        p = PointCollection(arr[..., 0, :], homogenize=False, copy=False)
-        q = PointCollection(arr[..., 1, :], homogenize=False, copy=False)
-        d = PointCollection(arr[..., 1, :] - arr[..., 0, :], homogenize=False, copy=False)
+        p = PointCollection(arr[..., 0, :], copy=False)
+        q = PointCollection(arr[..., 1, :], copy=False)
+        d = PointCollection(arr[..., 1, :] - arr[..., 0, :], copy=False)
 
-        points = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(points.array, -1)), -1), homogenize=False, copy=False)
+        points = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(points.array, -1)), -1), copy=False)
 
         cr = crossratio(d, p, q, points)
 
