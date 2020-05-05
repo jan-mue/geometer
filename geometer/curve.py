@@ -25,7 +25,7 @@ class Quadric(ProjectiveElement):
     is_dual : bool, optional
         If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
     normalize_matrix : bool, optional
-        If true, normalize matrix using the (n+1)-th root of the absolute value of its pseudo-determinant
+        If true, normalize matrix using the (n+1)-th root of the absolute value of its pseudo-determinant.
 
     Attributes
     ----------
@@ -464,14 +464,8 @@ class Conic(Quadric):
         f1, f2 = i1.meet(j1), i2.meet(j2)
         g1, g2 = i1.meet(j2), i2.meet(j1)
 
-        f1.array = np.real_if_close(f1.normalized_array)
-        f2.array = np.real_if_close(f2.normalized_array)
-
-        if np.all(np.isreal(f1)):
+        if np.all(np.isreal(f1.normalized_array)):
             return f1, f2
-
-        g1.array = np.real_if_close(g1.normalized_array)
-        g2.array = np.real_if_close(g2.normalized_array)
 
         return g1, g2
 

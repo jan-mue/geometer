@@ -64,25 +64,7 @@ class Polytope(PointCollection):
     @property
     def facets(self):
         """list of Polytope: The facets of the polytope."""
-        def poly(array):
-            if array.ndim == 1:
-                return Point(array, copy=False)
-            if array.ndim == 2:
-                if len(array) == 2:
-                    return Segment(array, copy=False)
-                if len(array) == 3:
-                    return Triangle(array, copy=False)
-                elif len(array) == 4:
-                    try:
-                        return Rectangle(array, copy=False)
-                    except NotCoplanar:
-                        return Polytope(array, copy=False)
-            try:
-                return Polygon(array, copy=False)
-            except NotCoplanar:
-                return Polytope(array, copy=False)
-
-        return [poly(x) for x in self.array]
+        return list(self)
 
     def __eq__(self, other):
         if isinstance(other, Polytope):
@@ -105,6 +87,28 @@ class Polytope(PointCollection):
 
     def __sub__(self, other):
         return self + (-other)
+
+    def __getitem__(self, index):
+        result = super(Polytope, self).__getitem__(index)
+
+        if not isinstance(result, PointCollection):
+            return result
+
+        if result.rank == 2:
+            if len(result) == 2:
+                return Segment(result, copy=False)
+            if len(result) == 3:
+                return Triangle(result, copy=False)
+
+            try:
+                return Polygon(result, copy=False)
+            except NotCoplanar:
+                return Polytope(result, copy=False)
+
+        if result.rank == 3:
+            return Polyhedron(result)
+
+        return Polytope(result, copy=False)
 
 
 class Segment(Polytope):

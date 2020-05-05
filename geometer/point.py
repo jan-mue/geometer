@@ -777,10 +777,13 @@ class PointCollection(ProjectiveCollection):
     def join(self, *others):
         return join(self, *others)
 
-    def __getitem__(self, item):
-        if isinstance(item, int):
-            return Point(self.array[item])
-        return PointCollection(self.array[item], copy=False)
+    def __getitem__(self, index):
+        result = super(PointCollection, self).__getitem__(index)
+
+        if not isinstance(result, TensorCollection):
+            return result
+
+        return PointCollection(result, copy=False)
 
     @staticmethod
     def _normalize_array(array):

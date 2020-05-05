@@ -1,5 +1,5 @@
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, dist, rotation, translation
 import numpy as np
+from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, dist, rotation, translation
 
 
 class TestSegment:
@@ -63,6 +63,23 @@ class TestSegment:
         q = Point(0, 2, 0)
         s = Segment(p, q)
         assert s.midpoint == Point(0, 1, 0)
+
+    def test_transformation(self):
+        p = Point(0, 0)
+        q = Point(2, 2)
+        s = Segment(p, q)
+
+        r = rotation(np.pi/2)
+        assert r*s == Segment(p, Point(-2, 2))
+        assert r.apply(s)._line == r.apply(s._line)
+
+    def test_getitem(self):
+        p = Point(0, 0)
+        q = Point(2, 2)
+        s = Segment(p, q)
+
+        assert s[0] == p
+        assert s[1] == q
 
 
 class TestPolygon:
@@ -129,7 +146,7 @@ class TestPolygon:
 
         l = Line(Point(0, 0, -10), Point(0, 0, 10))
         r = Rectangle(Point(-10, -10, 0), Point(10, -10, 0), Point(10, 10, 0), Point(-10, 10, 0))
-        t = rotation(3.14/6, Point(1, 0, 0))
+        t = rotation(np.pi/6, Point(1, 0, 0))
 
         assert r.intersect(l) == [Point(0, 0, 0)]
         assert (t*r).intersect(l) == [Point(0, 0, 0)]
@@ -168,6 +185,18 @@ class TestPolygon:
         assert t.centroid == (a+b+c)/3
         assert t.centroid == l1.meet(l2)
         assert r.centroid == Point(1, 1, 1)
+
+    def test_getitem(self):
+        a = Point(0, 0, 1)
+        b = Point(2, 0, 1)
+        c = Point(2, 2, 1)
+        d = Point(0, 2, 1)
+        r = Rectangle(a, b, c, d)
+
+        assert r[0] == a
+        assert r[1] == b
+        assert r[2] == c
+        assert r[3] == d
 
 
 class TestRegularPolygon:
@@ -267,3 +296,21 @@ class TestCuboid:
 
         assert cube + p == Cuboid(a+p, b+p, c+p, d+p)
         assert cube - p == Cuboid(a-p, b-p, c-p, d-p)
+
+    def test_getitem(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+
+        x, y, z = b - a, c - a, d - a
+        yz = Rectangle(a, a + z, a + y + z, a + y)
+        xz = Rectangle(a, a + x, a + x + z, a + z)
+        xy = Rectangle(a, a + x, a + x + y, a + y)
+
+        assert isinstance(cube[0], Polygon)
+        assert cube[0] == yz
+        assert cube[1] == xz
+        assert cube[2] == xy
+        assert cube[0, 0] == a

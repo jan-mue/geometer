@@ -16,7 +16,7 @@ def test_det():
     matrices = np.random.rand(10, 2, 2)
     assert np.allclose(np.linalg.det(matrices), det(matrices))
 
-    matrices = np.random.rand(10, 3, 3)
+    matrices = np.random.rand(64, 3, 3)
     assert np.allclose(np.linalg.det(matrices), det(matrices))
 
 

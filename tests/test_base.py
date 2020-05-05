@@ -33,7 +33,7 @@ class TestTensor:
 
         assert a[0, 1] == 2
         assert a[None, 1] == [[3, 4]]
-        assert a[None, 1].tensor_shape == (1, 1)
+        assert a[None, 1].tensor_shape == (0, 1)
         assert a[::-1, 0] == [3, 1]
         assert a[::-1, 0].tensor_shape == (1, 0)
 

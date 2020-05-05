@@ -222,7 +222,8 @@ class Tensor:
 
         index = normalize_index(index, self.shape)
 
-        covariant = []
+        covariant_indices = []
+        contravariant_indices = []
         collection_indices = []
 
         old_axis = 0
@@ -231,10 +232,7 @@ class Tensor:
 
             # new axis inserted by None index
             if ind is None:
-                if old_axis < len(self._collection_indices):
-                    collection_indices.append(new_axis)
-                elif old_axis < len(self._collection_indices) + len(self._covariant_indices):
-                    covariant.append(new_axis)
+                collection_indices.append(new_axis)
                 new_axis += 1
                 continue
 
@@ -246,7 +244,9 @@ class Tensor:
             if old_axis in self._collection_indices:
                 collection_indices.append(new_axis)
             elif old_axis in self._covariant_indices:
-                covariant.append(new_axis)
+                covariant_indices.append(new_axis)
+            elif old_axis in self._contravariant_indices:
+                contravariant_indices.append(new_axis)
 
             old_axis += 1
             new_axis += 1
@@ -256,7 +256,12 @@ class Tensor:
         if np.isscalar(result):
             return result
 
-        return Tensor(result, covariant=covariant, copy=False)
+        result = Tensor(result, copy=False)
+        result._covariant_indices = set(covariant_indices)
+        result._contravariant_indices = set(contravariant_indices)
+        result._collection_indices = set(collection_indices)
+
+        return result
 
     def __copy__(self):
         return self.copy()
@@ -346,7 +351,7 @@ class TensorCollection(Tensor):
     _element_class = Tensor
 
     def __init__(self, elements, *, covariant=True, tensor_rank=1, **kwargs):
-        if isinstance(elements, TensorCollection):
+        if isinstance(elements, Tensor):
             super(TensorCollection, self).__init__(elements, **kwargs)
             return
 
@@ -419,9 +424,9 @@ class TensorCollection(Tensor):
             return result
 
         if len(result._collection_indices) > 0:
-            return TensorCollection(result)
+            return TensorCollection(result, copy=False)
 
-        return self._element_class(result)
+        return self._element_class(result, copy=False)
 
     def __len__(self):
         return len(self.array)
