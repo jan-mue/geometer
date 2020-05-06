@@ -744,34 +744,30 @@ class PointCollection(ProjectiveCollection):
         if not isinstance(other, (Point, PointCollection)):
             return super(PointCollection, self).__add__(other)
         a, b = self.normalized_array, other.normalized_array
-        if not isinstance(other, PointCollection):
-            b = np.expand_dims(b, 0)
-        result = a[:, :-1] + b[:, :-1]
-        result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
+        result = a[..., :-1] + b[..., :-1]
+        result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
         return PointCollection(result, copy=False)
 
     def __sub__(self, other):
         if not isinstance(other, (Point, PointCollection)):
             return super(PointCollection, self).__add__(other)
         a, b = self.normalized_array, other.normalized_array
-        if not isinstance(other, PointCollection):
-            b = np.expand_dims(b, 0)
-        result = a[:, :-1] - b[:, :-1]
-        result = np.append(result, np.maximum(a[:, -1:], b[:, -1:]), axis=1)
+        result = a[..., :-1] - b[..., :-1]
+        result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
         return PointCollection(result, copy=False)
 
     def __mul__(self, other):
         if not np.isscalar(other):
             return super(PointCollection, self).__mul__(other)
-        result = self.normalized_array[:, :-1] * other
-        result = np.append(result, self.array[:, -1:] != 0, axis=1)
+        result = self.normalized_array[..., :-1] * other
+        result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return PointCollection(result, copy=False)
 
     def __truediv__(self, other):
         if not np.isscalar(other):
             return super(PointCollection, self).__truediv__(other)
-        result = self.normalized_array[:, :-1] / other
-        result = np.append(result, self.array[:, -1:] != 0, axis=1)
+        result = self.normalized_array[..., :-1] / other
+        result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return PointCollection(result, copy=False)
 
     def join(self, *others):

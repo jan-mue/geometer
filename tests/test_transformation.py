@@ -34,6 +34,8 @@ class TestTransformation:
     def test_pow(self):
         t = translation(1, 2)
 
+        assert t**0 == Transformation(np.eye(3))
+        assert t**1 == t
         assert t**2 == translation(2, 4)
         assert t**3 == translation(3, 6)
         assert t**(-2) == translation(-2, -4)
