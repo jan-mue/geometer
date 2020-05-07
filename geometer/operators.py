@@ -51,8 +51,7 @@ def crossratio(a, b, c, d, from_point=None):
         if not is_collinear(a, b, c, d):
             raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
 
-        l = a.join(b)
-        basis = l.basis_matrix
+        basis = np.stack([a.array, b.array])
         a = Point(basis.dot(a.array), copy=False)
         b = Point(basis.dot(b.array), copy=False)
         c = Point(basis.dot(c.array), copy=False)

@@ -161,8 +161,8 @@ class Segment(Polytope):
         if np.isscalar(result) and not result:
             return False
 
-        m = self._line.basis_matrix
-        arr = self.normalized_array.dot(m.T)
+        m = self.array
+        arr = self.array.dot(m.T)
 
         p, q = Point(arr[0], copy=False), Point(arr[1], copy=False)
         d = Point(arr[1] - arr[0], copy=False)
@@ -617,9 +617,8 @@ class SegmentCollection(PointCollection):
 
         result = self._line.contains(points)
 
-        m = self._line.basis_matrix
-        arr = self.normalized_array
-        arr = np.squeeze(np.matmul(np.expand_dims(m, -3), np.expand_dims(arr, -1)), -1)
+        m = self.array
+        arr = np.squeeze(np.matmul(np.expand_dims(m, -3), np.expand_dims(self.array, -1)), -1)
 
         p = PointCollection(arr[..., 0, :], copy=False)
         q = PointCollection(arr[..., 1, :], copy=False)
