@@ -430,16 +430,6 @@ class TensorCollection(Tensor):
         for idx in np.ndindex(self.shape[:n_col]):
             yield self._element_class(self.array[idx], covariant=covariant, copy=False)
 
-    @property
-    def distinct(self):
-        """generator: A flat iterator of the collection that yields distinct Tensor objects."""
-        seen = []
-        for x in self.flat:
-            if x in seen:
-                continue
-            yield x
-            seen.append(x)
-
     def __getitem__(self, index):
         result = super(TensorCollection, self).__getitem__(index)
 

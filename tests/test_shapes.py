@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, dist, rotation, translation
+from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, SegmentCollection, PointCollection, dist, rotation, translation
 
 
 class TestSegment:
@@ -33,7 +33,7 @@ class TestSegment:
         assert s.contains(Point(2, 1))
         assert not s.contains(Point(-2, -1))
 
-        # both points  at infinity
+        # both points at infinity
         p = Point([-2, 1, 0])
         q = Point([2, 1, 0])
         s = Segment(p, q)
@@ -42,6 +42,16 @@ class TestSegment:
         assert s.contains(0.5*(p+q))
         assert not s.contains(p-q)
         assert not s.contains(Point(0, 0))
+
+    def test_equal(self):
+        p = Point(0, 0)
+        q = Point(2, 1)
+        s = Segment(p, q)
+
+        assert s == Segment(q, p)
+        assert s == s
+        assert s == Segment([(0, 0), (2, 1)], homogenize=True)
+        assert s != Segment([(0, 0), (1, 2)], homogenize=True)
 
     def test_intersect(self):
         a = Point(0, 0)
@@ -264,6 +274,15 @@ class TestCuboid:
         l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
         assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
 
+    def test_edges(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+
+        assert len(cube.edges) == 12
+
     def test_area(self):
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
@@ -314,3 +333,17 @@ class TestCuboid:
         assert cube[1] == xz
         assert cube[2] == xy
         assert cube[0, 0] == a
+
+
+class TestSegmentCollection:
+
+    def test_contains(self):
+        p = PointCollection([(0, 0), (1, 0)], homogenize=True)
+        q = PointCollection([(2, 1), (3, 1)], homogenize=True)
+        s = SegmentCollection(p, q)
+
+        assert all(s.contains(p))
+        assert all(s.contains(q))
+        assert all(s.contains(0.5 * (p + q)))
+        assert not any(s.contains(p - q))
+        assert not any(s.contains(Point([2, 1, 0])))

@@ -3,7 +3,7 @@ from itertools import combinations
 import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL
-from .utils import is_multiple, det
+from .utils import distinct, is_multiple, det
 from .point import Line, Plane, Point, PointCollection, infty_hyperplane, join
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
@@ -13,8 +13,7 @@ from .exceptions import NotCoplanar, LinearDependenceError
 def _general_direction(points, planes):
     # build array of directions for point in polygon problem
 
-    points = points.array
-    planes = planes.array
+    points, planes = np.broadcast_arrays(points.array, planes.array)
 
     direction = np.zeros(points.shape, planes.dtype)
     ind = np.isclose(planes[..., 0], 0, atol=EQ_TOL_ABS)
@@ -59,12 +58,18 @@ class Polytope(PointCollection):
     @property
     def vertices(self):
         """list of Point: The vertices of the polytope."""
-        return list(self.distinct)
+        return list(distinct(self.flat))
 
     @property
     def facets(self):
         """list of Polytope: The facets of the polytope."""
         return list(self)
+
+    @property
+    def _edges(self):
+        v1 = self.array
+        v2 = np.roll(v1, -1, axis=-2)
+        return np.stack([v1, v2], axis=-2)
 
     def __eq__(self, other):
         if isinstance(other, Polytope):
@@ -74,9 +79,19 @@ class Polytope(PointCollection):
 
             if self.rank > 2:
                 # facets equal up to reordering
-                return all(f in other.facets for f in self.facets) and all(f in self.facets for f in other.facets)
+                facets1 = self.facets
+                facets2 = other.facets
+                return all(f in facets2 for f in facets1) and all(f in facets1 for f in facets2)
 
-            return np.all(is_multiple(self.array, other.array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+            # edges equal up to circular reordering
+            edges1 = self._edges
+            edges2 = other._edges
+
+            for i in range(self.shape[0]):
+                if np.all(is_multiple(edges1, np.roll(edges2, i, axis=0), axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)):
+                    return True
+
+            return False
 
         return super(Polytope, self).__eq__(other)
 
@@ -139,6 +154,10 @@ class Segment(Polytope):
         result = super(Segment, self).__apply__(transformation)
         result._line = Line(Point(result.array[0]), Point(result.array[1]))
         return result
+
+    @property
+    def _edges(self):
+        return self.array
 
     def contains(self, other, tol=EQ_TOL_ABS):
         """Tests whether a point is contained in the segment.
@@ -301,14 +320,8 @@ class Polygon(Polytope):
 
     @property
     def edges(self):
-        """list of Segment: The edges of the polygon."""
-        return self.facets
-
-    def _intersect_edges(self, other):
-        v1 = self.array
-        v2 = np.roll(v1, -1, axis=0)
-        edges = SegmentCollection(np.stack([v1, v2], axis=-2), copy=False)
-        return edges.intersect(other)
+        """SegmentCollection: The edges of the polygon."""
+        return SegmentCollection(self._edges, copy=False)
 
     def contains(self, other):
         """Tests whether a point is contained in the polygon.
@@ -334,13 +347,7 @@ class Polygon(Polytope):
             direction = _general_direction(other, self._plane)
 
         ray = Segment(np.stack([other.array, direction], axis=-2), copy=False)
-        try:
-            intersections = self._intersect_edges(ray)
-        except LinearDependenceError:
-            # TODO: find a better solution
-            r = rotation(np.random.rand() * np.pi, axis=Point(*self._plane[:-1]) if self.dim > 2 else None)
-            r = translation(other) * r * translation(-other)
-            intersections = self._intersect_edges(r * ray)
+        intersections = self.edges.intersect(ray)
 
         return len(intersections) % 2 == 1
 
@@ -374,8 +381,8 @@ class Polygon(Polytope):
                 i = other.intersect(self._plane)
                 return i if i and self.contains(i[0]) else []
 
-        intersections = self._intersect_edges(other)
-        return list(intersections.distinct)
+        intersections = self.edges.intersect(other)
+        return list(distinct(intersections))
 
     def _normalized_projection(self):
         points = self.array
@@ -501,48 +508,19 @@ class Polyhedron(Polytope):
 
     @property
     def faces(self):
-        """list of Polygon: The faces of the polyhedron."""
-        return self.facets
+        """PolygonCollection: The faces of the polyhedron."""
+        return PolygonCollection(self.array, copy=False)
 
     @property
     def edges(self):
         """list of Segment: The edges of the polyhedron."""
-        v1 = self.array
-        v2 = np.roll(v1, -1, axis=1)
-        edges = SegmentCollection(np.stack([v1, v2], axis=-2), copy=False)
-        return list(edges.distinct)
+        result = self._edges
+        return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(self.shape[:2])))
 
     @property
     def area(self):
         """float: The surface area of the polyhedron."""
         return sum(s.area for s in self.faces)
-
-    def _intersect_line(self, line):
-        # create collection of planes that the faces lie in
-        v1 = PointCollection(self.array[:, 0, :], copy=False)
-        v2 = PointCollection(self.array[:, 1, :], copy=False)
-        v3 = PointCollection(self.array[:, 2, :], copy=False)
-        planes = join(v1, v2, v3)
-
-        # intersect line with the planes
-        intersections = planes.meet(line)
-
-        # calculate lines that the edges lie on
-        v1 = self.array
-        v2 = np.roll(v1, -1, axis=1)
-        edges = SegmentCollection(np.stack([v1, v2], axis=-2), copy=False)
-
-        # intersect rays with the edge lines to see which points lie in the polygon
-        directions = PointCollection(_general_direction(intersections, planes), copy=False)
-
-        rays = SegmentCollection(intersections, directions).expand_dims(1)
-        edge_intersections = edges._line.meet(rays._line)
-
-        ind = edges.contains(edge_intersections)
-        ind = ind & rays.contains(edge_intersections)
-        ind = np.sum(ind, axis=1) % 2 == 1
-
-        return intersections[ind]
 
     def intersect(self, other):
         """Intersect the polyhedron with another object.
@@ -558,13 +536,7 @@ class Polyhedron(Polytope):
             The points of intersection.
 
         """
-        if isinstance(other, Segment):
-            intersections = self._intersect_line(other._line)
-            intersections = intersections[other.contains(intersections)]
-        else:
-            intersections = self._intersect_line(other)
-
-        return list(intersections.distinct)
+        return list(distinct(self.faces.intersect(other)))
 
 
 class Cuboid(Polyhedron):
@@ -591,14 +563,90 @@ class Cuboid(Polyhedron):
         super(Cuboid, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z, **kwargs)
 
 
-class SegmentCollection(PointCollection):
-    _element_class = Segment
+class PolygonCollection(PointCollection):
 
     def __init__(self, *args, **kwargs):
-        super(SegmentCollection, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
         if len(args) > 1:
-            self.array = self.array.transpose(tuple(range(1, self.rank-1)) + (0, self.rank-1))
+            args = tuple(a.array for a in args)
+            args = np.broadcast_arrays(*args)
+            kwargs['copy'] = False
+            super(PolygonCollection, self).__init__(np.stack(args, axis=-2), **kwargs)
+        else:
+            super(PolygonCollection, self).__init__(args[0], **kwargs)
+        self._plane = join(*self.vertices[:self.dim])
+
+    @property
+    def edges(self):
+        v1 = self.array
+        v2 = np.roll(v1, -1, axis=-2)
+        result = np.stack([v1, v2], axis=-2)
+        return SegmentCollection(result, copy=False)
+
+    def __getitem__(self, index):
+        result = super(PolygonCollection, self).__getitem__(index)
+
+        if not isinstance(result, PointCollection):
+            return result
+
+        if result.rank == 2:
+            return Polygon(result, copy=False)
+
+        return PolygonCollection(result, copy=False)
+
+    @property
+    def vertices(self):
+        return [PointCollection(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
+
+    def expand_dims(self, axis):
+        result = super(PolygonCollection, self).expand_dims(axis)
+        result._plane = result._plane.expand_dims(axis)
+        return result
+
+    def contains(self, other):
+        edges = self.edges
+        directions = PointCollection(_general_direction(other, self._plane), copy=False)
+
+        rays = SegmentCollection(other, directions).expand_dims(-3)
+        edge_intersections = edges._line.meet(rays._line)
+
+        ind = edges.contains(edge_intersections)
+        ind = ind & rays.contains(edge_intersections)
+        ind = np.sum(ind, axis=-1) % 2 == 1
+
+        return ind
+
+    def intersect(self, other):
+        if isinstance(other, (Segment, SegmentCollection)):
+            result = self._plane.meet(other._line)
+            return result[self.contains(result) & other.contains(result)]
+
+        result = self._plane.meet(other)
+        return result[self.contains(result)]
+
+
+class SegmentCollection(PointCollection):
+
+    def __init__(self, *args, **kwargs):
+        if len(args) == 2:
+            a, b = args
+            a, b = np.broadcast_arrays(a.array, b.array)
+            kwargs['copy'] = False
+            super(SegmentCollection, self).__init__(np.stack([a, b], axis=-2), **kwargs)
+        else:
+            super(SegmentCollection, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
+
         self._line = join(*self.vertices)
+
+    def __getitem__(self, index):
+        result = super(SegmentCollection, self).__getitem__(index)
+
+        if not isinstance(result, PointCollection):
+            return result
+
+        if result.rank == 2:
+            return Segment(result, copy=False)
+
+        return SegmentCollection(result, copy=False)
 
     @property
     def vertices(self):
@@ -611,11 +659,11 @@ class SegmentCollection(PointCollection):
         result._line = result._line.expand_dims(axis)
         return result
 
-    def contains(self, points, tol=1e-8):
-        if len(points) == 0:
+    def contains(self, other, tol=1e-8):
+        if other.shape[0] == 0:
             return np.empty((0,), dtype=bool)
 
-        result = self._line.contains(points)
+        result = self._line.contains(other)
 
         m = self.array
         arr = np.squeeze(np.matmul(np.expand_dims(m, -3), np.expand_dims(self.array, -1)), -1)
@@ -624,13 +672,14 @@ class SegmentCollection(PointCollection):
         q = PointCollection(arr[..., 1, :], copy=False)
         d = PointCollection(arr[..., 1, :] - arr[..., 0, :], copy=False)
 
-        points = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(points.array, -1)), -1), copy=False)
+        other = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(other.array, -1)), -1), copy=False)
 
-        cr = crossratio(d, p, q, points)
+        cr = crossratio(d, p, q, other)
 
         return result & (0 <= cr + tol) & (cr <= 1 + tol)
 
     def intersect(self, other):
+        # TODO: handle collinear segments
         if isinstance(other, (Segment, SegmentCollection)):
             result = self._line.meet(other._line)
             return result[self.contains(result) & other.contains(result)]
