@@ -119,7 +119,7 @@ def join(*args):
 
     Returns
     -------
-    Subspace
+    Subspace or SubspaceCollection
         The resulting line, plane or subspace.
 
     """
@@ -136,7 +136,7 @@ def meet(*args):
 
     Returns
     -------
-    Point or Subspace
+    Point, PointCollection, Subspace or SubspaceCollection
         The resulting point, line or subspace.
 
     """
@@ -167,6 +167,8 @@ class Point(ProjectiveElement):
             super(Point, self).__init__(*args, **kwargs)
 
     def __add__(self, other):
+        if isinstance(other, PointCollection):
+            return NotImplemented
         if not isinstance(other, Point):
             return super(Point, self).__add__(other)
         a, b = self.normalized_array, other.normalized_array
@@ -175,6 +177,8 @@ class Point(ProjectiveElement):
         return Point(result, copy=False)
 
     def __sub__(self, other):
+        if isinstance(other, PointCollection):
+            return NotImplemented
         if not isinstance(other, Point):
             return super(Point, self).__sub__(other)
         a, b = self.normalized_array, other.normalized_array
@@ -509,7 +513,7 @@ class Line(Subspace):
         """Point: A base point for the line, arbitrarily chosen."""
         if self.dim > 2:
             base = self.basis_matrix
-            p, q = Point(base[0, :]), base[1, :]
+            p, q = Point(base[0, :], copy=False), Point(base[1, :], copy=False)
             if p.isinf:
                 return q
             return p
@@ -527,12 +531,12 @@ class Line(Subspace):
         """Point: The direction of the line (not normalized)."""
         if self.dim > 2:
             base = self.basis_matrix
-            p, q = Point(base[0, :]), base[1, :]
+            p, q = Point(base[0, :], copy=False), Point(base[1, :], copy=False)
             if p.isinf:
                 return p
             if q.isinf:
                 return q
-            return Point(p.normalized_array - q.normalized_array)
+            return Point(p.normalized_array - q.normalized_array, copy=False)
 
         if np.isclose(self.array[0], 0, atol=EQ_TOL_ABS) and np.isclose(self.array[1], 0, atol=EQ_TOL_ABS):
             return Point([0, 1, 0])
@@ -734,7 +738,7 @@ class PointCollection(ProjectiveCollection):
     _element_class = Point
 
     def __init__(self, elements, *, homogenize=False, **kwargs):
-        if not isinstance(elements, (np.ndarray, TensorCollection)):
+        if not isinstance(elements, (np.ndarray, Tensor)):
             elements = np.asarray(elements)
         super(PointCollection, self).__init__(elements, **kwargs)
         if homogenize is True:
@@ -776,7 +780,7 @@ class PointCollection(ProjectiveCollection):
     def __getitem__(self, index):
         result = super(PointCollection, self).__getitem__(index)
 
-        if not isinstance(result, TensorCollection):
+        if not isinstance(result, TensorCollection) or result.tensor_shape != (1, 0):
             return result
 
         return PointCollection(result, copy=False)
@@ -808,6 +812,14 @@ class SubspaceCollection(ProjectiveCollection):
     def join(self, *others):
         return join(self, *others)
 
+    def __getitem__(self, index):
+        result = super(SubspaceCollection, self).__getitem__(index)
+
+        if not isinstance(result, TensorCollection) or result.tensor_shape == (0, 0):
+            return result
+
+        return SubspaceCollection(result, copy=False)
+
     @property
     def basis_matrix(self):
         x = self.array
@@ -836,7 +848,19 @@ class LineCollection(SubspaceCollection):
     _element_class = Line
 
     def __init__(self, *args, **kwargs):
-        super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
+        if len(args) == 2:
+            kwargs["copy"] = False
+            super(LineCollection, self).__init__(join(*args), tensor_rank=-2, **kwargs)
+        else:
+            super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
+
+    def __getitem__(self, index):
+        result = super(LineCollection, self).__getitem__(index)
+
+        if not isinstance(result, TensorCollection) or result.tensor_shape != (0, self.dim-1):
+            return result
+
+        return LineCollection(result, copy=False)
 
     @property
     def covariant_tensor(self):
@@ -860,3 +884,18 @@ class PlaneCollection(SubspaceCollection):
 
     """
     _element_class = Plane
+
+    def __init__(self, *args, **kwargs):
+        if len(args) > 1:
+            kwargs["copy"] = False
+            super(PlaneCollection, self).__init__(join(*args), **kwargs)
+        else:
+            super(PlaneCollection, self).__init__(*args, **kwargs)
+
+    def __getitem__(self, index):
+        result = super(PlaneCollection, self).__getitem__(index)
+
+        if not isinstance(result, TensorCollection) or result.tensor_shape != (0, 1):
+            return result
+
+        return PlaneCollection(result, copy=False)

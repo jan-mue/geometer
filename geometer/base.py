@@ -220,41 +220,59 @@ class Tensor:
 
     def __getitem__(self, index):
 
+        result = self.array[index]
+
+        if np.isscalar(result):
+            return result
+
         index = normalize_index(index, self.shape)
 
         covariant_indices = []
         contravariant_indices = []
         collection_indices = []
 
-        old_axis = 0
-        new_axis = 0
-        for ind in index:
+        advanced_indices = []
 
-            # new axis inserted by None index
-            if ind is None:
-                collection_indices.append(new_axis)
-                new_axis += 1
-                continue
+        index_mapping = list(range(self.rank))
+        i = 0
+        for ind in index:
 
             # axis with integer index will be removed
             if isinstance(ind, int):
-                old_axis += 1
+                index_mapping.pop(i)
                 continue
 
-            if old_axis in self._collection_indices:
+            # new axis inserted by None index
+            if ind is None:
+                index_mapping.insert(i, None)
+
+            # advanced indexing
+            elif isinstance(ind, np.ndarray):
+                advanced_indices.append(i)
+
+            i += 1
+
+        if len(advanced_indices) > 0:
+
+            b = np.broadcast(*[index[i] for i in advanced_indices])
+            a0, a1 = advanced_indices[0], advanced_indices[-1]
+
+            if advanced_indices != list(range(a0, a1+1)):
+                # create advanced indices in front
+                for i in advanced_indices:
+                    index_mapping.remove(i)
+                index_mapping = [None]*b.ndim + index_mapping
+            else:
+                # replace indices with broadcast shape
+                index_mapping = index_mapping[:a0] + [None]*b.ndim + index_mapping[a1+1:]
+
+        for new_axis, old_axis in enumerate(index_mapping):
+            if old_axis is None or old_axis in self._collection_indices:
                 collection_indices.append(new_axis)
             elif old_axis in self._covariant_indices:
                 covariant_indices.append(new_axis)
             elif old_axis in self._contravariant_indices:
                 contravariant_indices.append(new_axis)
-
-            old_axis += 1
-            new_axis += 1
-
-        result = self.array[index]
-
-        if np.isscalar(result):
-            return result
 
         result = Tensor(result, copy=False)
         result._covariant_indices = set(covariant_indices)
@@ -389,9 +407,14 @@ class TensorCollection(Tensor):
         """
         result = self.copy()
         result.array = np.expand_dims(self.array, axis)
+
+        axis = sanitize_index(axis)
+        axis = posify_index(self.rank, axis)
+        result._collection_indices = set(i+1 if i >= axis else i for i in self._collection_indices)
         result._covariant_indices = set(i+1 if i >= axis else i for i in self._covariant_indices)
         result._contravariant_indices = set(i+1 if i >= axis else i for i in self._contravariant_indices)
         result._collection_indices.add(axis)
+
         return result
 
     @property
@@ -689,14 +712,16 @@ class ProjectiveElement(Tensor, ABC):
     """
 
     def __eq__(self, other):
-        if isinstance(other, Tensor):
+        if np.isscalar(other):
+            return super(ProjectiveElement, self).__eq__(other)
 
-            if self.shape != other.shape:
-                return False
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
 
-            return is_multiple(self.array, other.array, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+        if self.shape != other.shape:
+            return False
 
-        return super(ProjectiveElement, self).__eq__(other)
+        return is_multiple(self.array, other.array, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
     @property
     def dim(self):
@@ -710,15 +735,17 @@ class ProjectiveCollection(TensorCollection, ABC):
     """
 
     def __eq__(self, other):
-        if isinstance(other, Tensor):
+        if np.isscalar(other):
+            return super(ProjectiveCollection, self).__eq__(other)
 
-            if self.shape != other.shape:
-                return False
+        if not isinstance(other, TensorCollection):
+            other = TensorCollection(other)
 
-            axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
-            return np.all(is_multiple(self.array, other.array, axis=axes, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+        if self.shape != other.shape:
+            return False
 
-        return super(ProjectiveCollection, self).__eq__(other)
+        axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
+        return np.all(is_multiple(self.array, other.array, axis=axes, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
 
     @property
     def dim(self):
