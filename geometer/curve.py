@@ -4,9 +4,9 @@ from itertools import combinations
 import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
-from .point import Point, Line, Plane, I, J, infty_plane
+from .point import Point, Line, Plane, PlaneCollection, I, J, infty_plane
 from .transformation import rotation, translation
-from .base import ProjectiveElement, Tensor, EQ_TOL_REL, EQ_TOL_ABS
+from .base import ProjectiveElement, ProjectiveCollection, Tensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
 from .utils import hat_matrix, is_multiple, adjugate, det
     
@@ -699,3 +699,77 @@ class Cylinder(Cone):
     def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
         vertex = infty_plane.meet(Line(center, center+direction))
         super(Cylinder, self).__init__(vertex, center, radius, **kwargs)
+
+
+class QuadricCollection(ProjectiveCollection):
+
+    def __init__(self, matrices, is_dual=False, **kwargs):
+        self.is_dual = is_dual
+
+        if not is_dual:
+            kwargs.setdefault("covariant", False)
+        super(QuadricCollection, self).__init__(matrices, tensor_rank=2, **kwargs)
+
+    def tangent(self, at):
+        """Returns the hyperplanes defining the tangent spaces at given points.
+
+        Parameters
+        ----------
+        at : Point or PointCollection
+            A point on the quadric at which the tangent plane is calculated.
+
+        Returns
+        -------
+        PlaneCollection
+            The tangent planes at the given points.
+
+        """
+        return PlaneCollection(self*at, copy=False)
+
+    def is_tangent(self, planes):
+        """Tests if a given hyperplane is tangent to the quadrics.
+
+        Parameters
+        ----------
+        planes : Subspace or SubspaceCollection
+            The hyperplane to test.
+
+        Returns
+        -------
+        numpy.ndarray
+            Returns a boolean array of which hyperplanes are tangent to the quadrics.
+
+        """
+        return self.dual.contains(planes)
+
+    def contains(self, other, tol=EQ_TOL_ABS):
+        """Tests if a given point lies on the quadrics.
+
+        Parameters
+        ----------
+        other : Point, PointCollection, Subspace or SubspaceCollection
+            The points to test.
+        tol : float, optional
+            The accepted tolerance.
+
+        Returns
+        -------
+        numpy.ndarray
+            Returns a boolean array of which quadrics contain the points.
+
+        """
+        if self.is_dual:
+            d = TensorDiagram((self, other), (self, other.copy()))
+        else:
+            d = TensorDiagram((other, self), (other.copy(), self))
+        return np.isclose(d.calculate().array, 0, atol=tol)
+
+    @property
+    def is_degenerate(self):
+        """numpy.ndarray: Boolean array of which quadrics are degenerate in the collection."""
+        return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
+
+    @property
+    def dual(self):
+        """QuadricCollection: The dual quadrics of the quadrics in the collection."""
+        return QuadricCollection(np.linalg.inv(self.array), is_dual=not self.is_dual, copy=False)

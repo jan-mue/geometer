@@ -113,14 +113,14 @@ def adjugate(A):
     from ..base import TensorDiagram, Tensor, LeviCivitaTensor
 
     A = np.asarray(A)
-    n = A.shape[0]
+    n = A.shape[-1]
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
-    tensors = [Tensor(A, copy=False) for _ in range(n-1)]
+    tensors = [Tensor(A, tensor_rank=2, copy=False) for _ in range(n-1)]
     diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
 
-    return diagram.calculate().array.T / math.factorial(n-1)
+    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n-1)
 
 
 def det(A):
