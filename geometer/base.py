@@ -350,7 +350,7 @@ class TensorCollection(Tensor):
     Parameters
     ----------
     elements : array_like
-        A (nested) sequence of Tensor objects, a numpy array or a (nested) sequence of numbers.
+        A (nested) sequence of Tensor objects, a numpy array, a Tensor or a (nested) sequence of numbers.
         If the sequence contains Tensor objects, they must all have the same shape and the same
         covariant/contravariant indices.
     covariant : :obj:`bool` or :obj:`list` of :obj:`int`, optional
@@ -361,7 +361,7 @@ class TensorCollection(Tensor):
         By default all indices are covariant.
     tensor_rank : int, optional
         The rank of the tensors contained in the collection. This parameter is only used if elements is not a sequence
-        of Tensor objects.
+        of Tensor objects or a single tensor. Default is 1.
     **kwargs
         Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 

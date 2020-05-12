@@ -37,6 +37,9 @@ class Polytope(PointCollection):
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
     line segments.
 
+    The polytope is stored as a multidimensional numpy array. Hence, all facets of the polytope must have the same
+    number of vertices and facets.
+
     Parameters
     ----------
     *args
@@ -139,10 +142,10 @@ class Segment(Polytope):
 
     Parameters
     ----------
-    p : Point
-        The start of the line segment.
-    q : Point
-        The end point of the segment.
+    *args
+        The start and endpoint of the line segment, either as two Point objects or a single coordinate array.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -313,10 +316,7 @@ class Polygon(Polytope):
 
     @property
     def facets(self):
-        segments = []
-        for i in range(len(self.array)):
-            segments.append(Segment(self.array[[i, (i + 1) % len(self.array)]], copy=False))
-        return segments
+        return list(self.edges)
 
     @property
     def edges(self):
@@ -564,6 +564,16 @@ class Cuboid(Polyhedron):
 
 
 class PolygonCollection(PointCollection):
+    """A collection of polygons with the same number of vertices.
+
+    Parameters
+    ----------
+    *args
+        The collections of points that define the vertices of the polygons or a (nested) sequence of vertex coordinates.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
+    """
 
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
@@ -577,6 +587,7 @@ class PolygonCollection(PointCollection):
 
     @property
     def edges(self):
+        """SegmentCollection: The edges of the polygons in the collection."""
         v1 = self.array
         v2 = np.roll(v1, -1, axis=-2)
         result = np.stack([v1, v2], axis=-2)
@@ -595,6 +606,7 @@ class PolygonCollection(PointCollection):
 
     @property
     def vertices(self):
+        """list of PointCollection: The vertices of the polygons."""
         return [PointCollection(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
 
     def expand_dims(self, axis):
@@ -603,9 +615,29 @@ class PolygonCollection(PointCollection):
         return result
 
     def contains(self, other):
+        """Tests whether a point or a collection of points is contained in the polygons.
+
+        Parameters
+        ----------
+        other : Point or PointCollection
+            The points to test. If more than one point is given, the shape of the collection must be compatible
+            with the shape of the polygon collection.
+
+        Returns
+        -------
+        numpy.ndarray
+            Returns a boolean array of which points are contained in the polygons.
+
+        """
+        if other.shape[0] == 0:
+            return np.empty((0,), dtype=bool)
+
+        result = self._plane.contains(other)
+
         edges = self.edges
         directions = PointCollection(_general_direction(other, self._plane), copy=False)
 
+        # TODO: only intersect rays where other is contained in the plane
         rays = SegmentCollection(other, directions).expand_dims(-3)
         edge_intersections = edges._line.meet(rays._line)
 
@@ -613,9 +645,22 @@ class PolygonCollection(PointCollection):
         ind = ind & rays.contains(edge_intersections)
         ind = np.sum(ind, axis=-1) % 2 == 1
 
-        return ind
+        return result & ind
 
     def intersect(self, other):
+        """Intersect the polygons with a line, line segment or a collection of lines.
+
+        Parameters
+        ----------
+        other : Line, Segment, LineCollection or SegmentCollection
+            The object to intersect the polygon with.
+
+        Returns
+        -------
+        PointCollection
+            The points of intersection.
+
+        """
         if isinstance(other, (Segment, SegmentCollection)):
             result = self._plane.meet(other._line)
             return result[self.contains(result) & other.contains(result)]
@@ -625,6 +670,17 @@ class PolygonCollection(PointCollection):
 
 
 class SegmentCollection(PointCollection):
+    """A collection of line segments.
+
+    Parameters
+    ----------
+    *args
+        Two collections of points representing start and endpoints of the line segments or a (nested) sequence of
+        coordinates for the start and endpoints.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
+    """
 
     def __init__(self, *args, **kwargs):
         if len(args) == 2:
@@ -650,9 +706,10 @@ class SegmentCollection(PointCollection):
 
     @property
     def vertices(self):
+        """list of PointCollection: The start and endpoints of the line segments."""
         a = PointCollection(self.array[..., 0, :], copy=False)
         b = PointCollection(self.array[..., 1, :], copy=False)
-        return a, b
+        return [a, b]
 
     def expand_dims(self, axis):
         result = super(SegmentCollection, self).expand_dims(axis)
@@ -660,6 +717,22 @@ class SegmentCollection(PointCollection):
         return result
 
     def contains(self, other, tol=1e-8):
+        """Tests whether a point or a collection of points is contained in the line segments.
+
+        Parameters
+        ----------
+        other : Point or PointCollection
+            The points to test. If more than one point is given, the shape of the collection must be compatible
+            with the shape of the segment collection.
+        tol : float, optional
+            The accepted tolerance.
+
+        Returns
+        -------
+        numpy.ndarray
+            Returns a boolean array of which points are contained in the line segments.
+
+        """
         if other.shape[0] == 0:
             return np.empty((0,), dtype=bool)
 
@@ -672,6 +745,7 @@ class SegmentCollection(PointCollection):
         q = PointCollection(arr[..., 1, :], copy=False)
         d = PointCollection(arr[..., 1, :] - arr[..., 0, :], copy=False)
 
+        # TODO: only project points that lie on the lines
         other = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(other.array, -1)), -1), copy=False)
 
         cr = crossratio(d, p, q, other)
@@ -679,6 +753,19 @@ class SegmentCollection(PointCollection):
         return result & (0 <= cr + tol) & (cr <= 1 + tol)
 
     def intersect(self, other):
+        """Intersect the line segments with a line, line segment or a collection of lines.
+
+        Parameters
+        ----------
+        other : Line, Segment, LineCollection or SegmentCollection
+            The object to intersect the polygon with.
+
+        Returns
+        -------
+        PointCollection
+            The points of intersection.
+
+        """
         # TODO: handle collinear segments
         if isinstance(other, (Segment, SegmentCollection)):
             result = self._line.meet(other._line)

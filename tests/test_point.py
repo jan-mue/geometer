@@ -205,36 +205,52 @@ class Test4D:
 class TestCollections:
 
     def test_join(self):
+        # 2 points
         a = PointCollection([Point(0, 0), Point(0, 1)])
         b = PointCollection([Point(1, 0), Point(1, 1)])
 
         assert a.join(b) == LineCollection([Line(0, 1, 0), Line(0, 1, -1)])
 
+        # 3 points
         a = PointCollection([Point(0, 0, 0), Point(0, 0, 1)])
         b = PointCollection([Point(1, 0, 0), Point(1, 0, 1)])
         c = PointCollection([Point(0, 1, 0), Point(0, 1, 1)])
 
         assert join(a, b, c) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
-        assert join(a, b.join(c)) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
+        # two lines
         l = a.join(b)
         m = a.join(c)
         assert join(l, m) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
+        # point and line
+        assert join(a, b.join(c)) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+
     def test_meet(self):
+        # three planes
+        a = PlaneCollection([Plane(1, 0, 0, 0), Plane(1, 0, 0, -1)])
+        b = PlaneCollection([Plane(0, 1, 0, 0), Plane(0, 1, 0, -1)])
+        c = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+        assert meet(a, b, c) == PointCollection([Point(0, 0, 0), Point(1, 1, 1)])
+
+        # two planes
+        l = a.meet(b)
+        m = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 1, 0), Point(1, 1, 1))])
+        assert l == m
+
+        # two lines in 2D
         a = LineCollection([Line(0, 1, 0), Line(0, 1, -1)])
         b = LineCollection([Line(1, 0, 0), Line(1, 0, -1)])
-
         assert a.meet(b) == PointCollection([Point(0, 0), Point(1, 1)])
 
+        # two lines in 3D
         a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
         b = LineCollection([Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))])
-
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 0)])
 
+        # plane and line
         a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
         b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
-
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
 
     def test_homogenize(self):

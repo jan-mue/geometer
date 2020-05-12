@@ -601,7 +601,7 @@ class Sphere(Quadric):
     @property
     def center(self):
         """Point: The center of the sphere."""
-        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]))
+        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=False)
 
     @property
     def radius(self):
@@ -668,14 +668,15 @@ class Cone(Quadric):
             m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2]**2 * c)
 
         # rotate the axis of the cone
-        axis = Line(Point(v), Point(v)+Point(0, 0, 1))
+        v = Point(v, copy=False)
+        axis = Line(v, v+Point(0, 0, 1))
         new_axis = Line(vertex, base_center)
 
         if new_axis != axis:
             a = angle(axis, new_axis)
             e = axis.join(new_axis)
             t = rotation(a, axis=Point(*e.array[:3]))
-            t = translation(Point(v)) * t * translation(-Point(v))
+            t = translation(v) * t * translation(-v)
             m = t.array.T.dot(m).dot(t.array)
 
         kwargs["normalize_matrix"] = True

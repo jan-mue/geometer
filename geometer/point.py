@@ -157,6 +157,8 @@ class Point(ProjectiveElement):
     ----------
     *args
         A single iterable object or tensor or multiple (affine) coordinates.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -251,7 +253,9 @@ class Subspace(ProjectiveElement):
     Parameters
     ----------
     *args
-        The coordinates of the subspace. Instead of all coordinates separately, a single iterable can also be supplied.
+        The coordinates of the subspace. Instead of separate coordinates, a single iterable can be supplied.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -400,6 +404,8 @@ class Line(Subspace):
     *args
         Two points or the coordinates of the line. Instead of all coordinates separately, a single iterable can also
         be supplied.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -600,6 +606,17 @@ infty = Line(0, 0, 1)
 
 
 class Plane(Subspace):
+    """Represents a hyperplane in a projective space of arbitrary dimension.
+
+    Parameters
+    ----------
+    *args
+        The points/lines spanning the plane or the coordinates of the hyperplane. Instead of separate coordinates, a
+        single iterable can be supplied.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
+    """
 
     def __init__(self, *args, **kwargs):
         if all(isinstance(o, (Line, Point)) for o in args):
@@ -738,8 +755,6 @@ class PointCollection(ProjectiveCollection):
     _element_class = Point
 
     def __init__(self, elements, *, homogenize=False, **kwargs):
-        if not isinstance(elements, (np.ndarray, Tensor)):
-            elements = np.asarray(elements)
         super(PointCollection, self).__init__(elements, **kwargs)
         if homogenize is True:
             self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=-1)
@@ -800,11 +815,20 @@ class PointCollection(ProjectiveCollection):
 class SubspaceCollection(ProjectiveCollection):
     """A collection of subspaces.
 
+    Parameters
+    ----------
+    elements : array_like
+        A sequence of Subspace objects, a numpy array, a Tensor or a (nested) sequence of numbers.
+    tensor_rank : int, optional
+        The rank of the tensors contained in the collection. Default is 1.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
     """
     _element_class = Subspace
 
-    def __init__(self, *args, **kwargs):
-        super(SubspaceCollection, self).__init__(*args, covariant=False, **kwargs)
+    def __init__(self, elements, *, tensor_rank=1, **kwargs):
+        super(SubspaceCollection, self).__init__(elements, covariant=False, tensor_rank=tensor_rank, **kwargs)
 
     def meet(self, other):
         return meet(self, other)
@@ -844,6 +868,13 @@ class SubspaceCollection(ProjectiveCollection):
 class LineCollection(SubspaceCollection):
     """A collection of lines.
 
+    Parameters
+    ----------
+    *args
+        Two collections of points or a (nested) sequence of line coordinates.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
     """
     _element_class = Line
 
@@ -864,6 +895,7 @@ class LineCollection(SubspaceCollection):
 
     @property
     def covariant_tensor(self):
+        """LineCollection: The covariant tensors of lines in 3D."""
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -872,6 +904,7 @@ class LineCollection(SubspaceCollection):
 
     @property
     def contravariant_tensor(self):
+        """LineCollection: The contravariant tensors of lines in 3D."""
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
@@ -881,6 +914,13 @@ class LineCollection(SubspaceCollection):
 
 class PlaneCollection(SubspaceCollection):
     """A collection of planes.
+
+    Parameters
+    ----------
+    *args
+        The collections of points/lines spanning the planes or the coordinates of multiple hyperplanes.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
     _element_class = Plane
