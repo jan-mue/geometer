@@ -110,10 +110,26 @@ def adjugate(A):
         The adjugate of A.
 
     """
-    from ..base import TensorDiagram, Tensor, LeviCivitaTensor
-
     A = np.asarray(A)
     n = A.shape[-1]
+
+    if n == 2:
+        result = A[..., [[1, 0], [1, 0]], [[1, 1], [0, 0]]]
+        result[..., [0, 1], [1, 0]] *= -1
+        return result
+
+    if n >= 5 or A.size >= n*n*64:
+        indices = np.indices((n, n))
+        indices = [np.delete(np.delete(indices, i, axis=1), j, axis=2) for i in range(n) for j in range(n)]
+        indices = np.stack(indices, axis=1)
+        minors = A[..., indices[0], indices[1]]
+        result = det(minors).reshape(A.shape)
+        result = np.swapaxes(result, -1, -2)
+        result[..., 1::2, ::2] *= -1
+        result[..., ::2, 1::2] *= -1
+        return result
+
+    from ..base import TensorDiagram, Tensor, LeviCivitaTensor
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
@@ -128,12 +144,12 @@ def det(A):
 
     Parameters
     ----------
-    A : array_like
+    A : (..., M, M) array_like
         The input matrix.
 
     Returns
     -------
-    float
+    (...) array_like
         The determinant of A.
 
     """
@@ -149,6 +165,34 @@ def det(A):
                - A[..., 2, 1]*A[..., 1, 2]*A[..., 0, 0] - A[..., 2, 2]*A[..., 1, 0]*A[..., 0, 1]
 
     return np.linalg.det(A)
+
+
+def inv(A):
+    """Computes the inverse of A.
+
+    Parameters
+    ----------
+    A : (..., M, M) array_like
+        The input matrix.
+
+    Returns
+    -------
+    (..., M, M) array_like
+        The inverse of A.
+
+    """
+    A = np.asarray(A)
+    n = A.shape[-1]
+
+    if 2 <= n <= 4 and A.size >= n*n*64:
+        d = det(A)
+
+        if np.any(d == 0):
+            raise np.linalg.LinAlgError("Singular matrix")
+
+        return adjugate(A) / d[..., None, None]
+
+    return np.linalg.inv(A)
 
 
 def null_space(A):
