@@ -219,7 +219,7 @@ class Transformation(ProjectiveElement):
         d2 = np.linalg.solve(m2, b[-1])
         t1 = m1.dot(np.diag(d1))
         t2 = m2.dot(np.diag(d2))
-        return cls(t2.dot(inv(t1)))
+        return cls(t2.dot(np.linalg.inv(t1)))
 
     def apply(self, other):
         """Apply the transformation to another object.
@@ -263,7 +263,7 @@ class Transformation(ProjectiveElement):
             The inverse transformation.
 
         """
-        return Transformation(inv(self.array))
+        return Transformation(np.linalg.inv(self.array))
 
 
 class TransformationCollection(ProjectiveCollection):

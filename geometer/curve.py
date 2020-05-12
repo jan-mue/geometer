@@ -223,7 +223,7 @@ class Quadric(ProjectiveElement):
     @property
     def dual(self):
         """Quadric: The dual quadric."""
-        return Quadric(inv(self.array), is_dual=not self.is_dual, copy=False)
+        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual, copy=False)
 
 
 class Conic(Quadric):
@@ -332,7 +332,7 @@ class Conic(Quadric):
         p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
         p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
         c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)
-        return Conic(inv(c.array), copy=False)
+        return Conic(np.linalg.inv(c.array), copy=False)
 
     @classmethod
     def from_crossratio(cls, cr, a, b, c, d):
