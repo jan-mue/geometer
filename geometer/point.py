@@ -285,10 +285,9 @@ class Subspace(ProjectiveElement):
     def general_point(self):
         """Point: A point in general position i.e. not in the subspace, to be used in geometric constructions."""
         n = self.dim + 1
-        arr = np.zeros(n, dtype=int)
+        p = Point(np.zeros(n, dtype=int), copy=False)
         for i in range(n):
-            arr[-i - 1] = 1
-            p = Point(arr, copy=False)
+            p[-i - 1] = 1
             if not self.contains(p):
                 return p
 

@@ -281,6 +281,11 @@ class Tensor:
 
         return result
 
+    def __setitem__(self, key, value):
+        if isinstance(value, Tensor):
+            value = value.array
+        self.array[key] = value
+
     def __copy__(self):
         return self.copy()
 
