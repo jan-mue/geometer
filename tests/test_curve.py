@@ -1,6 +1,6 @@
 import numpy as np
 from geometer import Point, Line, Conic, Circle, Quadric, Plane, Ellipse, Sphere, Cone, Cylinder, QuadricCollection
-from geometer import PointCollection, PlaneCollection, crossratio, translation, rotation
+from geometer import PointCollection, LineCollection, PlaneCollection, crossratio, translation, rotation
 
 
 class TestConic:
@@ -269,6 +269,15 @@ class TestQuadricCollection:
         p = Point(1, 0, 0)
 
         assert np.all(s.contains(p) == [True, False])
+
+    def test_components(self):
+        l = Line(1, 2, 3)
+        m = Line(4, 5, 6)
+        g = Line(3, 2, 1)
+        h = Line(6, 5, 4)
+
+        q = QuadricCollection([Conic.from_lines(l, m), Conic.from_lines(g, h)])
+        assert q.components == [LineCollection([m, g]), LineCollection([l, h])]
 
     def test_tangent(self):
         q = QuadricCollection([Sphere(), Sphere(radius=2)])

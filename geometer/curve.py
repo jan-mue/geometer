@@ -4,7 +4,7 @@ from itertools import combinations
 import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
-from .point import Point, Line, Plane, PlaneCollection, I, J, infty_plane
+from .point import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, I, J, infty_plane
 from .transformation import rotation, translation
 from .base import ProjectiveElement, ProjectiveCollection, Tensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
@@ -768,6 +768,45 @@ class QuadricCollection(ProjectiveCollection):
     def is_degenerate(self):
         """numpy.ndarray: Boolean array of which quadrics are degenerate in the collection."""
         return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
+
+    @property
+    def components(self):
+        """list of ProjectiveCollection: The components of the degenerate quadrics."""
+        n = self.shape[-1]
+        indices = tuple(np.indices(self.shape[:-2]))
+
+        if n == 3:
+            b = adjugate(self.array)
+            i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
+            beta = csqrt(-b[indices + (i, i)])
+            p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
+
+        else:
+            p = []
+            for ind in combinations(range(n), n - 2):
+                # calculate all principal minors of order 2
+                row_ind = [[j] for j in range(n) if j not in ind]
+                col_ind = [j for j in range(n) if j not in ind]
+                p.append(csqrt(-det(self.array[..., row_ind, col_ind])))
+                p = np.concatenate(p, axis=-1)
+
+        # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
+        m = hat_matrix(p)
+        t = self.array + m
+
+        # components are in the non-zero rows and columns (up to scalar multiple)
+        i = np.unravel_index(np.abs(t).reshape(t.shape[:-2]+(-1,)).argmax(axis=-1), t.shape[-2:])
+        p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
+
+        # TODO: make order of components reproducible
+
+        p, q = np.real_if_close(p), np.real_if_close(q)
+
+        if self.is_dual:
+            return [PointCollection(p, copy=False), PointCollection(q, copy=False)]
+        elif n == 3:
+            return [LineCollection(p, copy=False), LineCollection(q, copy=False)]
+        return [PlaneCollection(p, copy=False), PlaneCollection(q, copy=False)]
 
     @property
     def dual(self):

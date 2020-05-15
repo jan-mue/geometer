@@ -67,23 +67,23 @@ def hat_matrix(*args):
 
     """
     if len(args) == 1:
-        x = np.array(args[0])
-    else:
-        x = np.array(args)
+        args = args[0]
 
-    n = int(1+np.sqrt(1+8*len(x)))//2
+    x = np.asarray(args)
+    n = int(1+np.sqrt(1+8*x.shape[-1])) // 2
+
+    result = np.zeros(x.shape[:-1] + (n, n), x.dtype)
 
     if n == 3:
-        a, b, c = x
-        return np.array([[0, c, -b],
-                         [-c, 0, a],
-                         [b, -a, 0]])
+        i, j = [1, 2, 0], [2, 0, 1]
+        result[..., i, j] = x
+        result[..., j, i] = -x
+        return result
 
-    result = np.zeros((n, n), x.dtype)
     i, j = np.triu_indices(n, 1)
     i, j = i[::-1], j[::-1]
-    result[j, i] = -x
-    result[i, j] = x
+    result[..., i, j] = x
+    result[..., j, i] = -x
 
     return result
 
