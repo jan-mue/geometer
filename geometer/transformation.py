@@ -237,7 +237,7 @@ class Transformation(ProjectiveElement):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
+        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
 
     def __mul__(self, other):
         try:
@@ -291,7 +291,7 @@ class TransformationCollection(ProjectiveCollection):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
+        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
 
     def __pow__(self, power, modulo=None):
         if power == 0:
