@@ -279,6 +279,27 @@ class TestQuadricCollection:
         q = QuadricCollection([Conic.from_lines(l, m), Conic.from_lines(g, h)])
         assert q.components == [LineCollection([m, g]), LineCollection([l, h])]
 
+        e = Plane(1, 2, 3, 4)
+        f = Plane(4, 3, 2, 1)
+        g = Plane(5, 6, 7, 8)
+        h = Plane(8, 7, 6, 5)
+
+        q = QuadricCollection([Quadric.from_planes(e, f), Quadric.from_planes(g, h)])
+        assert q.components == [PlaneCollection([e, g]), PlaneCollection([f, h])]
+
+    def test_intersection(self):
+        q = QuadricCollection([Circle(Point(0, 1), 1), Circle(Point(0, 2), 2)])
+        l = LineCollection([Line(Point(-1, 1), Point(1, 1)), Line(Point(-1, 2), Point(1, 2))])
+
+        assert q.intersect(l) == [PointCollection([Point(1, 1), Point(-2, 2)]), PointCollection([Point(-1, 1), Point(2, 2)])]
+
+        q = QuadricCollection([Sphere(Point(0, 0, 1), 1), Sphere(Point(0, 0, 2), 2)])
+        l = LineCollection([Line(Point(-1, 0, 1), Point(1, 0, 1)), Line(Point(-1, 0, 2), Point(1, 0, 2))])
+        m = Line(Point(-1, 0, 2), Point(1, 0, 2))
+
+        assert q.intersect(l) == [PointCollection([Point(-1, 0, 1), Point(-2, 0, 2)]), PointCollection([Point(1, 0, 1), Point(2, 0, 2)])]
+        assert q.intersect(m) == [PointCollection([Point(0, 0, 2), Point(-2, 0, 2)]), PointCollection([Point(0, 0, 2), Point(2, 0, 2)])]
+
     def test_tangent(self):
         q = QuadricCollection([Sphere(), Sphere(radius=2)])
         p = PointCollection([Point(1, 0, 0), Point(2, 0, 0)])

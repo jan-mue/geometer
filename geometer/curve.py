@@ -783,12 +783,14 @@ class QuadricCollection(ProjectiveCollection):
 
         else:
             p = []
+            # TODO: replace for loop with array index
             for ind in combinations(range(n), n - 2):
                 # calculate all principal minors of order 2
                 row_ind = [[j] for j in range(n) if j not in ind]
                 col_ind = [j for j in range(n) if j not in ind]
                 p.append(csqrt(-det(self.array[..., row_ind, col_ind])))
-                p = np.concatenate(p, axis=-1)
+
+            p = np.stack(p, axis=-1)
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
         m = hat_matrix(p)
@@ -797,6 +799,9 @@ class QuadricCollection(ProjectiveCollection):
         # components are in the non-zero rows and columns (up to scalar multiple)
         i = np.unravel_index(np.abs(t).reshape(t.shape[:-2]+(-1,)).argmax(axis=-1), t.shape[-2:])
         p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
+
+        if self.dim > 2 and not np.all(is_multiple(q[..., None]*p[..., None, :], t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, axis=(-2, -1))):
+            raise NotReducible("Quadric has no decomposition in 2 components.")
 
         # TODO: make order of components reproducible
 
@@ -807,6 +812,57 @@ class QuadricCollection(ProjectiveCollection):
         elif n == 3:
             return [LineCollection(p, copy=False), LineCollection(q, copy=False)]
         return [PlaneCollection(p, copy=False), PlaneCollection(q, copy=False)]
+
+    def intersect(self, other):
+        """Calculates points of intersection of a line or a collection of lines with the quadrics.
+
+        Parameters
+        ----------
+        other: Line or LineCollection
+            The line or lines to intersect the quadrics with.
+
+        Returns
+        -------
+        list of PointCollection
+            The points of intersection
+
+        """
+        if isinstance(other, (Line, LineCollection)):
+            reducible = np.all(self.is_degenerate)
+            if reducible:
+                try:
+                    e, f = self.components
+                except NotReducible:
+                    reducible = False
+
+            if not reducible:
+                if self.dim > 2:
+                    arr = other.array.reshape(other.shape[:-other.tensor_shape[1]] + (-1, self.dim + 1))
+
+                    if isinstance(other, Line):
+                        i = arr.nonzero()[0][0]
+                        m = Plane(arr[i], copy=False).basis_matrix
+                        line_base = other.basis_matrix
+                        line = Line(*[Point(x, copy=False) for x in line_base.dot(m.T)])
+                    else:
+                        i = np.any(arr, axis=-1).argmax(-1)
+                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
+                        line_base = np.matmul(other.basis_matrix, np.swapaxes(m, -1, -2))
+                        line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
+
+                    q = QuadricCollection(np.matmul(np.matmul(m, self.array), np.swapaxes(m, -1, -2)), copy=False)
+                    return [PointCollection(np.squeeze(np.matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
+                else:
+                    m = hat_matrix(other.array)
+                    b = np.matmul(np.matmul(np.swapaxes(m, -1, -2), self.array), m)
+                    p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
+            else:
+                if self.is_dual:
+                    p, q = e.join(other), f.join(other)
+                else:
+                    p, q = e.meet(other), f.meet(other)
+
+            return [p, q]
 
     @property
     def dual(self):
