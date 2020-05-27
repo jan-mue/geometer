@@ -25,7 +25,7 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
 
     Returns
     -------
-    numpy.ndarray or bool
+    array_like
         Returns a boolean array of where along the given axis the arrays are a scalar multiple of each other (within the
         given tolerance). If no axis is given, returns a single boolean value.
 
@@ -67,31 +67,47 @@ def hat_matrix(*args):
 
     """
     if len(args) == 1:
-        x = np.array(args[0])
-    else:
-        x = np.array(args)
+        args = args[0]
 
-    n = int(1+np.sqrt(1+8*len(x)))//2
+    x = np.asarray(args)
+    n = int(1+np.sqrt(1+8*x.shape[-1])) // 2
+
+    result = np.zeros(x.shape[:-1] + (n, n), x.dtype)
 
     if n == 3:
-        a, b, c = x
-        return np.array([[0, c, -b],
-                         [-c, 0, a],
-                         [b, -a, 0]])
+        i, j = [1, 2, 0], [2, 0, 1]
+        result[..., i, j] = x
+        result[..., j, i] = -x
+        return result
 
-    result = np.zeros((n, n), x.dtype)
     i, j = np.triu_indices(n, 1)
     i, j = i[::-1], j[::-1]
-    result[j, i] = -x
-    result[i, j] = x
+    result[..., i, j] = x
+    result[..., j, i] = -x
 
     return result
 
 
-def adjugate(A):
-    r"""Calculates the adjugate matrix using tensor diagrams.
+def _assert_square_matrix(A):
+    if A.ndim < 2:
+        raise np.linalg.LinAlgError("%s-dimensional array given. Array must be at least two-dimensional" % A.ndim)
+    m, n = A.shape[-2:]
+    if m != n:
+        raise np.linalg.LinAlgError('Last 2 dimensions of the array must be square')
 
-    This function uses the following formula for the adjugate matrix (in Einstein notation):
+
+def adjugate(A):
+    r"""Calculates the adjugate matrix of A.
+
+    The resulting matrix is defined by
+
+    .. math::
+        \textrm{adj}(A)_{ij} = (-1)^{i+j} M_{j i},
+
+    where :math:`M_{j i}` is the determinant of the submatrix of :math:`A` obtained by deleting the j-th row and the
+    i-th column of :math:`A`.
+
+    For small matrices, this function uses the following formula (Einstein notation):
 
     .. math::
         \textrm{adj}(A)_{ij} = \frac{1}{(n-1)!} \varepsilon_{i\ i_2 \ldots i_n} \varepsilon_{j\ j_2 \ldots j_n} A_{j_2 i_2} \ldots A_{j_n i_n}
@@ -101,26 +117,46 @@ def adjugate(A):
 
     Parameters
     ----------
-    A : array_like
-        A square matrix.
+    A : (..., M, M) array_like
+        The input matrix.
 
     Returns
     -------
-    numpy.ndarray
+    (..., M, M) numpy.ndarray
         The adjugate of A.
 
     """
-    from ..base import TensorDiagram, Tensor, LeviCivitaTensor
-
     A = np.asarray(A)
-    n = A.shape[0]
+    _assert_square_matrix(A)
+    n = A.shape[-1]
+
+    if n <= 1:
+        return A
+
+    if n == 2:
+        result = A[..., [[1, 0], [1, 0]], [[1, 1], [0, 0]]]
+        result[..., [0, 1], [1, 0]] *= -1
+        return result
+
+    if n >= 5 or A.size >= n*n*64:
+        indices = np.indices((n, n))
+        indices = [np.delete(np.delete(indices, i, axis=1), j, axis=2) for i in range(n) for j in range(n)]
+        indices = np.stack(indices, axis=1)
+        minors = A[..., indices[0], indices[1]]
+        result = det(minors).reshape(A.shape)
+        result = np.swapaxes(result, -1, -2)
+        result[..., 1::2, ::2] *= -1
+        result[..., ::2, 1::2] *= -1
+        return result
+
+    from ..base import TensorDiagram, Tensor, LeviCivitaTensor
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
-    tensors = [Tensor(A, copy=False) for _ in range(n-1)]
+    tensors = [Tensor(A, tensor_rank=2, copy=False) for _ in range(n-1)]
     diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
 
-    return diagram.calculate().array.T / math.factorial(n-1)
+    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n-1)
 
 
 def det(A):
@@ -128,16 +164,17 @@ def det(A):
 
     Parameters
     ----------
-    A : array_like
+    A : (..., M, M) array_like
         The input matrix.
 
     Returns
     -------
-    float
+    (...) array_like
         The determinant of A.
 
     """
     A = np.asarray(A)
+    _assert_square_matrix(A)
     n = A.shape[-1]
 
     if n == 2:
@@ -151,17 +188,46 @@ def det(A):
     return np.linalg.det(A)
 
 
+def inv(A):
+    """Computes the inverse of A.
+
+    Parameters
+    ----------
+    A : (..., M, M) array_like
+        The input matrix.
+
+    Returns
+    -------
+    (..., M, M) numpy.ndarray
+        The inverse of A.
+
+    """
+    A = np.asarray(A)
+    _assert_square_matrix(A)
+    n = A.shape[-1]
+
+    if n <= 4 and A.size >= n*n*64:
+        d = det(A)
+
+        if np.any(d == 0):
+            raise np.linalg.LinAlgError("Singular matrix")
+
+        return adjugate(A) / d[..., None, None]
+
+    return np.linalg.inv(A)
+
+
 def null_space(A):
     """Constructs an orthonormal basis for the null space of a A using SVD.
 
     Parameters
     ----------
-    A : array_like
+    A : (..., M, N) array_like
         The input matrix.
 
     Returns
     -------
-    numpy.ndarray
+    (..., N, K) numpy.ndarray
         Orthonormal basis for the null space of A (as column vectors in the returned matrix).
 
     """
@@ -179,12 +245,12 @@ def orth(A):
 
     Parameters
     ----------
-    A : array_like
+    A : (..., M, N) array_like
         The input matrix.
 
     Returns
     -------
-    numpy.ndarray
+    (..., M, K) numpy.ndarray
         Orthonormal basis for the range of A (as column vectors in the returned matrix).
 
     """

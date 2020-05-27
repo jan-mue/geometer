@@ -7,7 +7,7 @@ from .utils import null_space
 
 def _join_meet_duality(*args, intersect_lines=True):
     if len(args) < 2:
-        raise ValueError("Expected at least 2 arguments, got %s." % str(len(args)))
+        raise ValueError("Expected at least 2 arguments, got %s." % len(args))
 
     n = args[0].dim + 1
 
@@ -315,7 +315,7 @@ class Subspace(ProjectiveElement):
 
         else:
             # TODO: test subspace
-            raise ValueError("argument of type %s not supported" % str(type(other)))
+            raise ValueError("argument of type %s not supported" % type(other))
 
         axes = tuple(set(range(result.rank)) - other._collection_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
@@ -858,7 +858,7 @@ class SubspaceCollection(ProjectiveCollection):
 
         else:
             # TODO: test subspace
-            raise ValueError("argument of type %s not supported" % str(type(other)))
+            raise ValueError("argument of type %s not supported" % type(other))
 
         axes = tuple(set(range(result.rank)) - self._collection_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)

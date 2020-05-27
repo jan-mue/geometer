@@ -4,11 +4,11 @@ from itertools import combinations
 import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
-from .point import Point, Line, Plane, I, J, infty_plane
+from .point import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, I, J, infty_plane
 from .transformation import rotation, translation
-from .base import ProjectiveElement, Tensor, EQ_TOL_REL, EQ_TOL_ABS
+from .base import ProjectiveElement, ProjectiveCollection, Tensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import hat_matrix, is_multiple, adjugate, det
+from .utils import hat_matrix, is_multiple, adjugate, det, inv
     
     
 class Quadric(ProjectiveElement):
@@ -700,3 +700,168 @@ class Cylinder(Cone):
     def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
         vertex = infty_plane.meet(Line(center, center+direction))
         super(Cylinder, self).__init__(vertex, center, radius, **kwargs)
+
+
+class QuadricCollection(ProjectiveCollection):
+
+    def __init__(self, matrices, is_dual=False, **kwargs):
+        self.is_dual = is_dual
+
+        if not is_dual:
+            kwargs.setdefault("covariant", False)
+        super(QuadricCollection, self).__init__(matrices, tensor_rank=2, **kwargs)
+
+    def tangent(self, at):
+        """Returns the hyperplanes defining the tangent spaces at given points.
+
+        Parameters
+        ----------
+        at : Point or PointCollection
+            A point on the quadric at which the tangent plane is calculated.
+
+        Returns
+        -------
+        PlaneCollection
+            The tangent planes at the given points.
+
+        """
+        return PlaneCollection(self*at, copy=False)
+
+    def is_tangent(self, planes):
+        """Tests if a given hyperplane is tangent to the quadrics.
+
+        Parameters
+        ----------
+        planes : Subspace or SubspaceCollection
+            The hyperplane to test.
+
+        Returns
+        -------
+        numpy.ndarray
+            Returns a boolean array of which hyperplanes are tangent to the quadrics.
+
+        """
+        return self.dual.contains(planes)
+
+    def contains(self, other, tol=EQ_TOL_ABS):
+        """Tests if a given point lies on the quadrics.
+
+        Parameters
+        ----------
+        other : Point, PointCollection, Subspace or SubspaceCollection
+            The points to test.
+        tol : float, optional
+            The accepted tolerance.
+
+        Returns
+        -------
+        numpy.ndarray
+            Returns a boolean array of which quadrics contain the points.
+
+        """
+        if self.is_dual:
+            d = TensorDiagram((self, other), (self, other.copy()))
+        else:
+            d = TensorDiagram((other, self), (other.copy(), self))
+        return np.isclose(d.calculate().array, 0, atol=tol)
+
+    @property
+    def is_degenerate(self):
+        """numpy.ndarray: Boolean array of which quadrics are degenerate in the collection."""
+        return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
+
+    @property
+    def components(self):
+        """list of ProjectiveCollection: The components of the degenerate quadrics."""
+        n = self.shape[-1]
+        indices = tuple(np.indices(self.shape[:-2]))
+
+        if n == 3:
+            b = adjugate(self.array)
+            i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
+            beta = csqrt(-b[indices + (i, i)])
+            p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
+
+        else:
+            ind = np.indices((n, n))
+            ind = [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)]
+            ind = np.stack(ind, axis=1)
+            minors = det(self.array[..., ind[0], ind[1]])
+            p = csqrt(-minors)
+
+        # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
+        m = hat_matrix(p)
+        t = self.array + m
+
+        # components are in the non-zero rows and columns (up to scalar multiple)
+        i = np.unravel_index(np.abs(t).reshape(t.shape[:-2]+(-1,)).argmax(axis=-1), t.shape[-2:])
+        p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
+
+        if self.dim > 2 and not np.all(is_multiple(q[..., None]*p[..., None, :], t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, axis=(-2, -1))):
+            raise NotReducible("Quadric has no decomposition in 2 components.")
+
+        # TODO: make order of components reproducible
+
+        p, q = np.real_if_close(p), np.real_if_close(q)
+
+        if self.is_dual:
+            return [PointCollection(p, copy=False), PointCollection(q, copy=False)]
+        elif n == 3:
+            return [LineCollection(p, copy=False), LineCollection(q, copy=False)]
+        return [PlaneCollection(p, copy=False), PlaneCollection(q, copy=False)]
+
+    def intersect(self, other):
+        """Calculates points of intersection of a line or a collection of lines with the quadrics.
+
+        Parameters
+        ----------
+        other: Line or LineCollection
+            The line or lines to intersect the quadrics with.
+
+        Returns
+        -------
+        list of PointCollection
+            The points of intersection
+
+        """
+        if isinstance(other, (Line, LineCollection)):
+            reducible = np.all(self.is_degenerate)
+            if reducible:
+                try:
+                    e, f = self.components
+                except NotReducible:
+                    reducible = False
+
+            if not reducible:
+                if self.dim > 2:
+                    arr = other.array.reshape(other.shape[:-other.tensor_shape[1]] + (-1, self.dim + 1))
+
+                    if isinstance(other, Line):
+                        i = arr.nonzero()[0][0]
+                        m = Plane(arr[i], copy=False).basis_matrix
+                        line_base = other.basis_matrix
+                        line = Line(*[Point(x, copy=False) for x in line_base.dot(m.T)])
+                    else:
+                        i = np.any(arr, axis=-1).argmax(-1)
+                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
+                        line_base = np.matmul(other.basis_matrix, np.swapaxes(m, -1, -2))
+                        line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
+
+                    q = QuadricCollection(np.matmul(np.matmul(m, self.array), np.swapaxes(m, -1, -2)), copy=False)
+                    return [PointCollection(np.squeeze(np.matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
+                else:
+                    m = hat_matrix(other.array)
+                    b = np.matmul(np.matmul(np.swapaxes(m, -1, -2), self.array), m)
+                    p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
+            else:
+                if self.is_dual:
+                    p, q = e.join(other), f.join(other)
+                else:
+                    p, q = e.meet(other), f.meet(other)
+
+            return [p, q]
+
+    @property
+    def dual(self):
+        """QuadricCollection: The dual quadrics of the quadrics in the collection."""
+        return QuadricCollection(inv(self.array), is_dual=not self.is_dual, copy=False)

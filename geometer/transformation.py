@@ -1,6 +1,8 @@
 import numpy as np
+
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, ProjectiveCollection
 from .point import Point, Subspace, infty_hyperplane
+from .utils import inv
 
 
 def identity(dim):
@@ -235,7 +237,7 @@ class Transformation(ProjectiveElement):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
+        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
 
     def __mul__(self, other):
         try:
@@ -289,7 +291,7 @@ class TransformationCollection(ProjectiveCollection):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
+        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
 
     def __pow__(self, power, modulo=None):
         if power == 0:
@@ -312,4 +314,4 @@ class TransformationCollection(ProjectiveCollection):
             The inverse transformations.
 
         """
-        return TransformationCollection(np.linalg.inv(self.array))
+        return TransformationCollection(inv(self.array))

@@ -1,4 +1,4 @@
-from geometer.utils import null_space, adjugate, det
+from geometer.utils import null_space, adjugate, det, inv
 import numpy as np
 
 
@@ -18,6 +18,17 @@ def test_det():
 
     matrices = np.random.rand(64, 3, 3)
     assert np.allclose(np.linalg.det(matrices), det(matrices))
+
+
+def test_inv():
+    matrices = np.random.rand(64, 2, 2)
+    assert np.allclose(np.linalg.inv(matrices), inv(matrices))
+
+    matrices = np.random.rand(64, 3, 3)
+    assert np.allclose(np.linalg.inv(matrices), inv(matrices))
+
+    matrices = np.random.rand(64, 4, 4)
+    assert np.allclose(np.linalg.inv(matrices), inv(matrices))
 
 
 def test_null_space():
