@@ -782,15 +782,11 @@ class QuadricCollection(ProjectiveCollection):
             p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
 
         else:
-            p = []
-            # TODO: replace for loop with array index
-            for ind in combinations(range(n), n - 2):
-                # calculate all principal minors of order 2
-                row_ind = [[j] for j in range(n) if j not in ind]
-                col_ind = [j for j in range(n) if j not in ind]
-                p.append(csqrt(-det(self.array[..., row_ind, col_ind])))
-
-            p = np.stack(p, axis=-1)
+            ind = np.indices((n, n))
+            ind = [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)]
+            ind = np.stack(ind, axis=1)
+            minors = det(self.array[..., ind[0], ind[1]])
+            p = csqrt(-minors)
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
         m = hat_matrix(p)
