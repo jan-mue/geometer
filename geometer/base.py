@@ -457,7 +457,7 @@ class LeviCivitaTensor(Tensor):
 
     .. math::
 
-        \varepsilon_{\nu_{1} \ldots \nu_{p}} =
+        \varepsilon_{\nu_{1} \ldots \nu_{n}} =
         \begin{cases}
             +1 & \text{ if } (\nu_{1}, \ldots, \nu_{n}) \text{ are an even permutation of } (1, \ldots, n)\\
             -1 & \text{ if } (\nu_{1}, \ldots, \nu_{n}) \text{ are an odd permutation of } (1, \ldots, n)\\

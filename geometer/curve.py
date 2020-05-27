@@ -703,6 +703,9 @@ class Cylinder(Cone):
 
 
 class QuadricCollection(ProjectiveCollection):
+    """A collection of quadrics or conics.
+
+    """
 
     def __init__(self, matrices, is_dual=False, **kwargs):
         self.is_dual = is_dual
