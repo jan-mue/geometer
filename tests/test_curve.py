@@ -116,6 +116,9 @@ class TestCircle:
         assert c.intersect(l) == [Point(-2, 2), Point(2, 2)]
         assert c.intersect(l-Point(0, 2)) == [Point(0, 0)]
 
+        l = LineCollection([Line(Point(-1, 2), Point(1, 2)), Line(Point(0, 2), Point(0, 0))])
+        assert c.intersect(l) == [PointCollection([Point(-2, 2), Point(0, 0)]), PointCollection([Point(2, 2), Point(0, 4)])]
+
     def test_intersection_angle(self):
         c1 = Circle()
         c2 = Circle(Point(1, 1), 1)
@@ -166,6 +169,10 @@ class TestSphere:
         assert s.contains(Point(0, 0, 0))
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
         assert s.intersect(l-Point(0, 0, 2)) == [Point(0, 0, 0)]
+
+        l = LineCollection([Line(Point(-1, 0, 2), Point(1, 0, 2)), Line(Point(0, 0, 0), Point(0, 0, 2))])
+        assert s.intersect(l) == [PointCollection([Point(-2, 0, 2), Point(0, 0, 0)]),
+                                  PointCollection([Point(2, 0, 2), Point(0, 0, 4)])]
 
         s = Sphere(Point(0, 0, 0, 2), 2)
         l = Line(Point(-1, 0, 0, 2), Point(1, 0, 0, 2))

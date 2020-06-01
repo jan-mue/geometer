@@ -175,20 +175,20 @@ class Quadric(ProjectiveElement):
 
         Parameters
         ----------
-        other: Line
+        other: Line or LineCollection
             The line to intersect this quadric with.
 
         Returns
         -------
-        list of Point
-            The points of intersection
+        list of Point or list of PointCollection
+            The points of intersection.
 
         References
         ----------
         .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
-        if isinstance(other, Line):
+        if isinstance(other, (Line, LineCollection)):
             reducible = self.is_degenerate
             if reducible:
                 try:
@@ -198,17 +198,30 @@ class Quadric(ProjectiveElement):
 
             if not reducible:
                 if self.dim > 2:
-                    arr = other.array.reshape((-1, self.dim + 1))
-                    i = arr.nonzero()[0][0]
-                    m = Plane(arr[i], copy=False).basis_matrix
-                    q = Quadric(m.dot(self.array).dot(m.T), copy=False)
-                    line_base = other.basis_matrix.T
-                    line = Line(*[Point(x, copy=False) for x in m.dot(line_base).T])
-                    return [Point(m.T.dot(p.array), copy=False) for p in q.intersect(line)]
+                    arr = other.array.reshape(other.shape[:-other.tensor_shape[1]] + (-1, self.dim + 1))
+
+                    if isinstance(other, Line):
+                        i = arr.nonzero()[0][0]
+                        m = Plane(arr[i], copy=False).basis_matrix
+                        q = Quadric(m.dot(self.array).dot(m.T), copy=False)
+                        line_base = other.basis_matrix.T
+                        line = Line(*[Point(x, copy=False) for x in m.dot(line_base).T])
+                        return [Point(m.T.dot(p.array), copy=False) for p in q.intersect(line)]
+                    else:
+                        i = np.any(arr, axis=-1).argmax(-1)
+                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
+                        line_base = np.matmul(other.basis_matrix, np.swapaxes(m, -1, -2))
+                        line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
+                        q = QuadricCollection(np.matmul(np.matmul(m, self.array), np.swapaxes(m, -1, -2)), copy=False)
+                        return [PointCollection(np.squeeze(np.matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
-                    b = m.T.dot(self.array).dot(m)
-                    p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
+                    b = np.matmul(np.matmul(np.swapaxes(m, -1, -2), self.array), m)
+
+                    if isinstance(other, Line):
+                        p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
+                    else:
+                        p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)
@@ -373,12 +386,12 @@ class Conic(Quadric):
 
         Parameters
         ----------
-        other: Line or Conic
+        other: Line, LineCollection or Conic
             The object to intersect this conic with.
 
         Returns
         -------
-        list of Point
+        list of Point or list of PointCollection
             The points of intersection.
 
         References
