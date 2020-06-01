@@ -279,7 +279,7 @@ class Subspace(ProjectiveElement):
         x = self.array
         if x.ndim > 2:
             x = self.array.reshape(-1, x.shape[-1])
-        return null_space(x).T
+        return null_space(x, self.shape[-1]-self.rank).T
 
     @property
     def general_point(self):
@@ -850,7 +850,7 @@ class SubspaceCollection(ProjectiveCollection):
     def basis_matrix(self):
         x = self.array
         x = x.reshape(x.shape[:len(self._collection_indices)] + (-1, x.shape[-1]))
-        return np.swapaxes(null_space(x), -1, -2)
+        return np.swapaxes(null_space(x, self.shape[-1]-self.rank+len(self._collection_indices)), -1, -2)
 
     def contains(self, other, tol=EQ_TOL_ABS):
         if isinstance(other, (Point, PointCollection)):

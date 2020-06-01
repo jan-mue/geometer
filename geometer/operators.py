@@ -257,7 +257,7 @@ def dist(p, q):
         x = np.array([p.normalized_array, q.normalized_array])
         z = x[:, -1]
 
-        m = orth(x.T)
+        m = orth(x.T, 2)
         x = m.T.dot(x.T)
         x = np.append(x, [z], axis=0).T
         p, q = Point(x[0]), Point(x[1])

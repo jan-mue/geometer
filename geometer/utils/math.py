@@ -217,13 +217,15 @@ def inv(A):
     return np.linalg.inv(A)
 
 
-def null_space(A):
+def null_space(A, dim=None):
     """Constructs an orthonormal basis for the null space of a A using SVD.
 
     Parameters
     ----------
     A : (..., M, N) array_like
         The input matrix.
+    dim : int or None, optional
+        The dimension of the null space if previously known.
 
     Returns
     -------
@@ -232,21 +234,27 @@ def null_space(A):
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=True)
-    tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
-    dim = np.sum(s > tol, axis=-1, dtype=int)
-    if not np.all(dim == dim.flat[0]):
-        raise ValueError('Cannot calculate the null spaces of matrices when the spaces have different dimensions.')
-    Q = np.swapaxes(vh[..., dim.flat[0]:, :], -1, -2).conj()
+
+    if dim is None:
+        tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
+        dim = np.sum(s > tol, axis=-1, dtype=int)
+        if not np.all(dim == dim.flat[0]):
+            raise ValueError('Cannot calculate the null spaces of matrices when the spaces have different dimensions.')
+        dim = -dim.flat[0]
+
+    Q = np.swapaxes(vh[..., -dim:, :], -1, -2).conj()
     return Q
 
 
-def orth(A):
+def orth(A, dim=None):
     """Constructs an orthonormal basis for the range of A using SVD.
 
     Parameters
     ----------
     A : (..., M, N) array_like
         The input matrix.
+    dim : int or None, optional
+        The dimension of the image space if previously known.
 
     Returns
     -------
@@ -255,9 +263,13 @@ def orth(A):
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=False)
-    tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
-    dim = np.sum(s > tol, axis=-1, dtype=int)
-    if not np.all(dim == dim.flat[0]):
-        raise ValueError('Cannot calculate the image spaces of matrices when the spaces have different dimensions.')
-    Q = u[:, :dim.flat[0]]
+
+    if dim is None:
+        tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
+        dim = np.sum(s > tol, axis=-1, dtype=int)
+        if not np.all(dim == dim.flat[0]):
+            raise ValueError('Cannot calculate the image spaces of matrices when the spaces have different dimensions.')
+        dim = dim.flat[0]
+
+    Q = u[:, :dim]
     return Q
