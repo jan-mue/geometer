@@ -799,6 +799,9 @@ class PointCollection(ProjectiveCollection):
 
         return PointCollection(result, copy=False)
 
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, str(self.normalized_array.tolist()))
+
     @staticmethod
     def _normalize_array(array):
         isinf = np.isclose(array[..., -1], 0, atol=EQ_TOL_ABS)
