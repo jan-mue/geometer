@@ -667,26 +667,27 @@ class TensorDiagram:
         result_indices = ([], [], [])
         for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
             if len(node._collection_indices) > 0:
-                if len(result_indices[0]) == 0:
-                    result_indices[0].extend(offset + i for i in node._collection_indices)
-                else:
-                    for j, k in enumerate(node._collection_indices):
-                        indices[offset + k] = result_indices[0][j]
+                col_ind = sorted(node._collection_indices, reverse=True)
+                for j, k in enumerate(col_ind[:len(result_indices[0])]):
+                    indices[offset + k] = result_indices[0][-j-1]
+                if len(node._collection_indices) > len(result_indices[0]):
+                    for k in col_ind[len(result_indices[0]):]:
+                        result_indices[0].insert(0, offset + k)
             result_indices[1].extend(offset + x for x in ind[0])
             result_indices[2].extend(offset + x for x in ind[1])
             args.append(node.array)
             s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
             args.append(indices[s])
 
-        temp = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
+        result = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
 
         n_col = len(result_indices[0])
         n_cov = len(result_indices[1])
 
         if n_col > 0:
-            return TensorCollection(temp, covariant=range(0, n_cov), tensor_rank=temp.ndim-n_col, copy=False)
+            return TensorCollection(result, covariant=range(0, n_cov), tensor_rank=result.ndim-n_col, copy=False)
 
-        return Tensor(temp, covariant=range(n_cov), copy=False)
+        return Tensor(result, covariant=range(n_cov), copy=False)
 
     def copy(self):
         result = TensorDiagram()

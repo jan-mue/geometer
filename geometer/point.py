@@ -317,7 +317,7 @@ class Subspace(ProjectiveElement):
             # TODO: test subspace
             raise ValueError("argument of type %s not supported" % type(other))
 
-        axes = tuple(set(range(result.rank)) - other._collection_indices)
+        axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
 
     def meet(self, *others):
@@ -863,7 +863,7 @@ class SubspaceCollection(ProjectiveCollection):
             # TODO: test subspace
             raise ValueError("argument of type %s not supported" % type(other))
 
-        axes = tuple(set(range(result.rank)) - self._collection_indices)
+        axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
 
 

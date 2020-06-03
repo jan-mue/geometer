@@ -328,28 +328,39 @@ class Polygon(Polytope):
 
         Parameters
         ----------
-        other : Point
+        other : Point or PointCollection
             The point to test.
 
         Returns
         -------
-        bool
+        array_like
             True if the point is contained in the polygon.
 
         """
-
-        if self.dim > 2 and not self._plane.contains(other):
-            return False
-
-        if self.dim == 2:
-            direction = [1, 0, 0]
-        else:
+        if self.dim > 2:
+            result = self._plane.contains(other)
+            if isinstance(other, Point) and not result:
+                return result
             direction = _general_direction(other, self._plane)
+        else:
+            result = True
+            direction = [1, 0, 0]
 
-        ray = Segment(np.stack([other.array, direction], axis=-2), copy=False)
-        intersections = self.edges.intersect(ray)
+        edges = self.edges
 
-        return len(intersections) % 2 == 1
+        if isinstance(other, PointCollection):
+            direction = PointCollection(direction, copy=False)
+            ray = SegmentCollection(other, direction).expand_dims(-3)
+        else:
+            ray = Segment(np.stack([other.array, direction], axis=-2), copy=False)
+
+        edge_intersections = edges._line.meet(ray._line)
+
+        ind = edges.contains(edge_intersections)
+        ind = ind & ray.contains(edge_intersections)
+        ind = np.sum(ind, axis=-1) % 2 == 1
+
+        return result & ind
 
     def intersect(self, other):
         """Intersect the polygon with another object.
@@ -583,7 +594,7 @@ class PolygonCollection(PointCollection):
             super(PolygonCollection, self).__init__(np.stack(args, axis=-2), **kwargs)
         else:
             super(PolygonCollection, self).__init__(args[0], **kwargs)
-        self._plane = join(*self.vertices[:self.dim])
+        self._plane = join(*self.vertices[:self.dim]) if self.dim > 2 else None
 
     @property
     def edges(self):
@@ -611,7 +622,8 @@ class PolygonCollection(PointCollection):
 
     def expand_dims(self, axis):
         result = super(PolygonCollection, self).expand_dims(axis)
-        result._plane = result._plane.expand_dims(axis)
+        if self.dim > 2:
+            result._plane = result._plane.expand_dims(axis)
         return result
 
     def contains(self, other):
@@ -632,7 +644,10 @@ class PolygonCollection(PointCollection):
         if other.shape[0] == 0:
             return np.empty((0,), dtype=bool)
 
-        result = self._plane.contains(other)
+        if self.dim > 2:
+            result = self._plane.contains(other)
+        else:
+            result = True
 
         edges = self.edges
         directions = PointCollection(_general_direction(other, self._plane), copy=False)

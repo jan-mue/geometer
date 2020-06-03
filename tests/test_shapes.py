@@ -135,6 +135,7 @@ class TestPolygon:
 
         assert p.contains(Point(0.5, 1, 1))
         assert not p.contains(Point(0.5, 1, 0))
+        assert np.all(p.contains(PointCollection([Point(0.5, 1, 1), Point(1.5, 1, 1)])))
 
     def test_area(self):
         a = Point(0, 0)
