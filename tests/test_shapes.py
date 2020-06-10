@@ -125,6 +125,11 @@ class TestPolygon:
         c = Point(2, 2)
         d = Point(2, 0)
         r = Rectangle(a, b, c, d)
+
+        assert r.contains(a)
+        assert r.contains(b)
+        assert r.contains(c)
+        assert r.contains(d)
         assert r.contains(Point(1, 1))
 
         a = Point(0, 0, 1)
@@ -136,6 +141,7 @@ class TestPolygon:
         assert p.contains(Point(0.5, 1, 1))
         assert not p.contains(Point(0.5, 1, 0))
         assert np.all(p.contains(PointCollection([Point(0.5, 1, 1), Point(1.5, 1, 1)])))
+        assert np.all(p.contains(PointCollection([a, c, d])))
 
     def test_area(self):
         a = Point(0, 0)

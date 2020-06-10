@@ -4,7 +4,7 @@ import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL
 from .utils import distinct, is_multiple, det
-from .point import Line, Plane, Point, PointCollection, infty_hyperplane, join
+from .point import Line, Plane, Point, PointCollection, infty_hyperplane, join, meet
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
@@ -178,26 +178,7 @@ class Segment(Polytope):
             True if the point is contained in the segment.
 
         """
-        result = self._line.contains(other)
-
-        if np.isscalar(result) and not result:
-            return False
-
-        m = self.array
-        arr = self.array.dot(m.T)
-
-        p, q = Point(arr[0], copy=False), Point(arr[1], copy=False)
-        d = Point(arr[1] - arr[0], copy=False)
-
-        if isinstance(other, PointCollection):
-            other = np.squeeze(np.matmul(m, np.expand_dims(other.array, -1)), -1)
-            other = PointCollection(other, copy=False)
-        else:
-            other = Point(m.dot(other.array), copy=False)
-
-        cr = crossratio(d, p, q, other)
-
-        return result & (0 <= cr + tol) & (cr <= 1 + tol)
+        return SegmentCollection.contains(self, other)
 
     def intersect(self, other):
         """Intersect the line segment with another object.
@@ -337,30 +318,7 @@ class Polygon(Polytope):
             True if the point is contained in the polygon.
 
         """
-        if self.dim > 2:
-            result = self._plane.contains(other)
-            if isinstance(other, Point) and not result:
-                return result
-            direction = _general_direction(other, self._plane)
-        else:
-            result = True
-            direction = [1, 0, 0]
-
-        edges = self.edges
-
-        if isinstance(other, PointCollection):
-            direction = PointCollection(direction, copy=False)
-            ray = SegmentCollection(other, direction).expand_dims(-3)
-        else:
-            ray = Segment(np.stack([other.array, direction], axis=-2), copy=False)
-
-        edge_intersections = edges._line.meet(ray._line)
-
-        ind = edges.contains(edge_intersections)
-        ind = ind & ray.contains(edge_intersections)
-        ind = np.sum(ind, axis=-1) % 2 == 1
-
-        return result & ind
+        return PolygonCollection.contains(self, other)
 
     def intersect(self, other):
         """Intersect the polygon with another object.
@@ -640,27 +598,54 @@ class PolygonCollection(PointCollection):
         numpy.ndarray
             Returns a boolean array of which points are contained in the polygons.
 
+        References
+        ----------
+        .. [1] http://geomalgorithms.com/a03-_inclusion.html
+
         """
         if other.shape[0] == 0:
             return np.empty((0,), dtype=bool)
 
         if self.dim > 2:
-            result = self._plane.contains(other)
+            coplanar = self._plane.contains(other)
+            if not np.any(coplanar):
+                return coplanar
+            directions = _general_direction(other, self._plane)
         else:
-            result = True
+            coplanar = True
+            directions = [1, 0, 0]
 
         edges = self.edges
-        directions = PointCollection(_general_direction(other, self._plane), copy=False)
 
-        # TODO: only intersect rays where other is contained in the plane
-        rays = SegmentCollection(other, directions).expand_dims(-3)
-        edge_intersections = edges._line.meet(rays._line)
+        edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False))
 
-        ind = edges.contains(edge_intersections)
-        ind = ind & rays.contains(edge_intersections)
+        if isinstance(other, PointCollection):
+            direction = PointCollection(directions, copy=False)
+            rays = SegmentCollection(other, direction).expand_dims(-3)
+        else:
+            rays = Segment(np.stack([other.array, directions], axis=-2), copy=False)
+
+        # TODO: only intersect rays of coplanar points
+        intersections = meet(edges._line, rays._line, _check_dependence=False)
+
+        # ignore edges along the rays
+        axes = tuple(-i for i in range(1, self.dim))
+        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=axes)
+
+        # ignore intersections of downward edges that end on the ray
+        v1 = edges.array[..., 0, :]
+        v2 = edges.array[..., 1, :]
+        # TODO: only exclude downward edges
+        v1_intersections = is_multiple(intersections.array, v1, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
+        v2_intersections = is_multiple(intersections.array, v2, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
+
+        ind = edges.contains(intersections)
+        ind &= rays.contains(intersections)
+        ind &= ~ray_edges & ~v1_intersections & ~v2_intersections
         ind = np.sum(ind, axis=-1) % 2 == 1
+        ind |= np.any(edge_points, axis=-1)
 
-        return result & ind
+        return coplanar & ind
 
     def intersect(self, other):
         """Intersect the polygons with a line, line segment or a collection of lines.

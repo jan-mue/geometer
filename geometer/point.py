@@ -5,7 +5,7 @@ from .exceptions import LinearDependenceError, NotCoplanar, GeometryException
 from .utils import null_space
 
 
-def _join_meet_duality(*args, intersect_lines=True):
+def _join_meet_duality(*args, intersect_lines=True, check_dependence=True):
     if len(args) < 2:
         raise ValueError("Expected at least 2 arguments, got %s." % len(args))
 
@@ -75,7 +75,7 @@ def _join_meet_duality(*args, intersect_lines=True):
     else:
         raise ValueError("Wrong number of arguments.")
 
-    if np.any(result.is_zero()):
+    if check_dependence and np.any(result.is_zero()):
         raise LinearDependenceError("Arguments are not linearly independent.")
 
     if isinstance(result, TensorCollection):
@@ -109,7 +109,7 @@ def _join_meet_duality(*args, intersect_lines=True):
     return Subspace(result, copy=False)
 
 
-def join(*args):
+def join(*args, _check_dependence=True):
     """Joins a number of objects to form a line, plane or subspace.
 
     Parameters
@@ -123,10 +123,10 @@ def join(*args):
         The resulting line, plane or subspace.
 
     """
-    return _join_meet_duality(*args, intersect_lines=False)
+    return _join_meet_duality(*args, intersect_lines=False, check_dependence=_check_dependence)
 
 
-def meet(*args):
+def meet(*args, _check_dependence=True):
     """Intersects a number of given objects.
 
     Parameters
@@ -140,7 +140,7 @@ def meet(*args):
         The resulting point, line or subspace.
 
     """
-    return _join_meet_duality(*args, intersect_lines=True)
+    return _join_meet_duality(*args, intersect_lines=True, check_dependence=_check_dependence)
 
 
 class Point(ProjectiveElement):
