@@ -143,6 +143,11 @@ class TestPolygon:
         assert np.all(p.contains(PointCollection([Point(0.5, 1, 1), Point(1.5, 1, 1)])))
         assert np.all(p.contains(PointCollection([a, c, d])))
 
+        t = Triangle(Point(0, 0), Point(0, 2), Point(2, 1))
+
+        assert t.contains(Point(1, 1))
+        assert not t.contains(Point(-1, 1))
+
     def test_area(self):
         a = Point(0, 0)
         b = Point(2, 0)
