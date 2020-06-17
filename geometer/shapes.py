@@ -10,28 +10,6 @@ from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
 
 
-def _general_direction(points, planes):
-    # build array of directions for point in polygon problem
-
-    points, planes = np.broadcast_arrays(points.array, planes.array)
-
-    direction = np.zeros(points.shape, planes.dtype)
-    ind = np.isclose(planes[..., 0], 0, atol=EQ_TOL_ABS)
-    direction[ind, 0] = 1
-    direction[~ind, 0] = planes[~ind, 1]
-    direction[~ind, 1] = -planes[~ind, 0]
-
-    ind = is_multiple(direction, points, axis=-1)
-    direction[ind, 0] = 0
-    ind2 = np.isclose(planes[..., 1], 0, atol=EQ_TOL_ABS)
-    direction[ind & ind2, 1] = 1
-    ind = ind & ~ind2
-    direction[ind, 1] = planes[ind, 2]
-    direction[ind, 2] = -planes[ind, 1]
-
-    return direction / np.linalg.norm(direction[..., :-1], axis=-1, keepdims=True)
-
-
 class Polytope(PointCollection):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
@@ -178,7 +156,7 @@ class Segment(Polytope):
             True if the point is contained in the segment.
 
         """
-        return SegmentCollection.contains(self, other)
+        return SegmentCollection.contains(self, other, tol=tol)
 
     def intersect(self, other):
         """Intersect the line segment with another object.
@@ -608,29 +586,46 @@ class PolygonCollection(PointCollection):
 
         if self.dim > 2:
             coplanar = self._plane.contains(other)
+
             if not np.any(coplanar):
                 return coplanar
-            directions = _general_direction(other, self._plane)
+
+            i = np.argsort(np.abs(self._plane.array[..., :-1]), axis=-1)[..., 2:]
+            s = self.array.shape
+            v1 = np.delete(self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
+            v1 = v1.reshape(s[:-1]+(-1,))
+
+            if isinstance(other, Point) and i.ndim == 1:
+                other = Point(np.delete(other.array, i), copy=False)
+            else:
+                s = other.shape[:-1] + (1, other.shape[-1])
+                other = np.delete(other.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
+                other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=False)
         else:
             coplanar = True
-            directions = [1, 0, 0]
+            v1 = self.array
 
-        edges = self.edges
+        v2 = np.roll(v1, -1, axis=-2)
+        result = np.stack([v1, v2], axis=-2)
+        edges = SegmentCollection(result, copy=False)
 
         edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False))
 
         if isinstance(other, PointCollection):
-            direction = PointCollection(directions, copy=False)
-            rays = SegmentCollection(other, direction).expand_dims(-3)
+            direction = np.zeros_like(other.array)
+            ind = other.isinf
+            direction[ind, -1] = 1
+            direction[~ind, 0] = 1
+            rays = SegmentCollection(np.stack([other.array, direction], axis=-2), copy=False).expand_dims(-3)
         else:
-            rays = Segment(np.stack([other.array, directions], axis=-2), copy=False)
+            direction = [0, 0, 1] if other.isinf else [1, 0, 0]
+            rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
 
         # TODO: only intersect rays of coplanar points
         intersections = meet(edges._line, rays._line, _check_dependence=False)
 
         # ignore edges along the rays
-        axes = tuple(-i for i in range(1, self.dim))
-        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=axes)
+        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
 
         # ignore intersections of downward edges that end on the ray
         v1 = edges.array[..., 0, :]
@@ -713,7 +708,7 @@ class SegmentCollection(PointCollection):
 
     def expand_dims(self, axis):
         result = super(SegmentCollection, self).expand_dims(axis)
-        result._line = result._line.expand_dims(axis)
+        result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
         return result
 
     def contains(self, other, tol=1e-8):

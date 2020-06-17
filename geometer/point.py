@@ -813,6 +813,10 @@ class PointCollection(ProjectiveCollection):
     def normalized_array(self):
         return self._normalize_array(self.array)
 
+    @property
+    def isinf(self):
+        return np.isclose(self.array[..., -1], 0, atol=EQ_TOL_ABS)
+
 
 class SubspaceCollection(ProjectiveCollection):
     """A collection of subspaces.
