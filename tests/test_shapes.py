@@ -131,6 +131,7 @@ class TestPolygon:
         assert r.contains(c)
         assert r.contains(d)
         assert r.contains(Point(1, 1))
+        assert not r.contains(Point([1, 1, 0]))
 
         a = Point(0, 0, 1)
         b = Point(1, 3, 1)
@@ -147,6 +148,7 @@ class TestPolygon:
 
         assert t.contains(Point(1, 1))
         assert not t.contains(Point(-1, 1))
+        assert not t.contains(Point([1, 1, 0]))
 
     def test_area(self):
         a = Point(0, 0)

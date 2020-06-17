@@ -614,11 +614,12 @@ class PolygonCollection(PointCollection):
         if isinstance(other, PointCollection):
             direction = np.zeros_like(other.array)
             ind = other.isinf
-            direction[ind, -1] = 1
+            direction[ind, 0] = other.array[ind, 1]
+            direction[ind, 1] = -other.array[ind, 0]
             direction[~ind, 0] = 1
             rays = SegmentCollection(np.stack([other.array, direction], axis=-2), copy=False).expand_dims(-3)
         else:
-            direction = [0, 0, 1] if other.isinf else [1, 0, 0]
+            direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
             rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
 
         # TODO: only intersect rays of coplanar points
