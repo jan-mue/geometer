@@ -212,11 +212,11 @@ class Quadric(ProjectiveElement):
                         m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
                         line_base = np.matmul(other.basis_matrix, np.swapaxes(m, -1, -2))
                         line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
-                        q = QuadricCollection(np.matmul(np.matmul(m, self.array), np.swapaxes(m, -1, -2)), copy=False)
+                        q = QuadricCollection(np.matmul(m.dot(self.array), np.swapaxes(m, -1, -2)), copy=False)
                         return [PointCollection(np.squeeze(np.matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
-                    b = np.matmul(np.matmul(np.swapaxes(m, -1, -2), self.array), m)
+                    b = np.matmul(np.swapaxes(m, -1, -2).dot(self.array), m)
 
                     if isinstance(other, Line):
                         p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
