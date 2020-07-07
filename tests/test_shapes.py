@@ -144,19 +144,6 @@ class TestPolygon:
         assert np.all(p.contains(PointCollection([Point(0.5, 1, 1), Point(1.5, 1, 1)])))
         assert np.all(p.contains(PointCollection([a, c, d])))
 
-        t = Triangle(Point(0, 0), Point(0, 2), Point(2, 1))
-
-        assert t.contains(Point(1, 1))
-        assert not t.contains(Point(-1, 1))
-        assert not t.contains(Point([1, 1, 0]))
-
-    def test_area(self):
-        a = Point(0, 0)
-        b = Point(2, 0)
-        c = Point(0, 2)
-        t = Triangle(a, b, c)
-        assert np.isclose(t.area, 2)
-
     def test_transformation(self):
         a = Point(0, 0)
         b = Point(0, 1)
@@ -199,15 +186,8 @@ class TestPolygon:
         b = Point(2, 0, 1)
         c = Point(2, 2, 1)
         d = Point(0, 2, 1)
-        t = Triangle(a, b, c)
         r = Rectangle(a, b, c, d)
 
-        s1, s2, s3 = t.edges
-        l1 = s1.midpoint.join(c)
-        l2 = s2.midpoint.join(a)
-
-        assert t.centroid == (a+b+c)/3
-        assert t.centroid == l1.meet(l2)
         assert r.centroid == Point(1, 1, 1)
 
     def test_getitem(self):
@@ -221,6 +201,40 @@ class TestPolygon:
         assert r[1] == b
         assert r[2] == c
         assert r[3] == d
+
+
+class TestTriangle:
+
+    def test_contains(self):
+        a = Point(0, 0)
+        b = Point(0, 2)
+        c = Point(2, 1)
+        t = Triangle(a, b, c)
+
+        assert t.contains(Point(1, 1))
+        assert all(t.contains(PointCollection([a, b, c])))
+        assert not t.contains(Point(-1, 1))
+        assert not t.contains(Point([1, 1, 0]))
+
+    def test_area(self):
+        a = Point(0, 0)
+        b = Point(2, 0)
+        c = Point(0, 2)
+        t = Triangle(a, b, c)
+        assert np.isclose(t.area, 2)
+
+    def test_centroid(self):
+        a = Point(0, 0, 1)
+        b = Point(2, 0, 1)
+        c = Point(2, 2, 1)
+        t = Triangle(a, b, c)
+
+        s1, s2, s3 = t.edges
+        l1 = s1.midpoint.join(c)
+        l2 = s2.midpoint.join(a)
+
+        assert t.centroid == (a+b+c)/3
+        assert t.centroid == l1.meet(l2)
 
 
 class TestRegularPolygon:

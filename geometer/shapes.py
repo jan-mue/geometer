@@ -431,7 +431,34 @@ class Triangle(Polygon, Simplex):
     c : Point
 
     """
-    pass
+
+    def contains(self, other):
+        # faster algorithm using barycentric coordinates
+
+        a, b, c, p = np.broadcast_arrays(*self.array, other.array)
+
+        lambda1 = det(np.stack([p, b, c], axis=-2))
+        lambda2 = det(np.stack([a, p, c], axis=-2))
+
+        result = (lambda1 <= 0) == (lambda2 <= 0)
+
+        if not np.any(result):
+            return result
+
+        lambda3 = det(np.stack([a, b, p], axis=-2))
+
+        area = lambda1 + lambda2 + lambda3
+
+        if np.isscalar(area):
+            if area < 0:
+                return lambda1 <= 0 and lambda3 <= 0
+            return lambda1 >= 0 and lambda3 >= 0
+
+        ind = area < 0
+        result[ind] &= (lambda1[ind] <= 0) & (lambda3[ind] <= 0)
+        result[~ind] &= (lambda1[~ind] >= 0) & (lambda3[~ind] >= 0)
+
+        return result
 
 
 class Rectangle(Polygon):
