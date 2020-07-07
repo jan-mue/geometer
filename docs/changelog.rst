@@ -17,11 +17,13 @@ New Features
     - TransformationCollection
     - SegmentCollection
     - PolygonCollection
+    - QuadricCollection
 - Faster intersection of lines with polygons & polyhedra by using the new collections
 - Support for TensorCollection objects in tensor diagrams
 - Added Tensor.dtype property
 - Added parameters to Tensor class to control ndarray creation (e.g. for setting the dtype)
 - Quadrics can now be normalized using their (pseudo-) determinant to reduce numerical errors
+- Implemented intersection of quadrics with a collection of lines
 - The underlying arrays of tensors are copied less often (controlled by copy parameter)
 - Addition/subtraction of points to a quadric is now implemented
 - Transformations can be applied to any object of type Tensor
