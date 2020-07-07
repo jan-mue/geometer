@@ -168,6 +168,14 @@ class Point(ProjectiveElement):
         else:
             super(Point, self).__init__(*args, **kwargs)
 
+    def __getitem__(self, index):
+        result = super(Point, self).__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != (1, 0):
+            return result
+
+        return Point(result, copy=False)
+
     def __add__(self, other):
         if isinstance(other, PointCollection):
             return NotImplemented
@@ -262,6 +270,14 @@ class Subspace(ProjectiveElement):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("covariant", False)
         super(Subspace, self).__init__(*args, **kwargs)
+
+    def __getitem__(self, index):
+        result = super(Subspace, self).__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
+            return result
+
+        return type(self)(result, copy=False)
 
     def __add__(self, other):
         if not isinstance(other, Point):
