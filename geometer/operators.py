@@ -14,7 +14,7 @@ def crossratio(a, b, c, d, from_point=None):
     a, b, c, d : Point, PointCollection, Line or Plane
         The points, lines or planes (any dimension) to calculate the cross ratio of.
     from_point : Point or PointCollection, optional
-        A 2D point, only allowed if the other arguments are also 2D points.
+        A 2D point, only accepted if the other arguments are also 2D points.
 
     Returns
     -------

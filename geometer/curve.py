@@ -26,6 +26,8 @@ class Quadric(ProjectiveElement):
         If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
     normalize_matrix : bool, optional
         If true, normalize matrix using the (n+1)-th root of the absolute value of its pseudo-determinant.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes
     ----------
@@ -38,7 +40,7 @@ class Quadric(ProjectiveElement):
         self.is_dual = is_dual
 
         if normalize_matrix is True:
-            matrix = matrix.array if isinstance(matrix, Tensor) else matrix
+            matrix = matrix.array if isinstance(matrix, Tensor) else np.asarray(matrix)
             w = np.abs(np.linalg.eigvalsh(matrix))
             matrix = matrix / np.prod(w[w > EQ_TOL_ABS])**(1/matrix.shape[-1])
             kwargs["copy"] = False
@@ -497,6 +499,8 @@ class Ellipse(Conic):
         The horizontal radius (along the x-axis), default is 1.
     vradius : float, optional
          The vertical radius (along the y-axis), default is 1.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -529,6 +533,8 @@ class Circle(Ellipse):
         The center point of the circle, default is Point(0, 0).
     radius : float, optional
         The radius of the circle, default is 1.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -592,6 +598,8 @@ class Sphere(Quadric):
         The center of the sphere, default is Point(0, 0, 0).
     radius : float, optional
         The radius of the sphere, default is 1.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -650,6 +658,8 @@ class Cone(Quadric):
         The center of the circle that forms the base of the cone. Default is (0, 0, 1)
     radius : float, optional
         The radius of the circle forming the base of the cone. Default is 1.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -707,6 +717,8 @@ class Cylinder(Cone):
         The direction of the axis of the cylinder. Default is (0, 0, 1).
     radius : float, optional
         The radius of the cylinder. Default is 1.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 

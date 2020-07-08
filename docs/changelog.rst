@@ -20,22 +20,39 @@ New Features
     - QuadricCollection
 - Faster intersection of lines with polygons & polyhedra by using the new collections
 - Support for TensorCollection objects in tensor diagrams
+- Implemented intersection of quadrics with a collection of lines
+- Added Tensor.is_zero()
+
+Bug fixes
+---------
+
+- None yet.
+
+
+0.2.3 - released (8.7.2020)
+---------------------------
+
+New Features
+------------
+
 - Added Tensor.dtype property
 - Added parameters to Tensor class to control ndarray creation (e.g. for setting the dtype)
 - Quadrics can now be normalized using their (pseudo-) determinant to reduce numerical errors
-- Implemented intersection of quadrics with a collection of lines
 - The underlying arrays of tensors are copied less often (controlled by copy parameter)
-- Addition/subtraction of points to a quadric is now implemented
+- Implemented addition/subtraction of points to a quadric
 - Transformations can be applied to any object of type Tensor
-- Added Tensor.is_zero()
-- More robust algorithm for intersection of conics
-- Added a determinant function that is faster for a collection of matrices in dimension 2 and 3
+- More robust algorithm for calculating the intersection of conics
+- Added a determinant function that is faster for matrices in dimension 2 and 3
+- Updated dependencies (up to NumPy 1.19 and SymPy 1.6 now supported)
 
 Bug fixes
 ---------
 
 - Fixed error that was raised when integer arrays are normalized in the join/meet function
-- Fixed Line.base_point and Line.directions
+- Fixed issues caused by an array not being converted to a Point object in Line.base_point and Line.directions
+- Correct handling of special cases in the calculation of the crossing number in Polygon.contains
+- Trying to raise an arbitrary tensor to power zero now correctly raises an NotImplementedError
+- Equality of polytopes is determined correctly even if the vertices are in a different order
 
 
 0.2.2 - released (15.2.2020)

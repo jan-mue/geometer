@@ -111,6 +111,15 @@ class TestPolygon:
         s = Segment(a, c)
         assert r.intersect(s) == [a, c]
 
+        foo = Rectangle(Point(148.06094049635456, 10.151151779987144, 60.522099063951394),
+                        Point(129.78569335065157, -42.129870038015355, 60.54878245579997),
+                        Point(85.91668756014471, -26.79517716452499, 60.41723371984577),
+                        Point(104.19193470584759, 25.485844653477507, 60.390550327997126))
+        bar = Segment(Point(-38.9592826559563, -6.703132040294841, 64.78693707404751),
+                      Point(133.01711836447913, -6.633886165038485, 54.310634812542006))
+
+        assert len(foo.intersect(bar)) == 0
+
     def test_edges(self):
         a = Point(0, 0)
         b = Point(0, 2)
@@ -143,6 +152,19 @@ class TestPolygon:
         assert not p.contains(Point(0.5, 1, 0))
         assert np.all(p.contains(PointCollection([Point(0.5, 1, 1), Point(1.5, 1, 1)])))
         assert np.all(p.contains(PointCollection([a, c, d])))
+
+        a = Point([1, 1, 2, 0])
+        b = Point([-1, 1, 2, 0])
+        c = Point([-1, -1, 2, 0])
+        d = Point([1, -1, 2, 0])
+        p = Polygon(a, b, c, d)
+
+        assert p.contains(a)
+        assert p.contains(b)
+        assert p.contains(c)
+        assert p.contains(d)
+        assert p.contains(Point([0, 0, 1, 0]))
+        assert not p.contains(Point([1, 1, 1, 0]))
 
     def test_transformation(self):
         a = Point(0, 0)

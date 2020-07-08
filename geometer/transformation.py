@@ -178,6 +178,8 @@ class Transformation(ProjectiveElement):
     ----------
     *args
         The array that defines the matrix representing the transformation.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 

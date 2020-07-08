@@ -22,6 +22,8 @@ class Polytope(PointCollection):
     ----------
     *args
         The polytopes defining the facets ot the polytope.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes
     ----------
@@ -109,12 +111,6 @@ class Polytope(PointCollection):
 
 class Segment(Polytope):
     """Represents a line segment in an arbitrary projective space.
-
-    As a (real) projective line is homeomorphic to a circle, there are two line segments that connect two points. An
-    instance of this class will represent the finite segment connecting the two points, if there is one, and the segment
-    in the direction of the infinite point otherwise (identifying only scalar multiples by positive scalar factors).
-    When both points are at infinity, the points will be considered in the oriented projective space to define the
-    segment between them.
 
     Segments with one point at infinity represent rays/half-lines in a traditional sense.
 
@@ -210,6 +206,8 @@ class Simplex(Polytope):
     ----------
     *args
         The points that are the vertices of the simplex.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -253,6 +251,8 @@ class Polygon(Polytope):
     ----------
     *args
         The coplanar points that are the vertices of the polygon. They will be connected sequentially by line segments.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -285,6 +285,8 @@ class Polygon(Polytope):
     def contains(self, other):
         """Tests whether a point is contained in the polygon.
 
+        Points on an edge of the polygon are considered True.
+
         Parameters
         ----------
         other : Point or PointCollection
@@ -294,6 +296,10 @@ class Polygon(Polytope):
         -------
         array_like
             True if the point is contained in the polygon.
+
+        References
+        ----------
+        .. [1] http://paulbourke.net/geometry/polygonmesh/#insidepoly
 
         """
         return PolygonCollection.contains(self, other)
@@ -385,6 +391,8 @@ class RegularPolygon(Polygon):
         The number of vertices of the regular polygon.
     axis : Point, optional
         If constructed in higher-dimensional spaces, an axis vector is required to orient the polygon.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -526,6 +534,8 @@ class Cuboid(Polyhedron):
         The vertex that determines the second direction of the edges.
     d : Point
         The vertex that determines the third direction of the edges.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -603,9 +613,9 @@ class PolygonCollection(PointCollection):
         numpy.ndarray
             Returns a boolean array of which points are contained in the polygons.
 
-        References
-        ----------
-        .. [1] http://geomalgorithms.com/a03-_inclusion.html
+        See Also
+        --------
+        Polygon.contains
 
         """
         if other.shape[0] == 0:
@@ -682,6 +692,10 @@ class PolygonCollection(PointCollection):
         PointCollection
             The points of intersection.
 
+        See Also
+        --------
+        Polygon.intersect
+
         """
         if isinstance(other, (Segment, SegmentCollection)):
             result = self._plane.meet(other._line)
@@ -754,6 +768,10 @@ class SegmentCollection(PointCollection):
         numpy.ndarray
             Returns a boolean array of which points are contained in the line segments.
 
+        See Also
+        --------
+        Segment.contains
+
         """
         if other.shape[0] == 0:
             return np.empty((0,), dtype=bool)
@@ -786,6 +804,10 @@ class SegmentCollection(PointCollection):
         -------
         PointCollection
             The points of intersection.
+
+        See Also
+        --------
+        Segment.intersect
 
         """
         # TODO: handle collinear segments
