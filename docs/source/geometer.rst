@@ -14,9 +14,6 @@ geometer.utils package
     :undoc-members:
     :show-inheritance:
 
-Modules
--------
-
 geometer.base module
 --------------------
 

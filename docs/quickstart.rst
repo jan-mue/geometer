@@ -4,7 +4,7 @@ Quickstart
 
 .. currentmodule:: geometer
 
-Geometry in two dimensions
+Geometry in Two Dimensions
 --------------------------
 
 The elementary objects of projective geometry, points and lines can be created using the :obj:`~point.Point` and
@@ -82,7 +82,7 @@ To calculate cross ratios of points or lines, the function :func:`~operators.cro
 Other interesting operators are :func:`~operators.harmonic_set`, :func:`~operators.angle_bisectors`,
 :func:`~operators.is_cocircular` and :func:`~operators.is_collinear`.
 
-Geometry in three dimensions
+Geometry in Three Dimensions
 ----------------------------
 
 Creating points and lines in 3D works the same as in the two dimensional case:
