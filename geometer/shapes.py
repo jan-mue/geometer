@@ -22,6 +22,8 @@ class Polytope(Tensor):
     ----------
     *args
         The polytopes defining the facets ot the polytope.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes
     ----------
@@ -243,6 +245,8 @@ class Simplex(Polytope):
     ----------
     *args
         The points that are the vertices of the simplex.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -286,6 +290,8 @@ class Polygon(Polytope):
     ----------
     *args
         The coplanar points that are the vertices of the polygon. They will be connected sequentially by line segments.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -464,6 +470,8 @@ class RegularPolygon(Polygon):
         The number of vertices of the regular polygon.
     axis : Point, optional
         If constructed in higher-dimensional spaces, an axis vector is required to orient the polygon.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -578,6 +586,8 @@ class Cuboid(Polyhedron):
         The vertex that determines the second direction of the edges.
     d : Point
         The vertex that determines the third direction of the edges.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
