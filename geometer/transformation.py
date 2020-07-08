@@ -1,4 +1,5 @@
 import numpy as np
+
 from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor
 from .point import Point, Subspace, infty_hyperplane
 
@@ -86,7 +87,7 @@ def rotation(angle, axis=None):
     e = LeviCivitaTensor(dimension, False)
     a = axis.normalized_array[:-1]
     a = a / np.linalg.norm(a)
-    d = TensorDiagram(*[(Tensor(a), e) for _ in range(dimension - 2)])
+    d = TensorDiagram(*[(Tensor(a, copy=False), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = np.outer(a, a)
     result = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v
@@ -158,7 +159,7 @@ def reflection(axis):
     p = affine_transform(np.eye(axis.dim) - 2*np.outer(v, v.conj()))
 
     base = axis.basis_matrix
-    ind = np.where(base[:, -1] != 0)[0][0]
+    ind = base[:, -1].nonzero()[0][0]
     x = base[ind, :-1] / base[ind, -1]
     x = Point(*x)
 
@@ -179,11 +180,12 @@ class Transformation(ProjectiveElement):
 
     """
 
-    def __init__(self, *args):
-        super(Transformation, self).__init__(*args, covariant=[0])
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("covariant", [0])
+        super(Transformation, self).__init__(*args, **kwargs)
 
     def __apply__(self, transformation):
-        return Transformation(super(Transformation, transformation).__mul__(self))
+        return Transformation(transformation.array.dot(self.array), copy=False)
 
     @classmethod
     def from_points(cls, *args):
@@ -223,18 +225,18 @@ class Transformation(ProjectiveElement):
 
         Parameters
         ----------
-        other : Point, Transformation, Subspace, Quadric or Polytope
+        other : Tensor
             The object to apply the transformation to.
 
         Returns
         -------
-        Point, Transformation, Subspace, Quadric or Polytope
+        Tensor
             The result of applying this transformation to the supplied object.
 
         """
-        if hasattr(other, '__apply__'):
+        if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % str(type(other)))
+        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
 
     def __mul__(self, other):
         try:
@@ -249,7 +251,7 @@ class Transformation(ProjectiveElement):
             return self.inverse().__pow__(-power, modulo)
 
         result = super(Transformation, self).__pow__(power, modulo)
-        return Transformation(result)
+        return Transformation(result, copy=False)
 
     def inverse(self):
         """Calculates the inverse projective transformation.

@@ -1,5 +1,5 @@
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, dist, rotation, translation
 import numpy as np
+from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, dist, rotation, translation
 
 
 class TestSegment:
@@ -33,7 +33,7 @@ class TestSegment:
         assert s.contains(Point(2, 1))
         assert not s.contains(Point(-2, -1))
 
-        # both points  at infinity
+        # both points at infinity
         p = Point([-2, 1, 0])
         q = Point([2, 1, 0])
         s = Segment(p, q)
@@ -42,6 +42,16 @@ class TestSegment:
         assert s.contains(0.5*(p+q))
         assert not s.contains(p-q)
         assert not s.contains(Point(0, 0))
+
+    def test_equal(self):
+        p = Point(0, 0)
+        q = Point(2, 1)
+        s = Segment(p, q)
+
+        assert s == Segment(q, p)
+        assert s == s
+        assert s == Segment([(0, 0, 1), (2, 1, 1)])
+        assert s != Segment([(0, 0, 1), (1, 2, 1)])
 
     def test_intersect(self):
         a = Point(0, 0)
@@ -63,6 +73,15 @@ class TestSegment:
         q = Point(0, 2, 0)
         s = Segment(p, q)
         assert s.midpoint == Point(0, 1, 0)
+
+    def test_transformation(self):
+        p = Point(0, 0)
+        q = Point(2, 2)
+        s = Segment(p, q)
+
+        r = rotation(np.pi/2)
+        assert r*s == Segment(p, Point(-2, 2))
+        assert r.apply(s)._line == r.apply(s._line)
 
 
 class TestPolygon:
@@ -98,7 +117,13 @@ class TestPolygon:
         c = Point(2, 2)
         d = Point(2, 0)
         r = Rectangle(a, b, c, d)
+
+        assert r.contains(a)
+        assert r.contains(b)
+        assert r.contains(c)
+        assert r.contains(d)
         assert r.contains(Point(1, 1))
+        assert not r.contains(Point([1, 1, 0]))
 
         a = Point(0, 0, 1)
         b = Point(1, 3, 1)
@@ -109,12 +134,18 @@ class TestPolygon:
         assert p.contains(Point(0.5, 1, 1))
         assert not p.contains(Point(0.5, 1, 0))
 
-    def test_area(self):
-        a = Point(0, 0)
-        b = Point(2, 0)
-        c = Point(0, 2)
-        t = Triangle(a, b, c)
-        assert np.isclose(t.area, 2)
+        a = Point([1, 1, 2, 0])
+        b = Point([-1, 1, 2, 0])
+        c = Point([-1, -1, 2, 0])
+        d = Point([1, -1, 2, 0])
+        p = Polygon(a, b, c, d)
+
+        assert p.contains(a)
+        assert p.contains(b)
+        assert p.contains(c)
+        assert p.contains(d)
+        assert p.contains(Point([0, 0, 1, 0]))
+        assert not p.contains(Point([1, 1, 1, 0]))
 
     def test_transformation(self):
         a = Point(0, 0)
@@ -129,7 +160,7 @@ class TestPolygon:
 
         l = Line(Point(0, 0, -10), Point(0, 0, 10))
         r = Rectangle(Point(-10, -10, 0), Point(10, -10, 0), Point(10, 10, 0), Point(-10, 10, 0))
-        t = rotation(3.14/6, Point(1, 0, 0))
+        t = rotation(np.pi/6, Point(1, 0, 0))
 
         assert r.intersect(l) == [Point(0, 0, 0)]
         assert (t*r).intersect(l) == [Point(0, 0, 0)]
@@ -158,8 +189,38 @@ class TestPolygon:
         b = Point(2, 0, 1)
         c = Point(2, 2, 1)
         d = Point(0, 2, 1)
-        t = Triangle(a, b, c)
         r = Rectangle(a, b, c, d)
+
+        assert r.centroid == Point(1, 1, 1)
+
+
+class TestTriangle:
+
+    def test_contains(self):
+        a = Point(0, 0)
+        b = Point(0, 2)
+        c = Point(2, 1)
+        t = Triangle(a, b, c)
+
+        assert t.contains(a)
+        assert t.contains(b)
+        assert t.contains(c)
+        assert t.contains(Point(1, 1))
+        assert not t.contains(Point(-1, 1))
+        assert not t.contains(Point([1, 1, 0]))
+
+    def test_area(self):
+        a = Point(0, 0)
+        b = Point(2, 0)
+        c = Point(0, 2)
+        t = Triangle(a, b, c)
+        assert np.isclose(t.area, 2)
+
+    def test_centroid(self):
+        a = Point(0, 0, 1)
+        b = Point(2, 0, 1)
+        c = Point(2, 2, 1)
+        t = Triangle(a, b, c)
 
         s1, s2, s3 = t.edges
         l1 = s1.midpoint.join(c)
@@ -167,7 +228,6 @@ class TestPolygon:
 
         assert t.centroid == (a+b+c)/3
         assert t.centroid == l1.meet(l2)
-        assert r.centroid == Point(1, 1, 1)
 
 
 class TestRegularPolygon:
@@ -235,6 +295,15 @@ class TestCuboid:
         l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
         assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
 
+    def test_edges(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+
+        assert len(cube.edges) == 12
+
     def test_area(self):
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
@@ -256,3 +325,14 @@ class TestCuboid:
 
         assert t*cube == Cuboid(a+x, b+x, c+x, d+x)
         assert isinstance(t*cube, Cuboid)
+
+    def test_add(self):
+        a = Point(0, 0, 0)
+        b = Point(1, 0, 0)
+        c = Point(0, 1, 0)
+        d = Point(0, 0, 1)
+        cube = Cuboid(a, b, c, d)
+        p = Point(1, 2, 3)
+
+        assert cube + p == Cuboid(a+p, b+p, c+p, d+p)
+        assert cube - p == Cuboid(a-p, b-p, c-p, d-p)

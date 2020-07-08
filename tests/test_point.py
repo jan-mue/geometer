@@ -104,6 +104,12 @@ class Test3D:
         assert p.contains(p4)
         assert p.contains(l)
 
+    def test_is_coplanar(self):
+        l = Line(Point(1, 1, 0), Point(2, 1, 0))
+        m = Line(Point(0, 0, 0), Point(1, 2, 0))
+
+        assert l.is_coplanar(m)
+
     def test_project(self):
         p1 = Point(1, 1, 0)
         p2 = Point(2, 1, 0)

@@ -221,6 +221,13 @@ class TestSphere:
 
         assert t*s == Sphere(Point(1, 1, 1), 2)
 
+    def test_add(self):
+        s = Sphere()
+        p = Point(0, 0, 2)
+
+        assert s + p == Sphere(p)
+        assert s - p == Sphere(-p)
+
 
 class TestCone:
 

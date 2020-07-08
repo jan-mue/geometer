@@ -11,7 +11,7 @@ from .point import Point, Line, Plane, I, J, infty_plane
 from .transformation import rotation, translation
 from .base import ProjectiveElement, Tensor, _symbols, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, is_multiple, adjugate
+from .utils import polyval, np_array_to_poly, poly_to_np_array, hat_matrix, is_multiple, adjugate, det
 
 
 class AlgebraicCurve(ProjectiveElement):
@@ -163,9 +163,11 @@ class AlgebraicCurve(ProjectiveElement):
     
     
 class Quadric(ProjectiveElement):
-    """Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
+    r"""Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
-    The quadric is defined by a symmetric matrix of size n+1 where n is the dimension of the space.
+    The quadric is defined by a symmetric matrix of size :math:`n+1` where :math:`n` is the dimension of the projective
+    space. If :math:`A \in \mathbb{R}^{(n+1) \times (n+1)}`, the quadric contains all points
+    :math:`x \in \mathbb{R}^{n+1}` such that :math:`x^T A x = 0`.
 
     Parameters
     ----------
@@ -173,25 +175,47 @@ class Quadric(ProjectiveElement):
         A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
     is_dual : bool, optional
         If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
+    normalize_matrix : bool, optional
+        If true, normalize matrix using the (n+1)-th root of the absolute value of its pseudo-determinant.
 
     Attributes
     ----------
+    is_dual : bool
+        True if the quadric is a dual quadric i.e. contains all hyperplanes tangent to the non-dual quadric.
     symbols : tuple of sympy.Symbol
         The symbols used in the polynomial defining the hypersurface.
 
     """
 
-    def __init__(self, matrix, is_dual=False):
+    def __init__(self, matrix, is_dual=False, normalize_matrix=False, **kwargs):
         self.is_dual = is_dual
-        matrix = matrix.array if isinstance(matrix, Tensor) else np.array(matrix)
-        self.symbols = _symbols(matrix.shape[0])
-        super(Quadric, self).__init__(matrix, covariant=False)
 
-    def __apply__(self, transformation):
-        inv = transformation.inverse().array
-        result = self.copy()
-        result.array = inv.T @ self.array @ inv
-        return result
+        if normalize_matrix is True:
+            kwargs["copy"] = False
+
+        if isinstance(matrix, Tensor):
+            matrix = np.array(matrix.array, **kwargs)
+        else:
+            matrix = np.array(matrix, **kwargs)
+
+        self.symbols = _symbols(matrix.shape[0])
+
+        if normalize_matrix is True:
+            w = np.abs(np.linalg.eigvalsh(matrix))
+            matrix = matrix / np.prod(w[w > EQ_TOL_ABS])**(1/matrix.shape[-1])
+
+        kwargs["copy"] = False
+        kwargs.setdefault("covariant", False)
+        super(Quadric, self).__init__(matrix, **kwargs)
+
+    def __add__(self, other):
+        if not isinstance(other, Point):
+            return super(Quadric, self).__add__(other)
+
+        return translation(other).apply(self)
+
+    def __sub__(self, other):
+        return self + (-other)
 
     @classmethod
     def from_planes(cls, e, f):
@@ -209,7 +233,7 @@ class Quadric(ProjectiveElement):
 
         """
         m = np.outer(e.array, f.array)
-        return cls(m + m.T)
+        return Quadric(m + m.T, normalize_matrix=True)
 
     def tangent(self, at):
         """Returns the hyperplane defining the tangent space at a given point.
@@ -225,7 +249,7 @@ class Quadric(ProjectiveElement):
             The tangent plane at the given point.
 
         """
-        return Plane(self.array.dot(at.array))
+        return Plane(self.array.dot(at.array), copy=False)
 
     def is_tangent(self, plane):
         """Tests if a given hyperplane is tangent to the quadric.
@@ -243,7 +267,7 @@ class Quadric(ProjectiveElement):
         """
         return self.dual.contains(plane)
 
-    def contains(self, other, tol=1e-8):
+    def contains(self, other, tol=EQ_TOL_ABS):
         """Tests if a given point lies on the quadric.
 
         Parameters
@@ -271,7 +295,7 @@ class Quadric(ProjectiveElement):
     @property
     def is_degenerate(self):
         """bool: True if the quadric is degenerate."""
-        return np.isclose(np.linalg.det(self.array), 0, atol=EQ_TOL_ABS)
+        return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
     def components(self):
@@ -291,7 +315,7 @@ class Quadric(ProjectiveElement):
                 # calculate all principal minors of order 2
                 row_ind = [[j] for j in range(n) if j not in ind]
                 col_ind = [j for j in range(n) if j not in ind]
-                p.append(csqrt(-np.linalg.det(self.array[row_ind, col_ind])))
+                p.append(csqrt(-det(self.array[row_ind, col_ind])))
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
         m = hat_matrix(p)
@@ -304,14 +328,19 @@ class Quadric(ProjectiveElement):
         if self.dim > 2 and not is_multiple(np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
             raise NotReducible("Quadric has no decomposition in 2 components.")
 
+        p, q = np.real_if_close(p), np.real_if_close(q)
+
         if self.is_dual:
-            return [Point(p), Point(q)]
+            return [Point(p, copy=False), Point(q, copy=False)]
         elif n == 3:
-            return [Line(p), Line(q)]
-        return [Plane(p), Plane(q)]
+            return [Line(p, copy=False), Line(q, copy=False)]
+        return [Plane(p, copy=False), Plane(q, copy=False)]
 
     def intersect(self, other):
         """Calculates points of intersection of a line with the quadric.
+
+        This method also returns complex points of intersection, even if the quadric and the line do not intersect in
+        any real points.
 
         Parameters
         ----------
@@ -321,7 +350,11 @@ class Quadric(ProjectiveElement):
         Returns
         -------
         list of Point
-            The points of intersection
+            The points of intersection.
+
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
         if isinstance(other, Line):
@@ -335,16 +368,16 @@ class Quadric(ProjectiveElement):
             if not reducible:
                 if self.dim > 2:
                     arr = other.array.reshape((-1, self.dim + 1))
-                    i = np.where(arr != 0)[0][0]
-                    m = Plane(arr[i]).basis_matrix
-                    q = Quadric(m.dot(self.array).dot(m.T))
+                    i = arr.nonzero()[0][0]
+                    m = Plane(arr[i], copy=False).basis_matrix
+                    q = Quadric(m.dot(self.array).dot(m.T), copy=False)
                     line_base = other.basis_matrix.T
-                    line = Line(*[Point(x) for x in m.dot(line_base).T])
-                    return [Point(m.T.dot(p.array)) for p in q.intersect(line)]
+                    line = Line(*[Point(x, copy=False) for x in m.dot(line_base).T])
+                    return [Point(m.T.dot(p.array), copy=False) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
                     b = m.T.dot(self.array).dot(m)
-                    p, q = Conic(b, is_dual=not self.is_dual).components
+                    p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)
@@ -359,7 +392,7 @@ class Quadric(ProjectiveElement):
     @property
     def dual(self):
         """Quadric: The dual quadric."""
-        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual)
+        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual, copy=False)
 
 
 class Conic(Quadric):
@@ -382,12 +415,12 @@ class Conic(Quadric):
 
         """
         a, b, c, d, e = a.normalized_array, b.normalized_array, c.normalized_array, d.normalized_array, e.normalized_array
-        ace = np.linalg.det([a, c, e])
-        bde = np.linalg.det([b, d, e])
-        ade = np.linalg.det([a, d, e])
-        bce = np.linalg.det([b, c, e])
+        ace = det([a, c, e])
+        bde = det([b, d, e])
+        ade = det([a, d, e])
+        bce = det([b, c, e])
         m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return cls(m+m.T)
+        return Conic(np.real_if_close(m+m.T), normalize_matrix=True)
 
     @classmethod
     def from_lines(cls, g, h):
@@ -405,7 +438,7 @@ class Conic(Quadric):
 
         """
         m = np.outer(g.array, h.array)
-        return cls(m + m.T)
+        return Conic(m + m.T, normalize_matrix=True)
 
     @classmethod
     def from_tangent(cls, tangent, a, b, c, d):
@@ -431,16 +464,16 @@ class Conic(Quadric):
 
         o = tangent.general_point.array
 
-        a2b1 = np.linalg.det([o, a2, b1])
-        a2b2 = np.linalg.det([o, a2, b2])
-        a1b1 = np.linalg.det([o, a1, b1])
-        a1b2 = np.linalg.det([o, a1, b2])
+        a2b1 = det([o, a2, b1])
+        a2b2 = det([o, a2, b2])
+        a1b1 = det([o, a1, b1])
+        a1b2 = det([o, a1, b2])
 
         c1 = csqrt(a2b1*a2b2)
         c2 = csqrt(a1b1*a1b2)
 
-        x = Point(c1 * a1 + c2 * a2)
-        y = Point(c1 * a1 - c2 * a2)
+        x = Point(c1 * a1 + c2 * a2, copy=False)
+        y = Point(c1 * a1 - c2 * a2, copy=False)
 
         conic = cls.from_points(a, b, c, d, x)
         if np.all(np.isreal(conic.array)):
@@ -465,8 +498,10 @@ class Conic(Quadric):
 
         """
         t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
-        c = cls.from_tangent(Line(bound.array), Point(t1.array), Point(t2.array), Point(t3.array), Point(t4.array))
-        return cls(np.linalg.inv(c.array))
+        p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
+        p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
+        c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)
+        return Conic(np.linalg.inv(c.array), copy=False)
 
     @classmethod
     def from_crossratio(cls, cr, a, b, c, d):
@@ -500,7 +535,7 @@ class Conic(Quadric):
 
         matrix = np.outer(ac, bd) - cr * np.outer(ad, bc)
 
-        return cls(matrix + matrix.T)
+        return cls(matrix + matrix.T, normalize_matrix=True)
 
     def intersect(self, other):
         """Calculates points of intersection with the conic.
@@ -515,6 +550,10 @@ class Conic(Quadric):
         list of Point
             The points of intersection.
 
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
+
         """
         if isinstance(other, Conic):
             if other.is_degenerate:
@@ -522,13 +561,20 @@ class Conic(Quadric):
             else:
                 a1, a2, a3 = self.array
                 b1, b2, b3 = other.array
-                alpha = np.linalg.det(self.array)
-                beta = np.linalg.det([a1, a2, b3]) + np.linalg.det([a1, b2, a3]) + np.linalg.det([b1, a2, a3])
-                gamma = np.linalg.det([a1, b2, b3]) + np.linalg.det([b1, a2, b3]) + np.linalg.det([b1, b2, a3])
-                delta = np.linalg.det(other.array)
+                alpha = det(self.array)
+                beta = det([a1, a2, b3]) + det([a1, b2, a3]) + det([b1, a2, a3])
+                gamma = det([a1, b2, b3]) + det([b1, a2, b3]) + det([b1, b2, a3])
+                delta = det(other.array)
 
-                roots = np.roots([alpha, beta, gamma, delta])
-                c = Conic(self.array + roots[0] * other.array, is_dual=self.is_dual)
+                W = -2*beta**3 + 9*alpha*beta*gamma - 27*alpha**2*delta
+                D = -beta**2*gamma**2 + 4*alpha*gamma**3 + 4*beta**3*delta - 18*alpha*beta*gamma*delta + 27*alpha**2*delta**3
+                Q = W - alpha*csqrt(27*D)
+                R = np.complex128(4*Q)**(1/3)
+
+                lam = 2*beta**2 - 6*alpha*gamma - beta + R
+                mu = 3*alpha*(R + 3)
+
+                c = Conic(lam*self.array + mu*other.array, is_dual=self.is_dual, copy=False)
                 g, h = c.components
 
             result = self.intersect(g)
@@ -570,7 +616,7 @@ class Conic(Quadric):
             The polar line.
 
         """
-        return Line(self.array.dot(pt.array))
+        return Line(self.array.dot(pt.array), copy=False)
 
     @property
     def foci(self):
@@ -589,6 +635,7 @@ class Conic(Quadric):
 
         if np.all(np.isreal(f1.normalized_array)):
             return f1, f2
+
         return g1, g2
 
 
@@ -609,7 +656,10 @@ class Ellipse(Conic):
 
     """
 
-    def __init__(self, center=Point(0, 0), hradius=1, vradius=1):
+    def __init__(self, center=Point(0, 0), hradius=1, vradius=1, **kwargs):
+        if hradius == vradius == 0:
+            raise ValueError("hradius and vradius can not both be zero.")
+
         r = np.array([vradius ** 2, hradius ** 2, 1])
         c = -center.normalized_array
         d = c * r
@@ -618,7 +668,12 @@ class Ellipse(Conic):
         m[2, :] = d
         m[:, 2] = d
         m[2, 2] = d.dot(c) - (r[0] * r[1] + 1)
-        super(Ellipse, self).__init__(m)
+
+        # normalize with abs(det(m))
+        m = m / (np.prod(np.maximum(r[:2], 1)))**(2/3)
+
+        kwargs["copy"] = False
+        super(Ellipse, self).__init__(m, **kwargs)
 
 
 class Circle(Ellipse):
@@ -633,8 +688,8 @@ class Circle(Ellipse):
 
     """
 
-    def __init__(self, center=Point(0, 0), radius=1):
-        super(Circle, self).__init__(center, radius, radius)
+    def __init__(self, center=Point(0, 0), radius=1, **kwargs):
+        super(Circle, self).__init__(center, radius, radius, **kwargs)
 
     @property
     def center(self):
@@ -696,18 +751,26 @@ class Sphere(Quadric):
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), radius=1):
+    def __init__(self, center=Point(0, 0, 0), radius=1, **kwargs):
+        if radius == 0:
+            raise ValueError("Sphere radius cannot be 0.")
+
         c = -center.normalized_array
         m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
-        super(Sphere, self).__init__(m)
+
+        # normalize with abs(det(m))
+        m = m / radius ** (2 / 3)
+
+        kwargs["copy"] = False
+        super(Sphere, self).__init__(m, **kwargs)
 
     @property
     def center(self):
         """Point: The center of the sphere."""
-        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]))
+        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=False)
 
     @property
     def radius(self):
@@ -746,7 +809,10 @@ class Cone(Quadric):
 
     """
 
-    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1):
+    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs):
+        if radius == 0:
+            raise ValueError("The radius of a cone can not be zero.")
+
         from .operators import dist, angle
 
         h = dist(vertex, base_center)
@@ -771,17 +837,19 @@ class Cone(Quadric):
             m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2]**2 * c)
 
         # rotate the axis of the cone
-        axis = Line(Point(v), Point(v)+Point(0, 0, 1))
+        v = Point(v, copy=False)
+        axis = Line(v, v+Point(0, 0, 1))
         new_axis = Line(vertex, base_center)
 
         if new_axis != axis:
             a = angle(axis, new_axis)
             e = axis.join(new_axis)
             t = rotation(a, axis=Point(*e.array[:3]))
-            t = translation(Point(v)) * t * translation(-Point(v))
+            t = translation(v) * t * translation(-v)
             m = t.array.T.dot(m).dot(t.array)
 
-        super(Cone, self).__init__(m)
+        kwargs["normalize_matrix"] = True
+        super(Cone, self).__init__(m, **kwargs)
 
 
 class Cylinder(Cone):
@@ -798,6 +866,6 @@ class Cylinder(Cone):
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1):
+    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
         vertex = infty_plane.meet(Line(center, center+direction))
-        super(Cylinder, self).__init__(vertex, center, radius)
+        super(Cylinder, self).__init__(vertex, center, radius, **kwargs)

@@ -1,9 +1,9 @@
 import numpy as np
 from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
 from .curve import absolute_conic
-from .base import LeviCivitaTensor, TensorDiagram
+from .base import LeviCivitaTensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import IncidenceError, NotCollinear
-from .utils import orth
+from .utils import orth, det
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -14,7 +14,7 @@ def crossratio(a, b, c, d, from_point=None):
     a, b, c, d : Point, Line or Plane
         The points, lines or planes (any dimension) to calculate the cross ratio of.
     from_point : Point, optional
-        A 2D point, only possible if the other arguments are also 2D points.
+        A 2D point, only accepted if the other arguments are also 2D points.
 
     Returns
     -------
@@ -35,33 +35,32 @@ def crossratio(a, b, c, d, from_point=None):
 
     if isinstance(a, Plane):
         l = a.meet(b)
-        e = Plane(l.direction.array)
+        e = Plane(l.direction.array, copy=False)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
-        from_point = Point(m.dot(p.array))
-        a = Point(m.dot((p + a.direction).array))
-        b = Point(m.dot((p + b.direction).array))
-        c = Point(m.dot((p + c.direction).array))
-        d = Point(m.dot((p + d.direction).array))
+        from_point = Point(m.dot(p.array), copy=False)
+        a = Point(m.dot((p + a.direction).array), copy=False)
+        b = Point(m.dot((p + b.direction).array), copy=False)
+        c = Point(m.dot((p + c.direction).array), copy=False)
+        d = Point(m.dot((p + d.direction).array), copy=False)
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
         if not is_collinear(a, b, c, d):
             raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
 
-        l = a.join(b)
-        basis = l.basis_matrix
-        a = Point(basis.dot(a.array))
-        b = Point(basis.dot(b.array))
-        c = Point(basis.dot(c.array))
-        d = Point(basis.dot(d.array))
+        basis = np.stack([a.array, b.array])
+        a = Point(basis.dot(a.array), copy=False)
+        b = Point(basis.dot(b.array), copy=False)
+        c = Point(basis.dot(c.array), copy=False)
+        d = Point(basis.dot(d.array), copy=False)
 
     o = (from_point or []) and [from_point.array]
-    ac = np.linalg.det(o + [a.array, c.array])
-    bd = np.linalg.det(o + [b.array, d.array])
-    ad = np.linalg.det(o + [a.array, d.array])
-    bc = np.linalg.det(o + [b.array, c.array])
+    ac = det(o + [a.array, c.array])
+    bd = det(o + [b.array, d.array])
+    ad = det(o + [a.array, d.array])
+    bc = det(o + [b.array, c.array])
 
     with np.errstate(divide="ignore"):
         return ac * bd / (ad * bc)
@@ -109,14 +108,15 @@ def harmonic_set(a, b, c):
 
 
 def angle(*args):
-    """Calculates the (oriented) angle between given points, lines or planes.
+    r"""Calculates the (oriented) angle between given points, lines or planes.
 
     The function uses the Laguerre formula to calculate angles in two or three dimensional projective space
     using cross ratios. To calculate the angle between two planes, two additional planes tangent to the absolute
     conic are constructed (see [1]).
 
-    Since the Laguerre formula uses the complex logarithm (which gives values between -pi*i and pi*i) and multiplies
-    it with 1/2i, this function can only calculate angles between -pi/2 and pi/2.
+    Since the Laguerre formula uses the complex logarithm (which gives values between :math:`-\pi i` and :math:`\pi i`)
+    and multiplies it with :math:`1/2i`, this function can only calculate angles between :math:`-\pi / 2` and
+    :math:`\pi / 2`.
 
     The sign of the angle is determined by the order of the arguments. The points passed to the cross ratio are in
     the same order as the arguments to this function.
@@ -150,7 +150,7 @@ def angle(*args):
         if isinstance(x, Plane) and isinstance(y, Plane):
             l = x.meet(y)
             p = l.meet(infty_plane)
-            polar = Line(p.array[:-1])
+            polar = Line(p.array[:-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
             i = l.join(p.join(tangent_points[0]))
@@ -207,10 +207,10 @@ def angle_bisectors(l, m):
         L, M = l.meet(infty), m.meet(infty)
 
     p = Point(0, 0)
-    li = np.linalg.det([p.array, L.array, I.array])
-    lj = np.linalg.det([p.array, L.array, J.array])
-    mi = np.linalg.det([p.array, M.array, I.array])
-    mj = np.linalg.det([p.array, M.array, J.array])
+    li = det([p.array, L.array, I.array])
+    lj = det([p.array, L.array, J.array])
+    mi = det([p.array, M.array, I.array])
+    mj = det([p.array, M.array, J.array])
     a, b = np.sqrt(lj*mj), np.sqrt(li*mi)
     r, s = a*I+b*J, a*I-b*J
 
@@ -250,21 +250,21 @@ def dist(p, q):
         x = np.array([p.normalized_array, q.normalized_array])
         z = x[:, -1]
 
-        m = orth(x.T)
+        m = orth(x.T, 2)
         x = m.T.dot(x.T)
         x = np.append(x, [z], axis=0).T
         p, q = Point(x[0]), Point(x[1])
 
-    pqi = np.linalg.det([p.array, q.array, I.array])
-    pqj = np.linalg.det([p.array, q.array, J.array])
-    pij = np.linalg.det([p.array, I.array, J.array])
-    qij = np.linalg.det([q.array, I.array, J.array])
+    pqi = det([p.array, q.array, I.array])
+    pqj = det([p.array, q.array, J.array])
+    pij = det([p.array, I.array, J.array])
+    qij = det([q.array, I.array, J.array])
 
     with np.errstate(divide="ignore", invalid="ignore"):
         return 4*abs(np.sqrt(pqi * pqj)/(pij*qij))
 
 
-def is_cocircular(a, b, c, d, rtol=1.e-5, atol=1.e-8):
+def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     """Tests whether four points lie on a circle.
 
     Parameters
@@ -298,7 +298,7 @@ def is_cocircular(a, b, c, d, rtol=1.e-5, atol=1.e-8):
     return np.isclose(i, j, rtol, atol)
 
 
-def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
+def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     """Tests whether two lines/planes are perpendicular.
 
     Parameters
@@ -329,7 +329,7 @@ def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
     elif isinstance(l, Plane) and isinstance(m, Plane):
         x = l.meet(m)
         p = x.meet(infty_plane)
-        polar = Line(p.array[:-1])
+        polar = Line(p.array[:-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
         i = x.join(p.join(tangent_points[0]))
@@ -342,11 +342,10 @@ def is_perpendicular(l, m, rtol=1.e-5, atol=1.e-8):
     return np.isclose(crossratio(L, M, I, J, Point(1, 1)), -1, rtol, atol)
 
 
-def is_coplanar(*args, tol=1.e-8):
+def is_coplanar(*args, tol=EQ_TOL_ABS):
     """Tests whether the given points or lines are collinear, coplanar or concurrent. Works in any dimension.
 
-    Due to line point duality this function has dual versions :obj:`is_collinear`, :obj:`is_collinear` and
-    :obj:`is_concurrent`.
+    Due to line point duality this function has dual versions :obj:`is_collinear` and :obj:`is_concurrent`.
 
     Parameters
     ----------
@@ -362,7 +361,7 @@ def is_coplanar(*args, tol=1.e-8):
 
     """
     n = args[0].dim + 1
-    if not np.isclose(np.linalg.det([a.array for a in args[:n]]), 0, atol=tol):
+    if not np.isclose(det([a.array for a in args[:n]]), 0, atol=tol):
         return False
     if len(args) == n:
         return True

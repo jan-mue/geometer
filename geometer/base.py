@@ -23,6 +23,9 @@ def _symbols(n):
 class Tensor:
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
+    Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
+    of a tensor (see [1]).
+
     Parameters
     ----------
     *args
@@ -30,30 +33,34 @@ class Tensor:
     covariant : :obj:`bool` or :obj:`list` of :obj:`int`, optional
         If False, all indices are contravariant. If a list of indices indices is supplied, the specified indices of the
         array will be covariant indices and all others contravariant indices. By default all indices are covariant.
+    **kwargs
+        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes
     ----------
     array : numpy.ndarray
         The underlying numpy array.
 
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Ricci_calculus#Upper_and_lower_indices
+
     """
 
-    def __init__(self, *args, covariant=True):
+    def __init__(self, *args, covariant=True, **kwargs):
         if len(args) == 0:
             raise TypeError("At least one argument is required.")
 
         if len(args) == 1:
             if isinstance(args[0], Tensor):
-                self.array = args[0].array
+                self.array = np.array(args[0].array, **kwargs)
                 self._covariant_indices = args[0]._covariant_indices
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
             else:
-                self.array = np.atleast_1d(args[0])
+                self.array = np.array(args[0], **kwargs)
         else:
-            self.array = np.array(args)
-
-        self.array = np.real_if_close(self.array)
+            self.array = np.array(args, **kwargs)
 
         if covariant is True:
             self._covariant_indices = set(range(self.rank))
@@ -72,10 +79,26 @@ class Tensor:
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices
 
+    def __apply__(self, transformation):
+        ts = self.tensor_shape
+        edges = [(self, transformation.copy()) for _ in range(ts[0])]
+        if ts[1] > 0:
+            inv = transformation.inverse()
+            edges.extend((inv.copy(), self) for _ in range(ts[1]))
+        diagram = TensorDiagram(*edges)
+        result = self.copy()
+        result.array = diagram.calculate().array
+        return result
+
     @property
     def shape(self):
-        """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array."""
+        """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array, same as ``self.array.shape``."""
         return self.array.shape
+
+    @property
+    def dtype(self):
+        """numpy.dtype: The dtype of the underlying numpy array, same as ``self.array.dtype``."""
+        return self.array.dtype
 
     @property
     def tensor_shape(self):
@@ -85,7 +108,7 @@ class Tensor:
 
     @property
     def rank(self):
-        """int: The rank of the Tensor. (same as ndarray.ndim)"""
+        """int: The rank of the Tensor, same as ``self.array.ndim``."""
         return self.array.ndim
 
     def tensor_product(self, other):
@@ -111,7 +134,7 @@ class Tensor:
 
         result = np.tensordot(self.array, other.array, 0)
         result = np.transpose(result, axes=covariant + contravariant)
-        return Tensor(result, covariant=range(len(covariant)))
+        return Tensor(result, covariant=range(len(covariant)), copy=False)
 
     def transpose(self, perm=None):
         """Permute the indices of the tensor.
@@ -145,10 +168,11 @@ class Tensor:
             if j in self._covariant_indices:
                 covariant.append(i)
 
-        return Tensor(np.transpose(self.array, perm), covariant=covariant)
+        return Tensor(np.transpose(self.array, perm), covariant=covariant, copy=False)
 
     @property
     def T(self):
+        """The transposed tensor, same as ``self.transpose()``."""
         return self.transpose()
 
     def copy(self):
@@ -165,18 +189,20 @@ class Tensor:
 
     def __mul__(self, other):
         if np.isscalar(other):
-            return Tensor(self.array * other, covariant=self._covariant_indices)
-        other = Tensor(other)
+            return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)
+        if not isinstance(other, Tensor):
+            other = Tensor(other, copy=False)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other):
         if np.isscalar(other):
             return self * other
-        other = Tensor(other)
+        if not isinstance(other, Tensor):
+            other = Tensor(other, copy=False)
         return TensorDiagram((self, other)).calculate()
 
     def __pow__(self, power, modulo=None):
-        if modulo is not None or not isinstance(power, int) or power < 0:
+        if modulo is not None or not isinstance(power, int) or power < 1:
             return NotImplemented
 
         if power == 1:
@@ -189,23 +215,25 @@ class Tensor:
             d.add_edge(cur, prev)
             prev = cur
 
-        return Tensor(d.calculate())
+        return d.calculate()
 
     def __truediv__(self, other):
         if np.isscalar(other):
-            return Tensor(self.array / other, covariant=self._covariant_indices)
+            return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)
         return NotImplemented
 
     def __add__(self, other):
-        other = Tensor(other)
-        return Tensor(self.array + other.array, covariant=self._covariant_indices)
+        if isinstance(other, Tensor):
+            other = other.array
+        return Tensor(self.array + other, covariant=self._covariant_indices, copy=False)
 
     def __radd__(self, other):
         return self + other
 
     def __sub__(self, other):
-        other = Tensor(other)
-        return Tensor(self.array - other.array, covariant=self._covariant_indices)
+        if isinstance(other, Tensor):
+            other = other.array
+        return Tensor(self.array - other, covariant=self._covariant_indices, copy=False)
 
     def __rsub__(self, other):
         return -self + other
@@ -220,7 +248,18 @@ class Tensor:
 
 
 class LeviCivitaTensor(Tensor):
-    """This class can be used to construct a tensor representing the Levi-Civita symbol.
+    r"""This class can be used to construct a tensor representing the Levi-Civita symbol.
+
+    The Levi-Civita symbol is also called :math:`\varepsilon`-Tensor and is defined as follows:
+
+    .. math::
+
+        \varepsilon_{\nu_{1} \ldots \nu_{n}} =
+        \begin{cases}
+            +1 & \text{ if } (\nu_{1}, \ldots, \nu_{n}) \text{ are an even permutation of } (1, \ldots, n)\\
+            -1 & \text{ if } (\nu_{1}, \ldots, \nu_{n}) \text{ are an odd permutation of } (1, \ldots, n)\\
+            0 & \text{ else}
+        \end{cases}
 
     Parameters
     ----------
@@ -249,11 +288,22 @@ class LeviCivitaTensor(Tensor):
             array[tuple(indices)] = np.prod(diff, axis=0)
 
             self._cache[size] = array
-        super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant))
+        super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant), copy=False)
 
 
 class KroneckerDelta(Tensor):
-    """This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
+    r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
+
+    The following generalized definition of the Kronecker delta is used:
+
+    .. math::
+
+        \delta_{\nu_{1} \ldots \nu_{p}}^{\mu_{1} \ldots \mu_{p}} =
+        \begin{cases}
+            +1 & \text{ if } (\nu_{1}, \ldots, \nu_{p}) \text{ are an even permutation of } (\mu_{1}, \ldots, \mu_{p})\\
+            -1 & \text{ if } (\nu_{1}, \ldots, \nu_{p}) \text{ are an odd permutation of } (\mu_{1}, \ldots, \mu_{p})\\
+            0 & \text{ else}
+        \end{cases}
 
     Parameters
     ----------
@@ -290,7 +340,7 @@ class KroneckerDelta(Tensor):
             f = np.vectorize(calc)
             array = np.fromfunction(f, tuple(2*p*[n]), dtype=int)
 
-        super(KroneckerDelta, self).__init__(array, covariant=range(p))
+        super(KroneckerDelta, self).__init__(array, covariant=range(p), copy=False)
 
 
 class TensorDiagram:
@@ -421,7 +471,7 @@ class TensorDiagram:
 
         temp = np.einsum(*args, result_indices[0] + result_indices[1])
 
-        return Tensor(temp, covariant=range(len(result_indices[0])))
+        return Tensor(temp, covariant=range(len(result_indices[0])), copy=False)
 
     def copy(self):
         result = TensorDiagram()
@@ -442,16 +492,18 @@ class ProjectiveElement(Tensor, ABC):
     """
 
     def __eq__(self, other):
-        if isinstance(other, Tensor):
+        if np.isscalar(other):
+            return super(ProjectiveElement, self).__eq__(other)
 
-            if self.shape != other.shape:
-                return False
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
 
-            return is_multiple(self.array, other.array, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+        if self.shape != other.shape:
+            return False
 
-        return super(ProjectiveElement, self).__eq__(other)
+        return is_multiple(self.array, other.array, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
     @property
     def dim(self):
-        """int: The dimension of the tensor."""
+        """int: The ambient dimension of the tensor."""
         return self.shape[0] - 1

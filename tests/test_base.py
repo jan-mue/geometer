@@ -1,3 +1,4 @@
+import numpy as np
 from geometer.base import TensorDiagram, Tensor, LeviCivitaTensor, KroneckerDelta
 
 
@@ -25,6 +26,13 @@ class TestTensor:
         assert a.transpose() == Tensor([[1, 3], [2, 4]])
         assert a.T._covariant_indices == {1}
         assert a.T.T == a
+
+    def test_dtype(self):
+        a = Tensor(2, 3, dtype=np.float32)
+        assert a.dtype == np.float32
+
+        a = Tensor(2, 3, dtype=np.complex64)
+        assert a.dtype == np.complex64
 
 
 class TestTensorDiagram:
