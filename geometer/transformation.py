@@ -19,6 +19,7 @@ def identity(dim):
         The identity transformation.
 
     """
+    # TODO: support collections
     return Transformation(np.eye(dim+1))
 
 

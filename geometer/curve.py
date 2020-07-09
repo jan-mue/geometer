@@ -420,7 +420,7 @@ class Conic(Quadric):
                 lam = 2*beta**2 - 6*alpha*gamma - beta + R
                 mu = 3*alpha*(R + 3)
 
-                c = Conic(lam*self.array + mu*other.array, is_dual=self.is_dual)
+                c = Conic(lam*self.array + mu*other.array, is_dual=self.is_dual, copy=False)
                 g, h = c.components
 
             result = self.intersect(g)

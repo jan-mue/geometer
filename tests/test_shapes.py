@@ -159,10 +159,7 @@ class TestPolygon:
         d = Point([1, -1, 2, 0])
         p = Polygon(a, b, c, d)
 
-        assert p.contains(a)
-        assert p.contains(b)
-        assert p.contains(c)
-        assert p.contains(d)
+        assert all(p.contains(PointCollection([a, b, c, d])))
         assert p.contains(Point([0, 0, 1, 0]))
         assert not p.contains(Point([1, 1, 1, 0]))
 

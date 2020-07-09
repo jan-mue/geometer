@@ -81,7 +81,7 @@ class Polytope(PointCollection):
     def __add__(self, other):
         if not isinstance(other, Point):
             return super(Polytope, self).__add__(other)
-        return translation(other) * self
+        return translation(other).apply(self)
 
     def __sub__(self, other):
         return self + (-other)
@@ -97,6 +97,11 @@ class Polytope(PointCollection):
                 return Segment(result, copy=False)
             if len(result) == 3:
                 return Triangle(result, copy=False)
+            if len(result) == 4:
+                try:
+                    return Rectangle(result, copy=False)
+                except NotCoplanar:
+                    return Polytope(result, copy=False)
 
             try:
                 return Polygon(result, copy=False)
@@ -261,7 +266,13 @@ class Polygon(Polytope):
             args = (np.array([s.array[0] for s in args]),)
             kwargs['copy'] = False
         super(Polygon, self).__init__(*args, **kwargs)
-        self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
+        if self.dim > 2:
+            vertices = self.vertices
+            self._plane = Plane(*vertices[:self.dim])
+            if any(not self._plane.contains(v) for v in vertices[self.dim:]):
+                raise NotCoplanar('The given vertices are not coplanar.')
+        else:
+            self._plane = None
 
     def __apply__(self, transformation):
         result = super(Polygon, self).__apply__(transformation)
@@ -320,6 +331,8 @@ class Polygon(Polytope):
         """
         if self.dim > 2:
 
+            # TODO: support collections
+
             if isinstance(other, Line):
                 try:
                     p = self._plane.meet(other)
@@ -334,8 +347,7 @@ class Polygon(Polytope):
                 i = other.intersect(self._plane)
                 return i if i and self.contains(i[0]) else []
 
-        intersections = self.edges.intersect(other)
-        return list(distinct(intersections))
+        return list(distinct(self.edges.intersect(other)))
 
     def _normalized_projection(self):
         points = self.array
@@ -627,10 +639,14 @@ class PolygonCollection(PointCollection):
             if not np.any(coplanar):
                 return coplanar
 
-            i = np.argsort(np.abs(self._plane.array[..., :-1]), axis=-1)[..., 2:]
+            isinf = is_multiple(self._plane.array, infty_hyperplane(self.dim).array, axis=-1)
+
+            # remove coordinates with the largest absolute value in the normal vector
+            i = np.argmax(np.abs(self._plane.array[..., :-1]), axis=-1)
+            i = np.where(isinf, self.dim, i)
+            i = np.expand_dims(i, -1)
             s = self.array.shape
-            v1 = np.delete(self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
-            v1 = v1.reshape(s[:-1]+(-1,))
+            arr = np.delete(self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s)).reshape(s[:-1] + (-1,))
 
             if isinstance(other, Point) and i.ndim == 1:
                 other = Point(np.delete(other.array, i), copy=False)
@@ -638,14 +654,11 @@ class PolygonCollection(PointCollection):
                 s = other.shape[:-1] + (1, other.shape[-1])
                 other = np.delete(other.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
                 other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=False)
-        else:
-            coplanar = True
-            v1 = self.array
 
-        v2 = np.roll(v1, -1, axis=-2)
-        result = np.stack([v1, v2], axis=-2)
-        edges = SegmentCollection(result, copy=False)
+            # TODO: only test coplanar points
+            return coplanar & PolygonCollection(arr, copy=False).contains(other)
 
+        edges = self.edges
         edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False))
 
         if isinstance(other, PointCollection):
@@ -659,7 +672,6 @@ class PolygonCollection(PointCollection):
             direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
             rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
 
-        # TODO: only intersect rays of coplanar points
         intersections = meet(edges._line, rays._line, _check_dependence=False)
 
         # ignore edges along the rays
@@ -671,13 +683,13 @@ class PolygonCollection(PointCollection):
         v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(intersections.array, v1, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
         v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(intersections.array, v2, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
 
-        ind = edges.contains(intersections)
-        ind &= rays.contains(intersections)
-        ind &= ~ray_edges & ~v1_intersections & ~v2_intersections
-        ind = np.sum(ind, axis=-1) % 2 == 1
-        ind |= np.any(edge_points, axis=-1)
+        result = edges.contains(intersections)
+        result &= rays.contains(intersections)
+        result &= ~ray_edges & ~v1_intersections & ~v2_intersections
+        result = np.sum(result, axis=-1) % 2 == 1
+        result |= np.any(edge_points, axis=-1)
 
-        return coplanar & ind
+        return result
 
     def intersect(self, other):
         """Intersect the polygons with a line, line segment or a collection of lines.
@@ -779,11 +791,11 @@ class SegmentCollection(PointCollection):
         result = self._line.contains(other)
 
         m = self.array
-        arr = np.squeeze(np.matmul(np.expand_dims(m, -3), np.expand_dims(self.array, -1)), -1)
+        arr = np.matmul(m, np.swapaxes(m, -1, -2))
 
-        p = PointCollection(arr[..., 0, :], copy=False)
-        q = PointCollection(arr[..., 1, :], copy=False)
-        d = PointCollection(arr[..., 1, :] - arr[..., 0, :], copy=False)
+        p = PointCollection(arr[..., 0], copy=False)
+        q = PointCollection(arr[..., 1], copy=False)
+        d = PointCollection(arr[..., 1] - arr[..., 0], copy=False)
 
         # TODO: only project points that lie on the lines
         other = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(other.array, -1)), -1), copy=False)
