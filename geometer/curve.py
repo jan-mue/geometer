@@ -8,7 +8,7 @@ from .point import Point, Line, Plane, PointCollection, LineCollection, PlaneCol
 from .transformation import rotation, translation
 from .base import ProjectiveElement, ProjectiveCollection, Tensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import NotReducible
-from .utils import hat_matrix, is_multiple, adjugate, det, inv
+from .utils import hat_matrix, is_multiple, adjugate, det, inv, matmul
     
     
 class Quadric(ProjectiveElement):
@@ -212,13 +212,13 @@ class Quadric(ProjectiveElement):
                     else:
                         i = np.any(arr, axis=-1).argmax(-1)
                         m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
-                        line_base = np.matmul(other.basis_matrix, np.swapaxes(m, -1, -2))
+                        line_base = matmul(other.basis_matrix, m, transpose_b=True)
                         line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
-                        q = QuadricCollection(np.matmul(m.dot(self.array), np.swapaxes(m, -1, -2)), copy=False)
-                        return [PointCollection(np.squeeze(np.matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
+                        q = QuadricCollection(matmul(m.dot(self.array), m, transpose_b=True), copy=False)
+                        return [PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
-                    b = np.matmul(np.swapaxes(m, -1, -2).dot(self.array), m)
+                    b = matmul(np.swapaxes(m, -1, -2).dot(self.array), m)
 
                     if isinstance(other, Line):
                         p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
@@ -872,14 +872,14 @@ class QuadricCollection(ProjectiveCollection):
                     else:
                         i = np.any(arr, axis=-1).argmax(-1)
                         m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
-                        line_base = np.matmul(other.basis_matrix, np.swapaxes(m, -1, -2))
+                        line_base = matmul(other.basis_matrix, m, transpose_b=True)
                         line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
 
-                    q = QuadricCollection(np.matmul(np.matmul(m, self.array), np.swapaxes(m, -1, -2)), copy=False)
-                    return [PointCollection(np.squeeze(np.matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
+                    q = QuadricCollection(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
+                    return [PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
                 else:
                     m = hat_matrix(other.array)
-                    b = np.matmul(np.matmul(np.swapaxes(m, -1, -2), self.array), m)
+                    b = matmul(matmul(m, self.array, transpose_a=True), m)
                     p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
             else:
                 if self.is_dual:

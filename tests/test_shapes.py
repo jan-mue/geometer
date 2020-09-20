@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, SegmentCollection, PointCollection, dist, rotation, translation
+from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, SegmentCollection, PolygonCollection, PointCollection, dist, rotation, translation
 
 
 class TestSegment:
@@ -266,7 +266,7 @@ class TestRegularPolygon:
 
         assert len(p.vertices) == 6
         assert np.isclose(dist(a, p.vertices[0]), 1)
-        assert all(np.isclose(s.length, d) for s in p.edges[1:])
+        assert all(np.isclose(p.edges[1:].length, d))
         assert np.allclose(p.angles, np.pi/3)
         assert p.center == a
 
@@ -394,3 +394,14 @@ class TestSegmentCollection:
         assert all(s.contains(0.5 * (p + q)))
         assert not any(s.contains(p - q))
         assert not any(s.contains(Point([2, 1, 0])))
+
+    def test_midpoint(self):
+        p = PointCollection([(0, 0), (2, 1)], homogenize=True)
+        q = PointCollection([(2, 2), (4, 1)], homogenize=True)
+        s = SegmentCollection(p, q)
+        assert s.midpoint == PointCollection([(1, 1), (3, 1)], homogenize=True)
+
+        p = PointCollection([(0, 0, 0), (1, 1, 1)], homogenize=True)
+        q = PointCollection([(0, 2, 0), (3, 3, 3)], homogenize=True)
+        s = SegmentCollection(p, q)
+        assert s.midpoint == PointCollection([(0, 1, 0), (2, 2, 2)], homogenize=True)

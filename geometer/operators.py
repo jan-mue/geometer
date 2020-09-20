@@ -1,9 +1,9 @@
 import numpy as np
-from .point import Point, Line, Plane, I, J, infty, infty_plane, join, meet
+from .point import Point, Line, Plane, I, J, PointCollection, LineCollection, infty, infty_plane, join, meet
 from .curve import absolute_conic
 from .base import LeviCivitaTensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import IncidenceError, NotCollinear
-from .utils import orth, det
+from .utils import orth, det, matvec
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -11,7 +11,7 @@ def crossratio(a, b, c, d, from_point=None):
 
     Parameters
     ----------
-    a, b, c, d : Point, PointCollection, Line or Plane
+    a, b, c, d : Point, PointCollection, Line, LineCollection, Plane or PlaneCollection
         The points, lines or planes (any dimension) to calculate the cross ratio of.
     from_point : Point or PointCollection, optional
         A 2D point, only accepted if the other arguments are also 2D points.
@@ -26,8 +26,8 @@ def crossratio(a, b, c, d, from_point=None):
     if a == b:
         return 1
 
-    if isinstance(a, Line):
-        if not is_concurrent(a, b, c, d):
+    if isinstance(a, (Line, LineCollection)):
+        if not np.all(is_concurrent(a, b, c, d)):
             raise IncidenceError("The lines are not concurrent: " + str([a, b, c, d]))
 
         from_point = a.meet(b)
@@ -47,27 +47,27 @@ def crossratio(a, b, c, d, from_point=None):
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
-        # TODO: implement this for collections
-        if not is_collinear(a, b, c, d):
+        if not np.all(is_collinear(a, b, c, d)):
             raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
 
-        basis = np.stack([a.array, b.array])
-        a = Point(basis.dot(a.array), copy=False)
-        b = Point(basis.dot(b.array), copy=False)
-        c = Point(basis.dot(c.array), copy=False)
-        d = Point(basis.dot(d.array), copy=False)
+        basis = np.stack([a.array, b.array], axis=-2)
+        a = matvec(basis, a.array)
+        b = matvec(basis, b.array)
+        c = matvec(basis, c.array)
+        d = matvec(basis, d.array)
+        o = []
 
-    if from_point is not None:
+    elif from_point is not None:
         a, b, c, d, from_point = np.broadcast_arrays(a.array, b.array, c.array, d.array, from_point.array)
         o = [from_point]
     else:
         a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
         o = []
 
-    ac = det(np.stack(o + [a, c], axis=-1))
-    bd = det(np.stack(o + [b, d], axis=-1))
-    ad = det(np.stack(o + [a, d], axis=-1))
-    bc = det(np.stack(o + [b, c], axis=-1))
+    ac = det(np.stack(o + [a, c], axis=-2))
+    bd = det(np.stack(o + [b, d], axis=-2))
+    ad = det(np.stack(o + [a, d], axis=-2))
+    bc = det(np.stack(o + [b, c], axis=-2))
 
     with np.errstate(divide="ignore"):
         return ac * bd / (ad * bc)
@@ -82,34 +82,43 @@ def harmonic_set(a, b, c):
 
     Parameters
     ----------
-    a, b, c : Point
+    a, b, c : Point or PointCollection
         The points (any dimension) that are used to construct the fourth point in the harmonic set.
 
     Returns
     -------
-    Point
+    Point or PointCollection
         The point that forms a harmonic set with the given points.
 
     """
-    l = Line(a, b)
+    l = join(a, b)
     o = l.general_point
     n = l.dim + 1
 
     if n > 3:
         e = join(l, o)
         basis = e.basis_matrix
-        a = Point(basis.dot(a.array))
-        b = Point(basis.dot(b.array))
-        c = Point(basis.dot(c.array))
-        o = Point(basis.dot(o.array))
-        l = Line(a, b)
+        if isinstance(a, Point):
+            a = Point(basis.dot(a.array))
+            b = Point(basis.dot(b.array))
+            c = Point(basis.dot(c.array))
+            o = Point(basis.dot(o.array))
+        else:
+            a = PointCollection(matvec(basis, a.array))
+            b = PointCollection(matvec(basis, b.array))
+            c = PointCollection(matvec(basis, c.array))
+            o = PointCollection(matvec(basis, o.array))
 
-    m = Line(o, c)
+        l = join(a, b)
+
+    m = join(o, c)
     p = o + 1/2*m.direction
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
 
     if n > 3:
-        return Point(basis.T.dot(result.array))
+        if isinstance(a, Point):
+            return Point(basis.T.dot(result.array))
+        return PointCollection(matvec(basis, result.array, transpose_a=True))
 
     return result
 
@@ -228,7 +237,13 @@ def angle_bisectors(l, m):
 
 
 def dist(p, q):
-    """Calculates the (euclidean) distance between two objects.
+    r"""Calculates the (euclidean) distance between two objects.
+
+    Instead of the usual formula for the euclidean distance this function uses
+    the following formula that is projectively invariant (in P and Q):
+
+    .. math::
+        \textrm{dist}(P, Q) = 4 \left|\frac{\sqrt{[P, Q, I][P, Q, J]}}{[P, I, J][Q, I, J]}\right|
 
     Parameters
     ----------
@@ -239,6 +254,10 @@ def dist(p, q):
     -------
     float
         The distance between the given objects.
+
+    References
+    ----------
+    .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 18.8
 
     """
     if p == q:
@@ -254,21 +273,23 @@ def dist(p, q):
         return dist(q, p.base_point)
 
     if p.dim > 2:
-        x = np.array([p.normalized_array, q.normalized_array])
-        z = x[:, -1]
+        x = np.stack([p.normalized_array, q.normalized_array], axis=-2)
+        z = x[..., -1]
 
-        m = orth(x.T, 2)
-        x = m.T.dot(x.T)
-        x = np.append(x, [z], axis=0).T
-        p, q = Point(x[0]), Point(x[1])
+        m = orth(np.swapaxes(x, -1, -2), 2)
+        x = np.matmul(x, m)
+        x = np.concatenate([x, np.expand_dims(z, -1)], axis=-1)
+        p, q, i, j = np.broadcast_arrays(x[..., 0, :], x[..., 1, :], I.array, J.array)
+    else:
+        p, q, i, j = np.broadcast_arrays(p.array, q.array, I.array, J.array)
 
-    pqi = det([p.array, q.array, I.array])
-    pqj = det([p.array, q.array, J.array])
-    pij = det([p.array, I.array, J.array])
-    qij = det([q.array, I.array, J.array])
+    pqi = det(np.stack([p, q, i], axis=-2))
+    pqj = det(np.stack([p, q, j], axis=-2))
+    pij = det(np.stack([p, i, j], axis=-2))
+    qij = det(np.stack([q, i, j], axis=-2))
 
     with np.errstate(divide="ignore", invalid="ignore"):
-        return 4*abs(np.sqrt(pqi * pqj)/(pij*qij))
+        return 4*np.abs(np.sqrt(pqi * pqj)/(pij*qij))
 
 
 def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
@@ -363,24 +384,24 @@ def is_coplanar(*args, tol=EQ_TOL_ABS):
 
     Returns
     -------
-    bool
+    array_like
         True if the given points are coplanar (in 3D) or collinear (in 2D) or if the given lines are concurrent.
 
     """
     n = args[0].dim + 1
-    if not np.isclose(det([a.array for a in args[:n]]), 0, atol=tol):
-        return False
-    if len(args) == n:
-        return True
+    result = np.isclose(det(np.stack([a.array for a in args[:n]], axis=-2)), 0, atol=tol)
+    if not np.any(result) or len(args) == n:
+        return result
     covariant = args[0].tensor_shape[1] > 0
     e = LeviCivitaTensor(n, covariant=covariant)
     diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n-1]])
     tensor = diagram.calculate()
     for t in args[n:]:
         x = t*tensor if covariant else tensor*t
-        if not np.isclose(x.array, 0, atol=tol):
-            return False
-    return True
+        result &= np.isclose(x.array, 0, atol=tol)
+        if not np.any(result):
+            break
+    return result
 
 
 is_collinear = is_coplanar

@@ -872,6 +872,37 @@ class SubspaceCollection(ProjectiveCollection):
         x = x.reshape(x.shape[:len(self._collection_indices)] + (-1, x.shape[-1]))
         return np.swapaxes(null_space(x, self.shape[-1]-self.rank+len(self._collection_indices)), -1, -2)
 
+    @property
+    def general_point(self):
+        """PointCollection: Points in general position i.e. not in the subspaces."""
+        n = self.dim + 1
+        s = [self.shape[i] for i in self._collection_indices]
+        p = PointCollection(np.zeros(s + [n], dtype=int), copy=False)
+        ind = np.ones(s, dtype=bool)
+        for i in range(n):
+            p[ind, -i - 1] = 1
+            ind = self.contains(p)
+            if not np.any(ind):
+                break
+        return p
+
+    def parallel(self, through):
+        """Returns the subspaces through given points that are parallel to this collection of subspaces.
+
+        Parameters
+        ----------
+        through : Point or PointCollection
+            The point through which the parallel subspaces are to be constructed.
+
+        Returns
+        -------
+        SubspaceCollection
+            The parallel subspaces.
+
+        """
+        x = self.meet(infty_hyperplane(self.dim))
+        return join(x, through)
+
     def contains(self, other, tol=EQ_TOL_ABS):
         if isinstance(other, (Point, PointCollection)):
             result = self * other
@@ -914,6 +945,26 @@ class LineCollection(SubspaceCollection):
             return result
 
         return LineCollection(result, copy=False)
+
+    @property
+    def base_point(self):
+        """PointCollection: Base points for the lines, arbitrarily chosen."""
+        base = self.basis_matrix
+        p, q = base[..., 0, :], base[..., 1, :]
+        isinf = np.isclose(p[..., -1, None], 0, atol=EQ_TOL_ABS)
+        result = np.where(isinf, q, p)
+        return PointCollection(result, copy=False)
+
+    @property
+    def direction(self):
+        """PointCollection: The direction of the lines (not normalized)."""
+        base = self.basis_matrix
+        p, q = base[..., 0, :], base[..., 1, :]
+        p_isinf = np.isclose(p[..., -1, None], 0, atol=EQ_TOL_ABS)
+        q_isinf = np.isclose(q[..., -1, None], 0, atol=EQ_TOL_ABS)
+        result = np.where(p_isinf, p, q)
+        result = np.where(~(p_isinf | q_isinf), p / p[..., -1, None] - q / q[..., -1, None], result)
+        return PointCollection(result, copy=False)
 
     @property
     def covariant_tensor(self):

@@ -3,7 +3,7 @@ from itertools import combinations
 import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL
-from .utils import distinct, is_multiple, det
+from .utils import distinct, is_multiple, det, matmul, matvec
 from .point import Line, Plane, Point, PointCollection, infty_hyperplane, join, meet
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
@@ -514,7 +514,7 @@ class Polyhedron(Polytope):
     @property
     def area(self):
         """float: The surface area of the polyhedron."""
-        return sum(s.area for s in self.faces)
+        return np.sum(self.faces.area)
 
     def intersect(self, other):
         """Intersect the polyhedron with another object.
@@ -600,10 +600,30 @@ class PolygonCollection(PointCollection):
 
         return PolygonCollection(result, copy=False)
 
+    def _normalized_projection(self):
+        points = self.array
+
+        if self.dim > 2:
+            e = self._plane
+            o = Point(*[0] * self.dim)
+            ind = ~e.contains(o)
+            e[ind] = e[ind].parallel(o)
+            m = e.basis_matrix
+            points = matvec(np.expand_dims(m, -3), points)
+
+        return self._normalize_array(points)
+
     @property
     def vertices(self):
         """list of PointCollection: The vertices of the polygons."""
         return [PointCollection(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
+
+    @property
+    def area(self):
+        """array_like: The areas of the polygons."""
+        points = self._normalized_projection()
+        a = sum(det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2]-1))
+        return 1/2 * np.abs(a)
 
     def expand_dims(self, axis):
         result = super(PolygonCollection, self).expand_dims(axis)
@@ -759,6 +779,17 @@ class SegmentCollection(PointCollection):
         b = PointCollection(self.array[..., 1, :], copy=False)
         return [a, b]
 
+    @property
+    def midpoint(self):
+        """PointCollection: The midpoints of the segments."""
+        l = self._line.meet(infty_hyperplane(self.dim))
+        return harmonic_set(*self.vertices, l)
+
+    @property
+    def length(self):
+        """array_like: The lengths of the segments."""
+        return dist(*self.vertices)
+
     def expand_dims(self, axis):
         result = super(SegmentCollection, self).expand_dims(axis)
         result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
@@ -791,14 +822,14 @@ class SegmentCollection(PointCollection):
         result = self._line.contains(other)
 
         m = self.array
-        arr = np.matmul(m, np.swapaxes(m, -1, -2))
+        arr = matmul(m, m, transpose_b=True)
 
         p = PointCollection(arr[..., 0], copy=False)
         q = PointCollection(arr[..., 1], copy=False)
         d = PointCollection(arr[..., 1] - arr[..., 0], copy=False)
 
         # TODO: only project points that lie on the lines
-        other = PointCollection(np.squeeze(np.matmul(m, np.expand_dims(other.array, -1)), -1), copy=False)
+        other = PointCollection(matvec(m, other.array), copy=False)
 
         cr = crossratio(d, p, q, other)
 

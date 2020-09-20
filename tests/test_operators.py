@@ -10,6 +10,13 @@ def test_is_collinear():
     assert l.contains(p3)
     assert is_collinear(p1, p2, p3)
 
+    p1 = PointCollection([(1, 0), (1, 1)], homogenize=True)
+    p2 = PointCollection([(2, 0), (2, 1)], homogenize=True)
+    p3 = PointCollection([(3, 0), (3, 1)], homogenize=True)
+    p4 = PointCollection([(4, 0), (4, 1)], homogenize=True)
+
+    assert all(is_collinear(p1, p2, p3, p4))
+
 
 def test_dist():
     p = Point(0, 0)

@@ -271,5 +271,67 @@ def orth(A, dim=None):
             raise ValueError('Cannot calculate the image spaces of matrices when the spaces have different dimensions.')
         dim = dim.flat[0]
 
-    Q = u[:, :dim]
+    Q = u[..., :dim]
     return Q
+
+
+def matmul(a, b, transpose_a=False, transpose_b=False, adjoint_a=False, adjoint_b=False, **kwargs):
+    """Matrix product of two arrays.
+
+    Parameters
+    ----------
+    a, b : array_like
+        Input arrays, scalars not allowed.
+    transpose_a : bool
+        If true, `a` is transposed before multiplication.
+    transpose_b : bool
+        If true, `b` is transposed before multiplication.
+    adjoint_a : bool
+        If true, `a` is conjugated and transposed before multiplication.
+    adjoint_b : bool
+        If true, `b` is conjugated and transposed before multiplication.
+    **kwargs
+        Additional keyword arguments for `numpy.matmul`.
+
+    Returns
+    -------
+    numpy.ndarray
+        The matrix product of the inputs.
+
+    """
+    if adjoint_a:
+        a = np.conjugate(a)
+        transpose_a = True
+    if adjoint_b:
+        b = np.conjugate(b)
+        transpose_b = True
+    if transpose_a:
+        a = np.swapaxes(a, -1, -2)
+    if transpose_b:
+        b = np.swapaxes(b, -1, -2)
+    return np.matmul(a, b, **kwargs)
+
+
+def matvec(a, b, transpose_a=False, adjoint_a=False, **kwargs):
+    """Matrix-vector product of two arrays.
+
+    Parameters
+    ----------
+    a, b : array_like
+        Input arrays, scalars not allowed.
+    transpose_a : bool
+        If true, `a` is transposed before multiplication.
+    adjoint_a : bool
+        If true, `a` is conjugated and transposed before multiplication.
+    **kwargs
+        Additional keyword arguments for `numpy.matmul`.
+
+    Returns
+    -------
+    numpy.ndarray
+        The matrix-vector product of the inputs.
+
+    """
+    result = matmul(a, np.expand_dims(b, axis=-1), transpose_a=transpose_a, adjoint_a=adjoint_a, **kwargs)
+    return np.squeeze(result, axis=-1)
+
