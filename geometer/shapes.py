@@ -452,6 +452,14 @@ class Triangle(Polygon, Simplex):
 
     """
 
+    @property
+    def circumcenter(self):
+        """Point: The circumcenter of the triangle."""
+        e1, e2, e3 = self.edges
+        bisector1 = e1._line.perpendicular(e1.midpoint, plane=self._plane)
+        bisector2 = e2._line.perpendicular(e2.midpoint, plane=self._plane)
+        return bisector1.meet(bisector2)
+
     def contains(self, other):
         # faster algorithm using barycentric coordinates
 

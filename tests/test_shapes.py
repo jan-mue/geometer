@@ -255,6 +255,14 @@ class TestTriangle:
         assert t.centroid == (a+b+c)/3
         assert t.centroid == l1.meet(l2)
 
+    def test_circumcenter(self):
+        a = Point(0, 0, 1)
+        b = Point(2, 0, 1)
+        c = Point(2, 2, 1)
+        t = Triangle(a, b, c)
+
+        assert t.circumcenter == Point(1, 1, 1)
+
 
 class TestRegularPolygon:
 

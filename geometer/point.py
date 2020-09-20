@@ -474,13 +474,16 @@ class Line(Subspace):
         d = TensorDiagram(*[(e, self)]*(self.dim - 1), *[(e, other)]*(self.dim - 1))
         return d.calculate() == 0
 
-    def perpendicular(self, through):
+    def perpendicular(self, through, plane=None):
         """Construct the perpendicular line though a point.
 
         Parameters
         ----------
         through : Point
             The point through which the perpendicular is constructed.
+        plane : Plane, optional
+            In three or higher dimensional spaces, the plane in which
+            the perpendicular line is supposed to lie can be specified.
 
         Returns
         -------
@@ -494,10 +497,12 @@ class Line(Subspace):
             l = self
 
             if n > 3:
-                # additional point is required to determine the exact line
-                e = join(self, self.general_point)
 
-                basis = e.basis_matrix
+                if plane is None:
+                    # additional point is required to determine the exact line
+                    plane = join(self, self.general_point)
+
+                basis = plane.basis_matrix
                 line_pts = basis.dot(self.basis_matrix.T)
                 l = Line(np.cross(*line_pts.T), copy=False)
 
