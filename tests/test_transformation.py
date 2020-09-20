@@ -1,5 +1,5 @@
 import numpy as np
-from geometer import Point, Line, Transformation, TransformationCollection, translation, rotation, angle, scaling, reflection
+from geometer import Point, Line, Circle, Transformation, TransformationCollection, translation, rotation, angle, scaling, reflection
 
 
 class TestTransformation:
@@ -65,6 +65,24 @@ class TestTransformation:
         r = reflection(Line(1, -1, 1))
 
         assert r * p == Point(0, 0)
+
+    def test_from_points_and_conics(self):
+        c1 = Circle()
+        p1 = Point(0, -1)
+        p2 = Point(0, 1)
+        p3 = Point(1, 0)
+
+        c2 = Circle(Point(0, 2), 2)
+        q1 = Point(0, 0)
+        q2 = Point(0, 4)
+        q3 = Point(2, 2)
+
+        t = Transformation.from_points_and_conics([p1, p2, p3], [q1, q2, q3], c1, c2)
+
+        assert t * p1 == q1
+        assert t * p2 == q2
+        assert t * p2 == q2
+        assert t.apply(c1) == c2
 
 
 class TestTransformationCollection:

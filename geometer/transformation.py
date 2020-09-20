@@ -222,7 +222,47 @@ class Transformation(ProjectiveElement):
         d2 = np.linalg.solve(m2, b[-1])
         t1 = m1.dot(np.diag(d1))
         t2 = m2.dot(np.diag(d2))
-        return cls(t2.dot(np.linalg.inv(t1)))
+
+        return Transformation(t2.dot(np.linalg.inv(t1)))
+
+    @classmethod
+    def from_points_and_conics(cls, points1, points2, conic1, conic2):
+        """Constructs a projective transformation from two conics and the image of pairs of 3 points on the conics.
+
+        Parameters
+        ----------
+        points1 : list of Point
+            Source points on conic1.
+        points2 : list of Point
+            Target points on conic2.
+        conic1 : Conic
+            Source quadric.
+        conic2 : Conic
+            Target quadric.
+
+        Returns
+        -------
+        Transformation
+            The transformation that maps the points to each other and the conic to the other conic.
+
+        References
+        ----------
+        .. [1] https://math.stackexchange.com/questions/654275/homography-between-ellipses
+
+        """
+        a1, b1, c1 = points1
+        l1, l2 = conic1.tangent(a1), conic1.tangent(b1)
+        m = l1.meet(l2).join(c1)
+        p, q = conic1.intersect(m)
+        d1 = p if q == c1 else q
+
+        a2, b2, c2 = points2
+        l1, l2 = conic2.tangent(a2), conic2.tangent(b2)
+        m = l1.meet(l2).join(c2)
+        p, q = conic2.intersect(m)
+        d2 = p if q == c2 else q
+
+        return Transformation.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
 
     def apply(self, other):
         """Apply the transformation to another object.
