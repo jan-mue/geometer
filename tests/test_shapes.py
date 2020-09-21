@@ -413,3 +413,14 @@ class TestSegmentCollection:
         q = PointCollection([(0, 2, 0), (3, 3, 3)], homogenize=True)
         s = SegmentCollection(p, q)
         assert s.midpoint == PointCollection([(0, 1, 0), (2, 2, 2)], homogenize=True)
+
+    def test_intersect(self):
+        a = PointCollection([(0, 0), (0, 0)], homogenize=True)
+        b = PointCollection([(2, 0), (4, 0)], homogenize=True)
+        c = PointCollection([(2, 2), (4, 4)], homogenize=True)
+        d = PointCollection([(0, 2), (0, 4)], homogenize=True)
+        s1 = SegmentCollection(a, c)
+        s2 = SegmentCollection(b, d)
+
+        assert s1.intersect(s2) == PointCollection([(1, 1), (2, 2)], homogenize=True)
+        assert s1.intersect(Line(Point(0, 0), Point(1, 1))).size == 0

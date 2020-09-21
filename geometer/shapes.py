@@ -861,10 +861,9 @@ class SegmentCollection(PointCollection):
         Segment.intersect
 
         """
-        # TODO: handle collinear segments
         if isinstance(other, (Segment, SegmentCollection)):
-            result = self._line.meet(other._line)
-            return result[self.contains(result) & other.contains(result)]
+            result = meet(self._line, other._line, _check_dependence=False)
+            return result[~result.is_zero() & self.contains(result) & other.contains(result)]
 
-        result = self._line.meet(other)
-        return result[self.contains(result)]
+        result = meet(self._line, other, _check_dependence=False)
+        return result[~result.is_zero() & self.contains(result)]
