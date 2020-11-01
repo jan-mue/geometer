@@ -134,7 +134,7 @@ class Segment(Polytope):
 
     def __apply__(self, transformation):
         result = super(Segment, self).__apply__(transformation)
-        result._line = Line(Point(result.array[0]), Point(result.array[1]))
+        result._line = Line(Point(result.array[0], copy=False), Point(result.array[1], copy=False))
         return result
 
     @property
@@ -282,7 +282,7 @@ class Polygon(Polytope):
 
     @property
     def vertices(self):
-        return [Point(x) for x in self.array]
+        return [Point(x, copy=False) for x in self.array]
 
     @property
     def facets(self):

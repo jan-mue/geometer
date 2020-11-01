@@ -99,15 +99,15 @@ def harmonic_set(a, b, c):
         e = join(l, o)
         basis = e.basis_matrix
         if isinstance(a, Point):
-            a = Point(basis.dot(a.array))
-            b = Point(basis.dot(b.array))
-            c = Point(basis.dot(c.array))
-            o = Point(basis.dot(o.array))
+            a = Point(basis.dot(a.array), copy=False)
+            b = Point(basis.dot(b.array), copy=False)
+            c = Point(basis.dot(c.array), copy=False)
+            o = Point(basis.dot(o.array), copy=False)
         else:
-            a = PointCollection(matvec(basis, a.array))
-            b = PointCollection(matvec(basis, b.array))
-            c = PointCollection(matvec(basis, c.array))
-            o = PointCollection(matvec(basis, o.array))
+            a = PointCollection(matvec(basis, a.array), copy=False)
+            b = PointCollection(matvec(basis, b.array), copy=False)
+            c = PointCollection(matvec(basis, c.array), copy=False)
+            o = PointCollection(matvec(basis, o.array), copy=False)
 
         l = join(a, b)
 
@@ -117,8 +117,8 @@ def harmonic_set(a, b, c):
 
     if n > 3:
         if isinstance(a, Point):
-            return Point(basis.T.dot(result.array))
-        return PointCollection(matvec(basis, result.array, transpose_a=True))
+            return Point(basis.T.dot(result.array), copy=False)
+        return PointCollection(matvec(basis, result.array, transpose_a=True), copy=False)
 
     return result
 
@@ -158,7 +158,9 @@ def angle(*args):
         if a.dim > 2:
             e = join(*args)
             basis = e.basis_matrix
-            a, b, c = Point(basis.dot(a.array)), Point(basis.dot(b.array)), Point(basis.dot(c.array))
+            a = Point(basis.dot(a.array), copy=False)
+            b = Point(basis.dot(b.array), copy=False)
+            c = Point(basis.dot(c.array), copy=False)
 
     elif len(args) == 2:
         x, y = args
@@ -168,7 +170,7 @@ def angle(*args):
             p = l.meet(infty_plane)
             polar = Line(p.array[:-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
-            tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+            tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
             return 1/2j*np.log(crossratio(x, y, i, j))
@@ -185,9 +187,9 @@ def angle(*args):
         if a.dim > 2:
             e = join(x, y)
             basis = e.basis_matrix
-            a = Point(basis.dot(a.array))
-            b = Point(basis.dot(x.meet(infty_plane).array))
-            c = Point(basis.dot(y.meet(infty_plane).array))
+            a = Point(basis.dot(a.array), copy=False)
+            b = Point(basis.dot(x.meet(infty_plane).array), copy=False)
+            c = Point(basis.dot(y.meet(infty_plane).array), copy=False)
         else:
             b = x.meet(infty)
             c = y.meet(infty)
@@ -216,8 +218,8 @@ def angle_bisectors(l, m):
     if o.dim > 2:
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array))
-        M = Point(basis.dot(m.meet(infty_plane).array))
+        L = Point(basis.dot(l.meet(infty_plane).array), copy=False)
+        M = Point(basis.dot(m.meet(infty_plane).array), copy=False)
 
     else:
         L, M = l.meet(infty), m.meet(infty)
@@ -231,7 +233,7 @@ def angle_bisectors(l, m):
     r, s = a*I+b*J, a*I-b*J
 
     if o.dim > 2:
-        r, s = Point(basis.T.dot(r.array)), Point(basis.T.dot(s.array))
+        r, s = Point(basis.T.dot(r.array), copy=False), Point(basis.T.dot(s.array), copy=False)
 
     return Line(o, r), Line(o, s)
 
@@ -268,7 +270,7 @@ def dist(p, q):
     if isinstance(p, Point) and isinstance(q, (Plane, Line)):
         return dist(q.project(p), p)
     if isinstance(p, Plane) and isinstance(q, (Plane, Line)):
-        return dist(p, Point(q.basis_matrix[0, :]))
+        return dist(p, Point(q.basis_matrix[0, :], copy=False))
     if isinstance(q, Plane) and isinstance(p, Line):
         return dist(q, p.base_point)
 
@@ -316,10 +318,10 @@ def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     elif a.dim > 2:
         e = join(a, b, c)
         basis = e.basis_matrix
-        a = Point(basis.dot(a.array))
-        b = Point(basis.dot(b.array))
-        c = Point(basis.dot(c.array))
-        d = Point(basis.dot(d.array))
+        a = Point(basis.dot(a.array), copy=False)
+        b = Point(basis.dot(b.array), copy=False)
+        c = Point(basis.dot(c.array), copy=False)
+        d = Point(basis.dot(d.array), copy=False)
 
     i = crossratio(a, b, c, d, I)
     j = crossratio(a, b, c, d, J)
@@ -351,15 +353,15 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     elif isinstance(l, Line) and isinstance(m, Line):
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array))
-        M = Point(basis.dot(m.meet(infty_plane).array))
+        L = Point(basis.dot(l.meet(infty_plane).array), copy=False)
+        M = Point(basis.dot(m.meet(infty_plane).array), copy=False)
 
     elif isinstance(l, Plane) and isinstance(m, Plane):
         x = l.meet(m)
         p = x.meet(infty_plane)
         polar = Line(p.array[:-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+        tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
         return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)

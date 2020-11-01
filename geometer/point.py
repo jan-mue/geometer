@@ -607,9 +607,9 @@ class Line(Subspace):
             e = join(self, pt)
             m = e.basis_matrix
             m = m[np.argsort(np.abs(m.dot(pt.array)))]
-            pt = Point(m.dot(pt.array))
+            pt = Point(m.dot(pt.array), copy=False)
             a, b = m.dot(self.basis_matrix.T).T
-            l = Line(Point(a), Point(b))
+            l = Line(Point(a, copy=False), Point(b, copy=False))
         l1 = I.join(pt)
         l2 = J.join(pt)
         p1 = l.meet(l1)
@@ -618,7 +618,7 @@ class Line(Subspace):
         m2 = p2.join(I)
         result = m1.meet(m2)
         if self.dim >= 3:
-            return Point(m.T.dot(result.array))
+            return Point(m.T.dot(result.array), copy=False)
         return result
 
 
@@ -683,7 +683,7 @@ class Plane(Subspace):
 
         from .curve import absolute_conic
         tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [Point(np.append(p.array, 0)) for p in tangent_points]
+        tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
 
         l1 = tangent_points[0].join(pt)
         l2 = tangent_points[1].join(pt)
@@ -731,7 +731,7 @@ class Plane(Subspace):
         if self.contains(through):
             l = self.meet(infty_plane)
             l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
-            p1, p2 = [Point(a) for a in l.basis_matrix]
+            p1, p2 = [Point(a, copy=False) for a in l.basis_matrix]
             polar1 = Line(p1.array, copy=False)
             polar2 = Line(p2.array, copy=False)
 
@@ -744,7 +744,7 @@ class Plane(Subspace):
             m1, m2 = p1.join(q1), p2.join(q2)
 
             p = m1.meet(m2)
-            p = Point(np.append(p.array, 0))
+            p = Point(np.append(p.array, 0), copy=False)
 
             return through.join(p)
 
