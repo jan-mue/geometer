@@ -95,6 +95,8 @@ class TestTransformationCollection:
     def test_pow(self):
         t = TransformationCollection([translation(1, 2)]*10)
 
+        assert t**0 == TransformationCollection([np.eye(3)]*10)
+        assert t**1 == t
         assert t**2 == TransformationCollection([translation(2, 4)]*10)
         assert t**3 == TransformationCollection([translation(3, 6)]*10)
         assert t**(-2) == TransformationCollection([translation(-2, -4)]*10)

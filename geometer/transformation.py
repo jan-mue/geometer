@@ -5,21 +5,28 @@ from .point import Point, Subspace, infty_hyperplane
 from .utils import inv
 
 
-def identity(dim):
+def identity(dim, collection_dims=None):
     """Returns the identity transformation.
 
     Parameters
     ----------
     dim : int
         The dimension of the projective space that the transformation acts on.
+    collection_dims : tuple of int, optional
+        Collection dimensions for a collection of identity transformations.
+        By default only a single transformation is returned.
 
     Returns
     -------
-    Transformation
-        The identity transformation.
+    Transformation or TransformationCollection
+        The identity transformation(s).
 
     """
-    # TODO: support collections
+    if collection_dims is not None:
+        e = np.eye(dim + 1)
+        e = e.reshape((1,) * len(collection_dims) + e.shape)
+        e = np.tile(e, collection_dims + (1, 1))
+        return TransformationCollection(e)
     return Transformation(np.eye(dim+1))
 
 
@@ -338,10 +345,7 @@ class TransformationCollection(ProjectiveCollection):
 
     def __pow__(self, power, modulo=None):
         if power == 0:
-            e = np.eye(self.dim+1)
-            e = e.reshape((1,)*len(self._collection_indices) + e.shape)
-            e = np.tile(e, self.shape[:len(self._collection_indices)] + (1, 1))
-            return TransformationCollection(e)
+            return identity(self.dim, self.shape[:len(self._collection_indices)])
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 
