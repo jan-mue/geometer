@@ -3,7 +3,7 @@
 [![image](https://img.shields.io/pypi/v/geometer.svg)](https://pypi.org/project/geometer/)
 [![image](https://img.shields.io/pypi/l/geometer.svg)](https://pypi.org/project/geometer/)
 [![image](https://img.shields.io/pypi/pyversions/geometer.svg)](https://pypi.org/project/geometer/)
-[![Build Status](https://travis-ci.org/jan-mue/geometer.svg?branch=master)](https://travis-ci.org/jan-mue/geometer)
+![Build Status](https://github.com/jan-mue/geometer/workflows/.github/workflows/build.yaml/badge.svg?branch=master)
 [![codecov](https://codecov.io/github/jan-mue/geometer/coverage.svg?branch=master)](https://codecov.io/github/jan-mue/geometer)
 [![Downloads](https://pepy.tech/badge/geometer)](https://pepy.tech/project/geometer)
 
