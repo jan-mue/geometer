@@ -1,0 +1,23 @@
+name: build and run tests
+on: [ push ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ 3.5, 3.6, 3.7, 3.8, 3.9 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install pipenv --upgrade
+          pipenv install --dev --skip-lock
+      - name: Test with pytest
+        run: |
+          pipenv run coverage run --source=geometer -m pytest
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
