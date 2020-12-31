@@ -989,6 +989,110 @@ class LineCollection(SubspaceCollection):
         diagram = TensorDiagram((self, e), (self, e))
         return LineCollection(diagram.calculate(), copy=False)
 
+    def mirror(self, pt):
+        """Construct the reflection of a point at this line.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to reflect.
+
+        Returns
+        -------
+        Point
+            The mirror point.
+
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
+
+        """
+        l = self
+        if self.dim >= 3:
+            e = join(self, pt)
+            m = e.basis_matrix
+            arr = matvec(m, pt.array)
+            arr_sort = np.argsort(np.abs(arr), axis=-1)
+            m = m[..., arr_sort, :]
+            pt = PointCollection(arr[..., arr_sort], copy=False)
+            line_basis = matmul(self.basis_matrix, m, transpose_b=True)
+            a = PointCollection(line_basis[..., 0, :], copy=False)
+            b = PointCollection(line_basis[..., 1, :], copy=False)
+            l = a.join(b)
+        l1 = I.join(pt)
+        l2 = J.join(pt)
+        p1 = l.meet(l1)
+        p2 = l.meet(l2)
+        m1 = p1.join(J)
+        m2 = p2.join(I)
+        result = m1.meet(m2)
+        if self.dim >= 3:
+            return PointCollection(
+                matmul(m, result.array, transpose_a=True), copy=False
+            )
+        return result
+
+    def perpendicular(self, through, plane=None):
+        """Construct the perpendicular line though a point.
+
+        Parameters
+        ----------
+        through : Point
+            The point through which the perpendicular is constructed.
+        plane : Plane, optional
+            In three or higher dimensional spaces, the plane in which
+            the perpendicular line is supposed to lie can be specified.
+
+        Returns
+        -------
+        Line
+            The perpendicular line.
+
+        """
+        if self.contains(through):
+            n = self.dim + 1
+
+            l = self
+
+            if n > 3:
+
+                if plane is None:
+                    # additional point is required to determine the exact line
+                    plane = join(self, self.general_point)
+
+                basis = plane.basis_matrix
+                line_pts = basis.dot(self.basis_matrix.T)
+                l = Line(np.cross(*line_pts.T), copy=False)
+
+            from .operators import harmonic_set
+
+            p = l.meet(infty)
+            q = harmonic_set(I, J, p)
+
+            if n > 3:
+                q = Point(basis.T.dot(q.array), copy=False)
+
+            return Line(through, q)
+
+        return self.mirror(through).join(through)
+
+    def project(self, pt):
+        """The orthogonal projection of a point onto the line.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to project.
+
+        Returns
+        -------
+        Point
+            The projected point.
+
+        """
+        l = self.perpendicular(pt)
+        return self.meet(l)
+
 
 class PlaneCollection(SubspaceCollection):
     """A collection of planes.
@@ -1017,3 +1121,100 @@ class PlaneCollection(SubspaceCollection):
             return result
 
         return PlaneCollection(result, copy=False)
+
+    def mirror(self, pt):
+        """Construct the reflection of a point at this plane.
+
+        Only works in 3D.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to reflect.
+
+        Returns
+        -------
+        Point
+            The mirror point.
+
+        """
+        l = self.meet(infty_plane)
+        l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
+        p = l.base_point
+        polar = Line(p.array, copy=False)
+
+        from .curve import absolute_conic
+
+        tangent_points = absolute_conic.intersect(polar)
+        tangent_points = [
+            Point(np.append(p.array, 0), copy=False) for p in tangent_points
+        ]
+
+        l1 = tangent_points[0].join(pt)
+        l2 = tangent_points[1].join(pt)
+        p1 = self.meet(l1)
+        p2 = self.meet(l2)
+        m1 = p1.join(tangent_points[1])
+        m2 = p2.join(tangent_points[0])
+        return m1.meet(m2)
+
+    def project(self, pt):
+        """The orthogonal projection of a point onto the plane.
+
+        Only works in 3D.
+
+        Parameters
+        ----------
+        pt : Point
+            The point to project.
+
+        Returns
+        -------
+        Point
+            The projected point.
+
+        """
+        l = self.perpendicular(pt)
+        return self.meet(l)
+
+    def perpendicular(self, through):
+        """Construct the perpendicular line though a point.
+
+        Only works in 3D.
+
+        Parameters
+        ----------
+        through : Point
+            The point through which the perpendicular is constructed.
+
+        Returns
+        -------
+        Line
+            The perpendicular line.
+
+        """
+        if self.contains(through):
+            l = self.meet(infty_plane)
+            l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
+            p1, p2 = [Point(a, copy=False) for a in l.basis_matrix]
+            polar1 = Line(p1.array, copy=False)
+            polar2 = Line(p2.array, copy=False)
+
+            from .curve import absolute_conic
+
+            tangent_points1 = absolute_conic.intersect(polar1)
+            tangent_points2 = absolute_conic.intersect(polar2)
+
+            from .operators import harmonic_set
+
+            q1, q2 = harmonic_set(*tangent_points1, l.meet(polar1)), harmonic_set(
+                *tangent_points2, l.meet(polar2)
+            )
+            m1, m2 = p1.join(q1), p2.join(q2)
+
+            p = m1.meet(m2)
+            p = Point(np.append(p.array, 0), copy=False)
+
+            return through.join(p)
+
+        return self.mirror(through).join(through)

@@ -46,6 +46,10 @@ def test_dist():
     assert np.isclose(dist(l, e), 1)
     assert np.isclose(dist(l, p1), 1)
 
+    p = PointCollection([(1, 0, 1), (1, 1, 0)], homogenize=True)
+    e = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
+    assert np.allclose(dist(e, p), 1)
+
 
 def test_angle():
     a = Point(0, 0)
@@ -69,6 +73,17 @@ def test_angle():
     assert np.isclose(abs(angle(l, m)), np.pi/2)
     assert np.isclose(abs(angle(p1, p2, p3)), np.pi/2)
 
+    p1 = PointCollection([(0, 0), (0, 0)], homogenize=True)
+    p2 = PointCollection([(1, 1), (0, 1)], homogenize=True)
+    p3 = PointCollection([(1, 0), (1, 1)], homogenize=True)
+
+    assert np.allclose(angle(p1, p2, p3), np.pi / 4)
+
+    e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
+    e2 = PlaneCollection([(1, 1, 1, 0), (0, 1, 0, 0)])
+
+    assert np.allclose(angle(e1, e2), [np.pi / 4, np.pi / 2])
+
 
 def test_angle_bisectors():
     a = Point(0, 0)
@@ -89,10 +104,24 @@ def test_angle_bisectors():
     assert is_perpendicular(q, r)
     assert np.isclose(angle(l, q), angle(q, m))
 
+    p1 = PointCollection([(0, 0), (0, 0)], homogenize=True)
+    p2 = PointCollection([(1, 1), (0, 1)], homogenize=True)
+    p3 = PointCollection([(1, 0), (1, 1)], homogenize=True)
+    l = LineCollection(p1, p2)
+    m = LineCollection(p1, p3)
+    q, r = angle_bisectors(l, m)
+    assert is_perpendicular(q, r)
+    assert np.allclose(angle(l, q), angle(q, m))
+
 
 def test_is_cocircular():
     p = Point(0, 1)
-    t = rotation(np.pi/3)
+    t = rotation(np.pi / 3)
+
+    assert is_cocircular(p, t * p, t * t * p, t * t * t * p)
+
+    p = PointCollection([(0, 1), (1, 0)], homogenize=True)
+    t = rotation(np.pi / 3)
 
     assert is_cocircular(p, t*p, t*t*p, t*t*t*p)
 
@@ -104,6 +133,13 @@ def test_is_coplanar():
     p4 = Point(0, 2, 0)
 
     assert is_coplanar(p1, p2, p3, p4)
+
+    p1 = PointCollection([(1, 0), (1, 1)], homogenize=True)
+    p2 = PointCollection([(2, 0), (2, 1)], homogenize=True)
+    p3 = PointCollection([(3, 0), (3, 1)], homogenize=True)
+    p4 = PointCollection([(4, 0), (4, 1)], homogenize=True)
+
+    assert all(is_coplanar(p1, p2, p3, p4))
 
 
 def test_is_perpendicular():
@@ -121,6 +157,10 @@ def test_is_perpendicular():
     e1 = Plane(p1, p2, p3)
     e2 = Plane(p1, p2, Point(0, 0, 1))
     assert is_perpendicular(e1, e2)
+
+    e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
+    e2 = PlaneCollection([(0, 1, 0, 0), (0, 0, 1, 0)])
+    assert all(is_perpendicular(e1, e2))
 
 
 def test_pappos():
@@ -160,3 +200,9 @@ def test_harmonic_set():
     c = Point(3, 3, 0)
     d = harmonic_set(a, b, c)
     assert np.isclose(crossratio(a, b, c, d), -1)
+
+    p1 = PointCollection([(0, 0), (1, 1)], homogenize=True)
+    p2 = PointCollection([(1, 1), (2, 1)], homogenize=True)
+    p3 = PointCollection([(3, 3), (3, 1)], homogenize=True)
+    p4 = harmonic_set(p1, p2, p3)
+    assert np.allclose(crossratio(p1, p2, p3, p4), -1)
