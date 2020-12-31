@@ -63,7 +63,9 @@ class Tensor:
             tensor_rank += self.shape[-1]
 
         if self.rank < tensor_rank:
-            raise ValueError("tensor_rank must be smaller than or equal to the number of array dimensions.")
+            raise ValueError(
+                "tensor_rank must be smaller than or equal to the number of array dimensions."
+            )
 
         n_col = self.rank - tensor_rank
         self._collection_indices = set(range(n_col))
@@ -81,7 +83,9 @@ class Tensor:
                 idx = posify_index(tensor_rank, idx)
                 self._covariant_indices.add(n_col + idx)
 
-        self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - self._collection_indices
+        self._contravariant_indices = (
+            set(range(self.rank)) - self._covariant_indices - self._collection_indices
+        )
 
     def __apply__(self, transformation):
         ts = self.tensor_shape
@@ -133,8 +137,12 @@ class Tensor:
 
         """
         offset = self.rank
-        covariant = list(self._covariant_indices) + [offset + i for i in other._covariant_indices]
-        contravariant = list(self._contravariant_indices) + [offset + i for i in other._contravariant_indices]
+        covariant = list(self._covariant_indices) + [
+            offset + i for i in other._covariant_indices
+        ]
+        contravariant = list(self._contravariant_indices) + [
+            offset + i for i in other._contravariant_indices
+        ]
 
         result = np.tensordot(self.array, other.array, 0)
         result = np.transpose(result, axes=covariant + contravariant)
@@ -257,14 +265,16 @@ class Tensor:
             b = np.broadcast(*[index[i] for i in advanced_indices])
             a0, a1 = advanced_indices[0], advanced_indices[-1]
 
-            if advanced_indices != list(range(a0, a1+1)):
+            if advanced_indices != list(range(a0, a1 + 1)):
                 # create advanced indices in front
                 for i in advanced_indices:
                     index_mapping.remove(i)
-                index_mapping = [None]*b.ndim + index_mapping
+                index_mapping = [None] * b.ndim + index_mapping
             else:
                 # replace indices with broadcast shape
-                index_mapping = index_mapping[:a0] + [None]*b.ndim + index_mapping[a1+1:]
+                index_mapping = (
+                    index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
+                )
 
         for new_axis, old_axis in enumerate(index_mapping):
             if old_axis is None or old_axis in self._collection_indices:
@@ -291,7 +301,9 @@ class Tensor:
 
     def __mul__(self, other):
         if np.isscalar(other):
-            return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)
+            return Tensor(
+                self.array * other, covariant=self._covariant_indices, copy=False
+            )
         if not isinstance(other, Tensor):
             other = Tensor(other, copy=False)
         return TensorDiagram((other, self)).calculate()
@@ -312,7 +324,7 @@ class Tensor:
 
         d = TensorDiagram()
         prev = self
-        for _ in range(power-1):
+        for _ in range(power - 1):
             cur = prev.copy()
             d.add_edge(cur, prev)
             prev = cur
@@ -321,7 +333,9 @@ class Tensor:
 
     def __truediv__(self, other):
         if np.isscalar(other):
-            return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)
+            return Tensor(
+                self.array / other, covariant=self._covariant_indices, copy=False
+            )
         return NotImplemented
 
     def __add__(self, other):
@@ -341,7 +355,7 @@ class Tensor:
         return -self + other
 
     def __neg__(self):
-        return self*(-1)
+        return self * (-1)
 
     def __eq__(self, other):
         if isinstance(other, Tensor):
@@ -371,6 +385,7 @@ class TensorCollection(Tensor):
         Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
+
     _element_class = Tensor
 
     def __init__(self, elements, *, covariant=True, tensor_rank=1, **kwargs):
@@ -392,9 +407,11 @@ class TensorCollection(Tensor):
                 tensor_rank = t.rank
                 covariant = t._covariant_indices
                 elements = flat_elements.reshape(elements.shape + t.shape)
-                kwargs['copy'] = False
+                kwargs["copy"] = False
 
-        super(TensorCollection, self).__init__(elements, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
+        super(TensorCollection, self).__init__(
+            elements, covariant=covariant, tensor_rank=tensor_rank, **kwargs
+        )
 
     def expand_dims(self, axis):
         """Add a new index to the collection.
@@ -415,9 +432,15 @@ class TensorCollection(Tensor):
 
         axis = sanitize_index(axis)
         axis = posify_index(self.rank, axis)
-        result._collection_indices = set(i+1 if i >= axis else i for i in self._collection_indices)
-        result._covariant_indices = set(i+1 if i >= axis else i for i in self._covariant_indices)
-        result._contravariant_indices = set(i+1 if i >= axis else i for i in self._contravariant_indices)
+        result._collection_indices = set(
+            i + 1 if i >= axis else i for i in self._collection_indices
+        )
+        result._covariant_indices = set(
+            i + 1 if i >= axis else i for i in self._covariant_indices
+        )
+        result._contravariant_indices = set(
+            i + 1 if i >= axis else i for i in self._contravariant_indices
+        )
         result._collection_indices.add(axis)
 
         return result
@@ -491,7 +514,9 @@ class LeviCivitaTensor(Tensor):
             array[tuple(indices)] = np.prod(diff, axis=0)
 
             self._cache[size] = array
-        super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant), copy=False)
+        super(LeviCivitaTensor, self).__init__(
+            array, covariant=bool(covariant), copy=False
+        )
 
 
 class KroneckerDelta(Tensor):
@@ -535,13 +560,18 @@ class KroneckerDelta(Tensor):
             self._cache[(p, n)] = array
         else:
             d1 = KroneckerDelta(n)
-            d2 = KroneckerDelta(n, p-1)
+            d2 = KroneckerDelta(n, p - 1)
 
             def calc(*args):
-                return sum((-1)**(p+k+1)*d1.array[args[k], args[-1]]*d2.array[tuple(x for i, x in enumerate(args[:-1]) if i != k)] for k in range(p))
+                return sum(
+                    (-1) ** (p + k + 1)
+                    * d1.array[args[k], args[-1]]
+                    * d2.array[tuple(x for i, x in enumerate(args[:-1]) if i != k)]
+                    for k in range(p)
+                )
 
             f = np.vectorize(calc)
-            array = np.fromfunction(f, tuple(2*p*[n]), dtype=int)
+            array = np.fromfunction(f, tuple(2 * p * [n]), dtype=int)
 
         super(KroneckerDelta, self).__init__(array, covariant=range(p), copy=False)
 
@@ -633,7 +663,9 @@ class TensorDiagram:
                 free_target = self.add_node(target)[1]
 
         if len(free_source) == 0 or len(free_target) == 0:
-            raise TensorComputationError("Could not add the edge because no free indices are left.")
+            raise TensorComputationError(
+                "Could not add the edge because no free indices are left."
+            )
 
         # Third step: Pick some free indices
         i = free_source.pop(0)
@@ -642,7 +674,9 @@ class TensorDiagram:
         if source.shape[i] != target.shape[j]:
             raise TensorComputationError(
                 "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
-                    str(source.shape[i]), str(target.shape[j])))
+                    str(source.shape[i]), str(target.shape[j])
+                )
+            )
 
         self._contraction_list.append((source_index, target_index, i, j))
 
@@ -665,27 +699,41 @@ class TensorDiagram:
         # Split the indices and insert the arrays
         args = []
         result_indices = ([], [], [])
-        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
+        for i, (node, ind, offset) in enumerate(
+            zip(self._nodes, self._free_indices, self._node_positions)
+        ):
             if len(node._collection_indices) > 0:
                 col_ind = sorted(node._collection_indices, reverse=True)
-                for j, k in enumerate(col_ind[:len(result_indices[0])]):
-                    indices[offset + k] = result_indices[0][-j-1]
+                for j, k in enumerate(col_ind[: len(result_indices[0])]):
+                    indices[offset + k] = result_indices[0][-j - 1]
                 if len(node._collection_indices) > len(result_indices[0]):
-                    for k in col_ind[len(result_indices[0]):]:
+                    for k in col_ind[len(result_indices[0]) :]:
                         result_indices[0].insert(0, offset + k)
             result_indices[1].extend(offset + x for x in ind[0])
             result_indices[2].extend(offset + x for x in ind[1])
             args.append(node.array)
-            s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
+            s = slice(
+                offset,
+                self._node_positions[i + 1]
+                if i + 1 < len(self._node_positions)
+                else None,
+            )
             args.append(indices[s])
 
-        result = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
+        result = np.einsum(
+            *args, result_indices[0] + result_indices[1] + result_indices[2]
+        )
 
         n_col = len(result_indices[0])
         n_cov = len(result_indices[1])
 
         if n_col > 0:
-            return TensorCollection(result, covariant=range(0, n_cov), tensor_rank=result.ndim-n_col, copy=False)
+            return TensorCollection(
+                result,
+                covariant=range(0, n_cov),
+                tensor_rank=result.ndim - n_col,
+                copy=False,
+            )
 
         return Tensor(result, covariant=range(n_cov), copy=False)
 
@@ -703,9 +751,7 @@ class TensorDiagram:
 
 
 class ProjectiveElement(Tensor, ABC):
-    """Base class for all projective tensors, i.e. all objects that identify scalar multiples.
-
-    """
+    """Base class for all projective tensors, i.e. all objects that identify scalar multiples."""
 
     def __eq__(self, other):
         if np.isscalar(other):
@@ -726,9 +772,7 @@ class ProjectiveElement(Tensor, ABC):
 
 
 class ProjectiveCollection(TensorCollection, ABC):
-    """Base class for collections of projective elements.
-
-    """
+    """Base class for collections of projective elements."""
 
     def __eq__(self, other):
         if np.isscalar(other):
@@ -741,7 +785,11 @@ class ProjectiveCollection(TensorCollection, ABC):
             return False
 
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
-        return np.all(is_multiple(self.array, other.array, axis=axes, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS))
+        return np.all(
+            is_multiple(
+                self.array, other.array, axis=axes, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS
+            )
+        )
 
     @property
     def dim(self):

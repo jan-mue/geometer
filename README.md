@@ -36,7 +36,7 @@ You can install the package directly from PyPI:
 ```bash
 pip install geometer
 ```
-   
+
 ## Usage
 
 ```Python

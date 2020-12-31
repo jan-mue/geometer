@@ -1,4 +1,14 @@
-from .math import null_space, hat_matrix, is_multiple, orth, adjugate, det, inv, matmul, matvec
+from .math import (
+    null_space,
+    hat_matrix,
+    is_multiple,
+    orth,
+    adjugate,
+    det,
+    inv,
+    matmul,
+    matvec,
+)
 from .indexing import posify_index, normalize_index, sanitize_index
 
 

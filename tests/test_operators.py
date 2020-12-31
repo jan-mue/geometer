@@ -21,22 +21,18 @@ def test_is_collinear():
 def test_dist():
     p = Point(0, 0)
     q = Point(1, 0)
-
     assert np.isclose(dist(p, q), 1)
 
     p1 = Point(1j, 0, 0, 2j)
     p2 = Point(0, 2j, 0, 0)
-
     assert np.isclose(dist(p1, p2), 3)
 
     p1 = Point(1, 0, 0)
     p2 = Point([1, 0, 0, 0])
-
     assert dist(p1, p2) == dist(p2, p1) == np.inf
 
     p1 = Point(0, 0, 0)
     p2 = Point(1, 0, 0)
-
     assert np.isclose(dist(p1, p2), 1)
 
     e = Plane(1, 0, 0, 0)
@@ -52,13 +48,13 @@ def test_angle():
     b = Point(1, 1)
     c = Point(1, 0)
 
-    assert np.isclose(angle(a, b, c), np.pi/4)
-    assert np.isclose(angle(a, c, b), -np.pi/4)
+    assert np.isclose(angle(a, b, c), np.pi / 4)
+    assert np.isclose(angle(a, c, b), -np.pi / 4)
 
     e1 = Plane(1, 0, 0, 0)
     e2 = Plane(0, 0, 1, 0)
 
-    assert np.isclose(abs(angle(e1, e2)), np.pi/2)
+    assert np.isclose(abs(angle(e1, e2)), np.pi / 2)
 
     p1 = Point(0, 0, 0)
     p2 = Point(0, 1, 0)
@@ -66,8 +62,8 @@ def test_angle():
     l = Line(p1, p2)
     m = Line(p1, p3)
 
-    assert np.isclose(abs(angle(l, m)), np.pi/2)
-    assert np.isclose(abs(angle(p1, p2, p3)), np.pi/2)
+    assert np.isclose(abs(angle(l, m)), np.pi / 2)
+    assert np.isclose(abs(angle(p1, p2, p3)), np.pi / 2)
 
 
 def test_angle_bisectors():
@@ -92,9 +88,9 @@ def test_angle_bisectors():
 
 def test_is_cocircular():
     p = Point(0, 1)
-    t = rotation(np.pi/3)
+    t = rotation(np.pi / 3)
 
-    assert is_cocircular(p, t*p, t*t*p, t*t*t*p)
+    assert is_cocircular(p, t * p, t * t * p, t * t * t * p)
 
 
 def test_is_coplanar():
@@ -140,11 +136,11 @@ def test_pappos():
 
 
 def test_cp1():
-    p = Point(1+0j)
-    q = Point(0+1j)
-    m = Transformation([[np.e**(np.pi/2*1j), 0], [0, 1]])
-    assert m*p == q
-    c = crossratio(p, q, m*q, m*m*q)
+    p = Point(1 + 0j)
+    q = Point(0 + 1j)
+    m = Transformation([[np.e ** (np.pi / 2 * 1j), 0], [0, 1]])
+    assert m * p == q
+    c = crossratio(p, q, m * q, m * m * q)
     assert np.isclose(np.real(c), c)
 
 
