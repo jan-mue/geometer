@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pipenv --upgrade
-          pipenv install --dev --skip-lock --python ${{ matrix.python_version }}
+          pipenv install --dev --skip-lock --python ${{ matrix.python-version }}
       - name: Test with pytest
         run: |
           pipenv run pytest --cov=geometer/
