@@ -1,5 +1,18 @@
 import numpy as np
-from .point import Point, Line, Plane, I, J, PointCollection, LineCollection, infty, infty_plane, join, meet
+from .point import (
+    Point,
+    Line,
+    Plane,
+    I,
+    J,
+    PointCollection,
+    LineCollection,
+    PlaneCollection,
+    infty,
+    infty_plane,
+    join,
+    meet,
+)
 from .curve import absolute_conic
 from .base import LeviCivitaTensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import IncidenceError, NotCollinear
@@ -24,7 +37,7 @@ def crossratio(a, b, c, d, from_point=None):
     """
 
     if a == b:
-        return 1
+        return np.ones(a.shape[: len(a._collection_indices)])
 
     if isinstance(a, (Line, LineCollection)):
         if not np.all(is_concurrent(a, b, c, d)):
@@ -45,6 +58,18 @@ def crossratio(a, b, c, d, from_point=None):
         c = Point(m.dot((p + c.direction).array), copy=False)
         d = Point(m.dot((p + d.direction).array), copy=False)
 
+    if isinstance(a, PlaneCollection):
+        l = a.meet(b)
+        e = PlaneCollection(l.direction.array, copy=False)
+        a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
+        m = e.basis_matrix
+        p = e.meet(l)
+        from_point = PointCollection(m.dot(p.array), copy=False)
+        a = PointCollection(m.dot((p + a.direction).array), copy=False)
+        b = PointCollection(m.dot((p + b.direction).array), copy=False)
+        c = PointCollection(m.dot((p + c.direction).array), copy=False)
+        d = PointCollection(m.dot((p + d.direction).array), copy=False)
+
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
         if not np.all(is_collinear(a, b, c, d)):
@@ -58,7 +83,9 @@ def crossratio(a, b, c, d, from_point=None):
         o = []
 
     elif from_point is not None:
-        a, b, c, d, from_point = np.broadcast_arrays(a.array, b.array, c.array, d.array, from_point.array)
+        a, b, c, d, from_point = np.broadcast_arrays(
+            a.array, b.array, c.array, d.array, from_point.array
+        )
         o = [from_point]
     else:
         a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
@@ -112,13 +139,15 @@ def harmonic_set(a, b, c):
         l = join(a, b)
 
     m = join(o, c)
-    p = o + 1/2*m.direction
+    p = o + 1 / 2 * m.direction
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
 
     if n > 3:
         if isinstance(a, Point):
             return Point(basis.T.dot(result.array), copy=False)
-        return PointCollection(matvec(basis, result.array, transpose_a=True), copy=False)
+        return PointCollection(
+            matvec(basis, result.array, transpose_a=True), copy=False
+        )
 
     return result
 
@@ -170,10 +199,12 @@ def angle(*args):
             p = l.meet(infty_plane)
             polar = Line(p.array[:-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
-            tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
+            tangent_points = [
+                Point(np.append(p.array, 0), copy=False) for p in tangent_points
+            ]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
-            return 1/2j*np.log(crossratio(x, y, i, j))
+            return 1 / 2j * np.log(crossratio(x, y, i, j))
 
         if isinstance(x, Line) and isinstance(y, Line):
             a = x.meet(y)
@@ -196,7 +227,7 @@ def angle(*args):
     else:
         raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
 
-    return np.real(1/2j*np.log(crossratio(b, c, I, J, a)))
+    return np.real(1 / 2j * np.log(crossratio(b, c, I, J, a)))
 
 
 def angle_bisectors(l, m):
@@ -229,11 +260,13 @@ def angle_bisectors(l, m):
     lj = det([p.array, L.array, J.array])
     mi = det([p.array, M.array, I.array])
     mj = det([p.array, M.array, J.array])
-    a, b = np.sqrt(lj*mj), np.sqrt(li*mi)
-    r, s = a*I+b*J, a*I-b*J
+    a, b = np.sqrt(lj * mj), np.sqrt(li * mi)
+    r, s = a * I + b * J, a * I - b * J
 
     if o.dim > 2:
-        r, s = Point(basis.T.dot(r.array), copy=False), Point(basis.T.dot(s.array), copy=False)
+        r, s = Point(basis.T.dot(r.array), copy=False), Point(
+            basis.T.dot(s.array), copy=False
+        )
 
     return Line(o, r), Line(o, s)
 
@@ -291,7 +324,7 @@ def dist(p, q):
     qij = det(np.stack([q, i, j], axis=-2))
 
     with np.errstate(divide="ignore", invalid="ignore"):
-        return 4*np.abs(np.sqrt(pqi * pqj)/(pij*qij))
+        return 4 * np.abs(np.sqrt(pqi * pqj) / (pij * qij))
 
 
 def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
@@ -361,7 +394,9 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         p = x.meet(infty_plane)
         polar = Line(p.array[:-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
+        tangent_points = [
+            Point(np.append(p.array, 0), copy=False) for p in tangent_points
+        ]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
         return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)
@@ -391,15 +426,17 @@ def is_coplanar(*args, tol=EQ_TOL_ABS):
 
     """
     n = args[0].dim + 1
-    result = np.isclose(det(np.stack([a.array for a in args[:n]], axis=-2)), 0, atol=tol)
+    result = np.isclose(
+        det(np.stack([a.array for a in args[:n]], axis=-2)), 0, atol=tol
+    )
     if not np.any(result) or len(args) == n:
         return result
     covariant = args[0].tensor_shape[1] > 0
     e = LeviCivitaTensor(n, covariant=covariant)
-    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n-1]])
+    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[: n - 1]])
     tensor = diagram.calculate()
     for t in args[n:]:
-        x = t*tensor if covariant else tensor*t
+        x = t * tensor if covariant else tensor * t
         result &= np.isclose(x.array, 0, atol=tol)
         if not np.any(result):
             break

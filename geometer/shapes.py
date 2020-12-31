@@ -36,7 +36,9 @@ class Polytope(PointCollection):
         super(Polytope, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
+        return "{}({})".format(
+            self.__class__.__name__, ", ".join(str(v) for v in self.vertices)
+        )
 
     @property
     def vertices(self):
@@ -64,14 +66,24 @@ class Polytope(PointCollection):
                 # facets equal up to reordering
                 facets1 = self.facets
                 facets2 = other.facets
-                return all(f in facets2 for f in facets1) and all(f in facets1 for f in facets2)
+                return all(f in facets2 for f in facets1) and all(
+                    f in facets1 for f in facets2
+                )
 
             # edges equal up to circular reordering
             edges1 = self._edges
             edges2 = other._edges
 
             for i in range(self.shape[0]):
-                if np.all(is_multiple(edges1, np.roll(edges2, i, axis=0), axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)):
+                if np.all(
+                    is_multiple(
+                        edges1,
+                        np.roll(edges2, i, axis=0),
+                        axis=-1,
+                        rtol=EQ_TOL_REL,
+                        atol=EQ_TOL_ABS,
+                    )
+                ):
                     return True
 
             return False
@@ -130,11 +142,15 @@ class Segment(Polytope):
 
     def __init__(self, *args, **kwargs):
         super(Segment, self).__init__(*args, **kwargs)
-        self._line = Line(Point(self.array[0], copy=False), Point(self.array[1], copy=False))
+        self._line = Line(
+            Point(self.array[0], copy=False), Point(self.array[1], copy=False)
+        )
 
     def __apply__(self, transformation):
         result = super(Segment, self).__apply__(transformation)
-        result._line = Line(Point(result.array[0], copy=False), Point(result.array[1], copy=False))
+        result._line = Line(
+            Point(result.array[0], copy=False), Point(result.array[1], copy=False)
+        )
         return result
 
     @property
@@ -224,29 +240,33 @@ class Simplex(Polytope):
 
     def __init__(self, *args, **kwargs):
         if len(args) > 3:
-            args = [Simplex(*x) for x in combinations(args, len(args)-1)]
+            args = [Simplex(*x) for x in combinations(args, len(args) - 1)]
         super(Simplex, self).__init__(*args, **kwargs)
 
     @property
     def volume(self):
         """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
-        points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
+        points = np.concatenate(
+            [v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0
+        )
         points = self._normalize_array(points)
         n, k = points.shape
 
         if n == k:
-            return 1 / np.math.factorial(n-1) * abs(det(points))
+            return 1 / np.math.factorial(n - 1) * abs(det(points))
 
         indices = np.triu_indices(n)
         distances = points[indices[0]] - points[indices[1]]
-        distances = np.sum(distances**2, axis=1)
-        m = np.zeros((n+1, n+1), dtype=distances.dtype)
+        distances = np.sum(distances ** 2, axis=1)
+        m = np.zeros((n + 1, n + 1), dtype=distances.dtype)
         m[indices] = distances
         m += m.T
         m[-1, :-1] = 1
         m[:-1, -1] = 1
 
-        return np.sqrt((-1)**n/(np.math.factorial(n-1)**2 * 2**(n-1)) * det(m))
+        return np.sqrt(
+            (-1) ** n / (np.math.factorial(n - 1) ** 2 * 2 ** (n - 1)) * det(m)
+        )
 
 
 class Polygon(Polytope):
@@ -264,20 +284,20 @@ class Polygon(Polytope):
     def __init__(self, *args, **kwargs):
         if all(isinstance(x, Segment) for x in args):
             args = (np.array([s.array[0] for s in args]),)
-            kwargs['copy'] = False
+            kwargs["copy"] = False
         super(Polygon, self).__init__(*args, **kwargs)
         if self.dim > 2:
             vertices = self.vertices
-            self._plane = Plane(*vertices[:self.dim])
-            if any(not self._plane.contains(v) for v in vertices[self.dim:]):
-                raise NotCoplanar('The given vertices are not coplanar.')
+            self._plane = Plane(*vertices[: self.dim])
+            if any(not self._plane.contains(v) for v in vertices[self.dim :]):
+                raise NotCoplanar("The given vertices are not coplanar.")
         else:
             self._plane = None
 
     def __apply__(self, transformation):
         result = super(Polygon, self).__apply__(transformation)
         if result.dim > 2:
-            result._plane = Plane(*result.vertices[:result.dim])
+            result._plane = Plane(*result.vertices[: result.dim])
         return result
 
     @property
@@ -368,14 +388,20 @@ class Polygon(Polytope):
         """float: The area of the polygon."""
         points = self._normalized_projection()
         a = sum(det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
-        return 1/2 * abs(a)
+        return 1 / 2 * abs(a)
 
     @property
     def centroid(self):
         """Point: The centroid (center of mass) of the polygon."""
         points = self.normalized_array
-        centroids = [np.average(points[[0, i, i + 1], :-1], axis=0) for i in range(1, points.shape[0] - 1)]
-        weights = [det(self._normalized_projection()[[0, i, i + 1]])/2 for i in range(1, points.shape[0] - 1)]
+        centroids = [
+            np.average(points[[0, i, i + 1], :-1], axis=0)
+            for i in range(1, points.shape[0] - 1)
+        ]
+        weights = [
+            det(self._normalized_projection()[[0, i, i + 1]]) / 2
+            for i in range(1, points.shape[0] - 1)
+        ]
         return Point(*np.average(centroids, weights=weights, axis=0))
 
     @property
@@ -415,13 +441,13 @@ class RegularPolygon(Polygon):
             e = Plane(np.append(axis.array[:-1], [0]), copy=False)
             p = Point(*e.basis_matrix[0, :-1], copy=False)
 
-        vertex = center + radius*p
+        vertex = center + radius * p
 
         vertices = []
         for i in range(n):
-            t = rotation(2*np.pi*i / n, axis=axis)
+            t = rotation(2 * np.pi * i / n, axis=axis)
             t = translation(center) * t * translation(-center)
-            vertices.append(t*vertex)
+            vertices.append(t * vertex)
 
         super(RegularPolygon, self).__init__(*vertices, **kwargs)
 
@@ -500,13 +526,12 @@ class Rectangle(Polygon):
     d : Point
 
     """
+
     pass
 
 
 class Polyhedron(Polytope):
-    """A class representing polyhedra (3-polytopes).
-
-    """
+    """A class representing polyhedra (3-polytopes)."""
 
     @property
     def faces(self):
@@ -517,7 +542,11 @@ class Polyhedron(Polytope):
     def edges(self):
         """list of Segment: The edges of the polyhedron."""
         result = self._edges
-        return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(self.shape[:2])))
+        return list(
+            distinct(
+                Segment(result[idx], copy=False) for idx in np.ndindex(self.shape[:2])
+            )
+        )
 
     @property
     def area(self):
@@ -560,7 +589,7 @@ class Cuboid(Polyhedron):
     """
 
     def __init__(self, a, b, c, d, **kwargs):
-        x, y, z = b-a, c-a, d-a
+        x, y, z = b - a, c - a, d - a
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)
         xy = Rectangle(a, a + x, a + x + y, a + y)
@@ -583,11 +612,11 @@ class PolygonCollection(PointCollection):
         if len(args) > 1:
             args = tuple(a.array for a in args)
             args = np.broadcast_arrays(*args)
-            kwargs['copy'] = False
+            kwargs["copy"] = False
             super(PolygonCollection, self).__init__(np.stack(args, axis=-2), **kwargs)
         else:
             super(PolygonCollection, self).__init__(args[0], **kwargs)
-        self._plane = join(*self.vertices[:self.dim]) if self.dim > 2 else None
+        self._plane = join(*self.vertices[: self.dim]) if self.dim > 2 else None
 
     @property
     def edges(self):
@@ -624,14 +653,19 @@ class PolygonCollection(PointCollection):
     @property
     def vertices(self):
         """list of PointCollection: The vertices of the polygons."""
-        return [PointCollection(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
+        return [
+            PointCollection(self.array[..., i, :], copy=False)
+            for i in range(self.shape[-2])
+        ]
 
     @property
     def area(self):
         """array_like: The areas of the polygons."""
         points = self._normalized_projection()
-        a = sum(det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2]-1))
-        return 1/2 * np.abs(a)
+        a = sum(
+            det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2] - 1)
+        )
+        return 1 / 2 * np.abs(a)
 
     def expand_dims(self, axis):
         result = super(PolygonCollection, self).expand_dims(axis)
@@ -667,27 +701,36 @@ class PolygonCollection(PointCollection):
             if not np.any(coplanar):
                 return coplanar
 
-            isinf = is_multiple(self._plane.array, infty_hyperplane(self.dim).array, axis=-1)
+            isinf = is_multiple(
+                self._plane.array, infty_hyperplane(self.dim).array, axis=-1
+            )
 
             # remove coordinates with the largest absolute value in the normal vector
             i = np.argmax(np.abs(self._plane.array[..., :-1]), axis=-1)
             i = np.where(isinf, self.dim, i)
             i = np.expand_dims(i, -1)
             s = self.array.shape
-            arr = np.delete(self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s)).reshape(s[:-1] + (-1,))
+            arr = np.delete(
+                self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s)
+            ).reshape(s[:-1] + (-1,))
 
             if isinstance(other, Point) and i.ndim == 1:
                 other = Point(np.delete(other.array, i), copy=False)
             else:
                 s = other.shape[:-1] + (1, other.shape[-1])
-                other = np.delete(other.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
+                other = np.delete(
+                    other.array,
+                    np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s),
+                )
                 other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=False)
 
             # TODO: only test coplanar points
             return coplanar & PolygonCollection(arr, copy=False).contains(other)
 
         edges = self.edges
-        edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False))
+        edge_points = edges.contains(
+            PointCollection(np.expand_dims(other.array, -2), copy=False)
+        )
 
         if isinstance(other, PointCollection):
             direction = np.zeros_like(other.array)
@@ -695,21 +738,35 @@ class PolygonCollection(PointCollection):
             direction[ind, 0] = other.array[ind, 1]
             direction[ind, 1] = -other.array[ind, 0]
             direction[~ind, 0] = 1
-            rays = SegmentCollection(np.stack([other.array, direction], axis=-2), copy=False).expand_dims(-3)
+            rays = SegmentCollection(
+                np.stack([other.array, direction], axis=-2), copy=False
+            ).expand_dims(-3)
         else:
-            direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
+            direction = (
+                [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
+            )
             rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
 
         intersections = meet(edges._line, rays._line, _check_dependence=False)
 
         # ignore edges along the rays
-        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
+        ray_edges = is_multiple(
+            edges._line.array,
+            rays._line.array,
+            atol=EQ_TOL_ABS,
+            rtol=EQ_TOL_REL,
+            axis=-1,
+        )
 
         # ignore intersections of downward edges that end on the ray
         v1 = edges.array[..., 0, :]
         v2 = edges.array[..., 1, :]
-        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(intersections.array, v1, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
-        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(intersections.array, v2, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
+        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(
+            intersections.array, v1, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1
+        )
+        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(
+            intersections.array, v2, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1
+        )
 
         result = edges.contains(intersections)
         result &= rays.contains(intersections)
@@ -762,10 +819,12 @@ class SegmentCollection(PointCollection):
         if len(args) == 2:
             a, b = args
             a, b = np.broadcast_arrays(a.array, b.array)
-            kwargs['copy'] = False
+            kwargs["copy"] = False
             super(SegmentCollection, self).__init__(np.stack([a, b], axis=-2), **kwargs)
         else:
-            super(SegmentCollection, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
+            super(SegmentCollection, self).__init__(
+                args[0] if len(args) == 1 else args, **kwargs
+            )
 
         self._line = join(*self.vertices)
 
@@ -800,7 +859,9 @@ class SegmentCollection(PointCollection):
 
     def expand_dims(self, axis):
         result = super(SegmentCollection, self).expand_dims(axis)
-        result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
+        result._line = result._line.expand_dims(
+            axis - self.dim + 3 if axis < -1 else axis
+        )
         return result
 
     def contains(self, other, tol=1e-8):
@@ -863,7 +924,9 @@ class SegmentCollection(PointCollection):
         """
         if isinstance(other, (Segment, SegmentCollection)):
             result = meet(self._line, other._line, _check_dependence=False)
-            return result[~result.is_zero() & self.contains(result) & other.contains(result)]
+            return result[
+                ~result.is_zero() & self.contains(result) & other.contains(result)
+            ]
 
         result = meet(self._line, other, _check_dependence=False)
         return result[~result.is_zero() & self.contains(result)]

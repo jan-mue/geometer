@@ -4,13 +4,30 @@ from itertools import combinations
 import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
-from .point import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, I, J, infty_plane
+from .point import (
+    Point,
+    Line,
+    Plane,
+    PointCollection,
+    LineCollection,
+    PlaneCollection,
+    I,
+    J,
+    infty_plane,
+)
 from .transformation import rotation, translation
-from .base import ProjectiveElement, ProjectiveCollection, Tensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
+from .base import (
+    ProjectiveElement,
+    ProjectiveCollection,
+    Tensor,
+    TensorDiagram,
+    EQ_TOL_REL,
+    EQ_TOL_ABS,
+)
 from .exceptions import NotReducible
 from .utils import hat_matrix, is_multiple, adjugate, det, inv, matmul
-    
-    
+
+
 class Quadric(ProjectiveElement):
     r"""Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
@@ -42,7 +59,7 @@ class Quadric(ProjectiveElement):
         if normalize_matrix is True:
             matrix = matrix.array if isinstance(matrix, Tensor) else np.asarray(matrix)
             w = np.abs(np.linalg.eigvalsh(matrix))
-            matrix = matrix / np.prod(w[w > EQ_TOL_ABS])**(1/matrix.shape[-1])
+            matrix = matrix / np.prod(w[w > EQ_TOL_ABS]) ** (1 / matrix.shape[-1])
             kwargs["copy"] = False
 
         kwargs.setdefault("covariant", False)
@@ -158,7 +175,9 @@ class Quadric(ProjectiveElement):
         i = np.unravel_index(np.abs(t).argmax(), t.shape)
         p, q = t[i[0]], t[:, i[1]]
 
-        if self.dim > 2 and not is_multiple(np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
+        if self.dim > 2 and not is_multiple(
+            np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS
+        ):
             raise NotReducible("Quadric has no decomposition in 2 components.")
 
         p, q = np.real_if_close(p), np.real_if_close(q)
@@ -200,7 +219,9 @@ class Quadric(ProjectiveElement):
 
             if not reducible:
                 if self.dim > 2:
-                    arr = other.array.reshape(other.shape[:-other.tensor_shape[1]] + (-1, self.dim + 1))
+                    arr = other.array.reshape(
+                        other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1)
+                    )
 
                     if isinstance(other, Line):
                         i = arr.nonzero()[0][0]
@@ -208,14 +229,29 @@ class Quadric(ProjectiveElement):
                         q = Quadric(m.dot(self.array).dot(m.T), copy=False)
                         line_base = other.basis_matrix.T
                         line = Line(*[Point(x, copy=False) for x in m.dot(line_base).T])
-                        return [Point(m.T.dot(p.array), copy=False) for p in q.intersect(line)]
+                        return [
+                            Point(m.T.dot(p.array), copy=False)
+                            for p in q.intersect(line)
+                        ]
                     else:
                         i = np.any(arr, axis=-1).argmax(-1)
-                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
+                        m = PlaneCollection(
+                            arr[tuple(np.indices(i.shape)) + (i,)], copy=False
+                        ).basis_matrix
                         line_base = matmul(other.basis_matrix, m, transpose_b=True)
-                        line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
-                        q = QuadricCollection(matmul(m.dot(self.array), m, transpose_b=True), copy=False)
-                        return [PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
+                        line = PointCollection(line_base[..., 0, :], copy=False).join(
+                            PointCollection(line_base[..., 1, :], copy=False)
+                        )
+                        q = QuadricCollection(
+                            matmul(m.dot(self.array), m, transpose_b=True), copy=False
+                        )
+                        return [
+                            PointCollection(
+                                np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2),
+                                copy=False,
+                            )
+                            for p in q.intersect(line)
+                        ]
                 else:
                     m = hat_matrix(other.array)
                     b = matmul(np.swapaxes(m, -1, -2).dot(self.array), m)
@@ -223,7 +259,9 @@ class Quadric(ProjectiveElement):
                     if isinstance(other, Line):
                         p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
                     else:
-                        p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
+                        p, q = QuadricCollection(
+                            b, is_dual=not self.is_dual, copy=False
+                        ).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)
@@ -242,8 +280,7 @@ class Quadric(ProjectiveElement):
 
 
 class Conic(Quadric):
-    """A two-dimensional conic.
-    """
+    """A two-dimensional conic."""
 
     @classmethod
     def from_points(cls, a, b, c, d, e):
@@ -260,13 +297,21 @@ class Conic(Quadric):
             The resulting conic.
 
         """
-        a, b, c, d, e = a.normalized_array, b.normalized_array, c.normalized_array, d.normalized_array, e.normalized_array
+        a, b, c, d, e = (
+            a.normalized_array,
+            b.normalized_array,
+            c.normalized_array,
+            d.normalized_array,
+            e.normalized_array,
+        )
         ace = det([a, c, e])
         bde = det([b, d, e])
         ade = det([a, d, e])
         bce = det([b, c, e])
-        m = ace*bde*np.outer(np.cross(a, d), np.cross(b, c)) - ade*bce*np.outer(np.cross(a, c), np.cross(b, d))
-        return Conic(np.real_if_close(m+m.T), normalize_matrix=True)
+        m = ace * bde * np.outer(np.cross(a, d), np.cross(b, c)) - ade * bce * np.outer(
+            np.cross(a, c), np.cross(b, d)
+        )
+        return Conic(np.real_if_close(m + m.T), normalize_matrix=True)
 
     @classmethod
     def from_lines(cls, g, h):
@@ -305,8 +350,14 @@ class Conic(Quadric):
         if any(tangent.contains(p) for p in [a, b, c, d]):
             raise ValueError("The supplied points cannot lie on the supplied tangent!")
 
-        a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
-        b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array
+        a1, a2 = (
+            Line(a, c).meet(tangent).normalized_array,
+            Line(b, d).meet(tangent).normalized_array,
+        )
+        b1, b2 = (
+            Line(a, b).meet(tangent).normalized_array,
+            Line(c, d).meet(tangent).normalized_array,
+        )
 
         o = tangent.general_point.array
 
@@ -315,8 +366,8 @@ class Conic(Quadric):
         a1b1 = det([o, a1, b1])
         a1b2 = det([o, a1, b2])
 
-        c1 = csqrt(a2b1*a2b2)
-        c2 = csqrt(a1b1*a1b2)
+        c1 = csqrt(a2b1 * a2b2)
+        c2 = csqrt(a1b1 * a1b2)
 
         x = Point(c1 * a1 + c2 * a2, copy=False)
         y = Point(c1 * a1 - c2 * a2, copy=False)
@@ -412,15 +463,25 @@ class Conic(Quadric):
                 gamma = det([a1, b2, b3]) + det([b1, a2, b3]) + det([b1, b2, a3])
                 delta = det(other.array)
 
-                W = -2*beta**3 + 9*alpha*beta*gamma - 27*alpha**2*delta
-                D = -beta**2*gamma**2 + 4*alpha*gamma**3 + 4*beta**3*delta - 18*alpha*beta*gamma*delta + 27*alpha**2*delta**3
-                Q = W - alpha*csqrt(27*D)
-                R = np.complex128(4*Q)**(1/3)
+                W = -2 * beta ** 3 + 9 * alpha * beta * gamma - 27 * alpha ** 2 * delta
+                D = (
+                    -(beta ** 2) * gamma ** 2
+                    + 4 * alpha * gamma ** 3
+                    + 4 * beta ** 3 * delta
+                    - 18 * alpha * beta * gamma * delta
+                    + 27 * alpha ** 2 * delta ** 3
+                )
+                Q = W - alpha * csqrt(27 * D)
+                R = np.complex128(4 * Q) ** (1 / 3)
 
-                lam = 2*beta**2 - 6*alpha*gamma - beta + R
-                mu = 3*alpha*(R + 3)
+                lam = 2 * beta ** 2 - 6 * alpha * gamma - beta + R
+                mu = 3 * alpha * (R + 3)
 
-                c = Conic(lam*self.array + mu*other.array, is_dual=self.is_dual, copy=False)
+                c = Conic(
+                    lam * self.array + mu * other.array,
+                    is_dual=self.is_dual,
+                    copy=False,
+                )
                 g, h = c.components
 
             result = self.intersect(g)
@@ -472,7 +533,7 @@ class Conic(Quadric):
         j = self.tangent(at=J)
 
         if isinstance(i, Line) and isinstance(j, Line):
-            return i.meet(j),
+            return (i.meet(j),)
 
         i1, i2 = i
         j1, j2 = j
@@ -518,7 +579,7 @@ class Ellipse(Conic):
         m[2, 2] = d.dot(c) - (r[0] * r[1] + 1)
 
         # normalize with abs(det(m))
-        m = m / (np.prod(np.maximum(r[:2], 1)))**(2/3)
+        m = m / (np.prod(np.maximum(r[:2], 1))) ** (2 / 3)
 
         kwargs["copy"] = False
         super(Ellipse, self).__init__(m, **kwargs)
@@ -556,8 +617,8 @@ class Circle(Ellipse):
     def lie_coordinates(self):
         """Point: The Lie coordinates of the circle as point in RP4."""
         m = self.center.normalized_array
-        x = m[0]**2 + m[1]**2 - self.radius**2
-        return Point([(1 + x)/2, (1 - x)/2, m[0], m[1], self.radius])
+        x = m[0] ** 2 + m[1] ** 2 - self.radius ** 2
+        return Point([(1 + x) / 2, (1 - x) / 2, m[0], m[1], self.radius])
 
     def intersection_angle(self, other):
         """Calculates the angle of intersection of two circles using its Lie coordinates.
@@ -586,7 +647,7 @@ class Circle(Ellipse):
     @property
     def area(self):
         """float: The area of the circle."""
-        return 2*np.pi*self.radius**2
+        return 2 * np.pi * self.radius ** 2
 
 
 class Sphere(Quadric):
@@ -608,10 +669,12 @@ class Sphere(Quadric):
             raise ValueError("Sphere radius cannot be 0.")
 
         c = -center.normalized_array
-        m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
+        m = np.eye(
+            center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], [])
+        )
         m[-1, :] = c
         m[:, -1] = c
-        m[-1, -1] = c[:-1].dot(c[:-1])-radius**2
+        m[-1, -1] = c[:-1].dot(c[:-1]) - radius ** 2
 
         # normalize with abs(det(m))
         m = m / radius ** (2 / 3)
@@ -632,19 +695,19 @@ class Sphere(Quadric):
 
     @staticmethod
     def _alpha(n):
-        return math.pi**(n/2) / math.gamma(n/2 + 1)
+        return math.pi ** (n / 2) / math.gamma(n / 2 + 1)
 
     @property
     def volume(self):
         """float: The volume of the sphere."""
         n = self.dim
-        return self._alpha(n)*self.radius**n
+        return self._alpha(n) * self.radius ** n
 
     @property
     def area(self):
         """float: The surface area of the sphere."""
         n = self.dim
-        return n*self._alpha(n)*self.radius**(n-1)
+        return n * self._alpha(n) * self.radius ** (n - 1)
 
 
 class Cone(Quadric):
@@ -663,14 +726,16 @@ class Cone(Quadric):
 
     """
 
-    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs):
+    def __init__(
+        self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs
+    ):
         if radius == 0:
             raise ValueError("The radius of a cone can not be zero.")
 
         from .operators import dist, angle
 
         h = dist(vertex, base_center)
-        c = (radius / h)**2
+        c = (radius / h) ** 2
 
         if np.isinf(h):
             # cone with vertex at infinity is a cylinder with the center of the base as center
@@ -688,11 +753,11 @@ class Cone(Quadric):
             m[3, 3] = v[:3].dot(v[:3]) - radius ** 2
         else:
             m[2:, 2:] *= -c
-            m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2]**2 * c)
+            m[3, 3] = v[:2].dot(v[:2]) - (radius ** 2 if np.isinf(h) else v[2] ** 2 * c)
 
         # rotate the axis of the cone
         v = Point(v, copy=False)
-        axis = Line(v, v+Point(0, 0, 1))
+        axis = Line(v, v + Point(0, 0, 1))
         new_axis = Line(vertex, base_center)
 
         if new_axis != axis:
@@ -722,15 +787,15 @@ class Cylinder(Cone):
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
-        vertex = infty_plane.meet(Line(center, center+direction))
+    def __init__(
+        self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs
+    ):
+        vertex = infty_plane.meet(Line(center, center + direction))
         super(Cylinder, self).__init__(vertex, center, radius, **kwargs)
 
 
 class QuadricCollection(ProjectiveCollection):
-    """A collection of quadrics or conics.
-
-    """
+    """A collection of quadrics or conics."""
 
     def __init__(self, matrices, is_dual=False, **kwargs):
         self.is_dual = is_dual
@@ -753,7 +818,7 @@ class QuadricCollection(ProjectiveCollection):
             The tangent planes at the given points.
 
         """
-        return PlaneCollection(self*at, copy=False)
+        return PlaneCollection(self * at, copy=False)
 
     def is_tangent(self, planes):
         """Tests if a given hyperplane is tangent to the quadrics.
@@ -808,11 +873,17 @@ class QuadricCollection(ProjectiveCollection):
             b = adjugate(self.array)
             i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
             beta = csqrt(-b[indices + (i, i)])
-            p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
+            p = (
+                -b[indices + (slice(None), i)]
+                / np.where(beta != 0, beta, -1)[..., None]
+            )
 
         else:
             ind = np.indices((n, n))
-            ind = [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)]
+            ind = [
+                np.delete(np.delete(ind, i, axis=1), i, axis=2)
+                for i in combinations(range(n), n - 2)
+            ]
             ind = np.stack(ind, axis=1)
             minors = det(self.array[..., ind[0], ind[1]])
             p = csqrt(-minors)
@@ -822,10 +893,20 @@ class QuadricCollection(ProjectiveCollection):
         t = self.array + m
 
         # components are in the non-zero rows and columns (up to scalar multiple)
-        i = np.unravel_index(np.abs(t).reshape(t.shape[:-2]+(-1,)).argmax(axis=-1), t.shape[-2:])
+        i = np.unravel_index(
+            np.abs(t).reshape(t.shape[:-2] + (-1,)).argmax(axis=-1), t.shape[-2:]
+        )
         p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
 
-        if self.dim > 2 and not np.all(is_multiple(q[..., None]*p[..., None, :], t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, axis=(-2, -1))):
+        if self.dim > 2 and not np.all(
+            is_multiple(
+                q[..., None] * p[..., None, :],
+                t,
+                rtol=EQ_TOL_REL,
+                atol=EQ_TOL_ABS,
+                axis=(-2, -1),
+            )
+        ):
             raise NotReducible("Quadric has no decomposition in 2 components.")
 
         # TODO: make order of components reproducible
@@ -862,7 +943,9 @@ class QuadricCollection(ProjectiveCollection):
 
             if not reducible:
                 if self.dim > 2:
-                    arr = other.array.reshape(other.shape[:-other.tensor_shape[1]] + (-1, self.dim + 1))
+                    arr = other.array.reshape(
+                        other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1)
+                    )
 
                     if isinstance(other, Line):
                         i = arr.nonzero()[0][0]
@@ -871,16 +954,30 @@ class QuadricCollection(ProjectiveCollection):
                         line = Line(*[Point(x, copy=False) for x in line_base.dot(m.T)])
                     else:
                         i = np.any(arr, axis=-1).argmax(-1)
-                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
+                        m = PlaneCollection(
+                            arr[tuple(np.indices(i.shape)) + (i,)], copy=False
+                        ).basis_matrix
                         line_base = matmul(other.basis_matrix, m, transpose_b=True)
-                        line = PointCollection(line_base[..., 0, :], copy=False).join(PointCollection(line_base[..., 1, :], copy=False))
+                        line = PointCollection(line_base[..., 0, :], copy=False).join(
+                            PointCollection(line_base[..., 1, :], copy=False)
+                        )
 
-                    q = QuadricCollection(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
-                    return [PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False) for p in q.intersect(line)]
+                    q = QuadricCollection(
+                        matmul(matmul(m, self.array), m, transpose_b=True), copy=False
+                    )
+                    return [
+                        PointCollection(
+                            np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2),
+                            copy=False,
+                        )
+                        for p in q.intersect(line)
+                    ]
                 else:
                     m = hat_matrix(other.array)
                     b = matmul(matmul(m, self.array, transpose_a=True), m)
-                    p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
+                    p, q = QuadricCollection(
+                        b, is_dual=not self.is_dual, copy=False
+                    ).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)

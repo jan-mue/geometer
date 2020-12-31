@@ -22,7 +22,7 @@ def _sanitize_index_element(ind):
 
 
 def sanitize_index(ind):
-    """ Sanitize the elements for indexing along one axis
+    """Sanitize the elements for indexing along one axis
 
     >>> sanitize_index([2, 3, 5])
     array([2, 3, 5])
@@ -73,7 +73,7 @@ def sanitize_index(ind):
 
 
 def posify_index(shape, ind):
-    """ Flip negative indices around to positive ones
+    """Flip negative indices around to positive ones
 
     >>> posify_index(10, 3)
     3
@@ -100,7 +100,7 @@ def posify_index(shape, ind):
 
 
 def replace_ellipsis(n, index):
-    """ Replace ... with slices, :, : ,:
+    """Replace ... with slices, :, : ,:
     >>> replace_ellipsis(4, (3, Ellipsis, 2))
     (3, slice(None, None, None), slice(None, None, None), 2)
     >>> replace_ellipsis(2, (Ellipsis, None))
@@ -119,7 +119,7 @@ def replace_ellipsis(n, index):
 
 
 def normalize_index(idx, shape):
-    """ Normalize slicing indexes
+    """Normalize slicing indexes
 
     1.  Replaces ellipses with many full slices
     2.  Adds full slices to end of index
