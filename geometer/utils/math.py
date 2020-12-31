@@ -2,7 +2,7 @@ import math
 import numpy as np
 
 
-def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
+def is_multiple(a, b, axis=None, rtol=1.0e-15, atol=1.0e-8):
     """Returns a boolean array where two arrays are scalar multiples of each other along a given axis.
 
     This function compares the absolute value of the scalar product and the product of the norm of the arrays (along
@@ -41,7 +41,12 @@ def is_multiple(a, b, axis=None, rtol=1.e-15, atol=1.e-8):
         b = b.ravel()
 
     ab = np.sum(a * b.conj(), axis=axis)
-    return np.isclose(ab*ab.conj(), np.sum(a*a.conj(), axis=axis)*np.sum(b*b.conj(), axis=axis), rtol, atol)
+    return np.isclose(
+        ab * ab.conj(),
+        np.sum(a * a.conj(), axis=axis) * np.sum(b * b.conj(), axis=axis),
+        rtol,
+        atol,
+    )
 
 
 def hat_matrix(*args):
@@ -70,7 +75,7 @@ def hat_matrix(*args):
         args = args[0]
 
     x = np.asarray(args)
-    n = int(1+np.sqrt(1+8*x.shape[-1])) // 2
+    n = int(1 + np.sqrt(1 + 8 * x.shape[-1])) // 2
 
     result = np.zeros(x.shape[:-1] + (n, n), x.dtype)
 
@@ -90,10 +95,13 @@ def hat_matrix(*args):
 
 def _assert_square_matrix(A):
     if A.ndim < 2:
-        raise np.linalg.LinAlgError("%s-dimensional array given. Array must be at least two-dimensional" % A.ndim)
+        raise np.linalg.LinAlgError(
+            "%s-dimensional array given. Array must be at least two-dimensional"
+            % A.ndim
+        )
     m, n = A.shape[-2:]
     if m != n:
-        raise np.linalg.LinAlgError('Last 2 dimensions of the array must be square')
+        raise np.linalg.LinAlgError("Last 2 dimensions of the array must be square")
 
 
 def adjugate(A):
@@ -138,9 +146,13 @@ def adjugate(A):
         result[..., [0, 1], [1, 0]] *= -1
         return result
 
-    if n >= 5 or A.size >= n*n*64:
+    if n >= 5 or A.size >= n * n * 64:
         indices = np.indices((n, n))
-        indices = [np.delete(np.delete(indices, i, axis=1), j, axis=2) for i in range(n) for j in range(n)]
+        indices = [
+            np.delete(np.delete(indices, i, axis=1), j, axis=2)
+            for i in range(n)
+            for j in range(n)
+        ]
         indices = np.stack(indices, axis=1)
         minors = A[..., indices[0], indices[1]]
         result = det(minors).reshape(A.shape)
@@ -153,10 +165,10 @@ def adjugate(A):
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
-    tensors = [Tensor(A, tensor_rank=2, copy=False) for _ in range(n-1)]
+    tensors = [Tensor(A, tensor_rank=2, copy=False) for _ in range(n - 1)]
     diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
 
-    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n-1)
+    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)
 
 
 def det(A):
@@ -178,12 +190,17 @@ def det(A):
     n = A.shape[-1]
 
     if n == 2:
-        return A[..., 0, 0]*A[..., 1, 1] - A[..., 1, 0]*A[..., 0, 1]
+        return A[..., 0, 0] * A[..., 1, 1] - A[..., 1, 0] * A[..., 0, 1]
 
-    if n == 3 and A.size >= 9*64:
-        return A[..., 0, 0]*A[..., 1, 1]*A[..., 2, 2] + A[..., 0, 1]*A[..., 1, 2]*A[..., 2, 0]\
-               + A[..., 0, 2]*A[..., 1, 0]*A[..., 2, 1] - A[..., 2, 0]*A[..., 1, 1]*A[..., 0, 2]\
-               - A[..., 2, 1]*A[..., 1, 2]*A[..., 0, 0] - A[..., 2, 2]*A[..., 1, 0]*A[..., 0, 1]
+    if n == 3 and A.size >= 9 * 64:
+        return (
+            A[..., 0, 0] * A[..., 1, 1] * A[..., 2, 2]
+            + A[..., 0, 1] * A[..., 1, 2] * A[..., 2, 0]
+            + A[..., 0, 2] * A[..., 1, 0] * A[..., 2, 1]
+            - A[..., 2, 0] * A[..., 1, 1] * A[..., 0, 2]
+            - A[..., 2, 1] * A[..., 1, 2] * A[..., 0, 0]
+            - A[..., 2, 2] * A[..., 1, 0] * A[..., 0, 1]
+        )
 
     return np.linalg.det(A)
 
@@ -206,7 +223,7 @@ def inv(A):
     _assert_square_matrix(A)
     n = A.shape[-1]
 
-    if n <= 4 and A.size >= n*n*64:
+    if n <= 4 and A.size >= n * n * 64:
         d = det(A)
 
         if np.any(d == 0):
@@ -239,7 +256,9 @@ def null_space(A, dim=None):
         tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
         dim = np.sum(s > tol, axis=-1, dtype=int)
         if not np.all(dim == dim.flat[0]):
-            raise ValueError('Cannot calculate the null spaces of matrices when the spaces have different dimensions.')
+            raise ValueError(
+                "Cannot calculate the null spaces of matrices when the spaces have different dimensions."
+            )
         dim = -dim.flat[0]
 
     Q = np.swapaxes(vh[..., -dim:, :], -1, -2).conj()
@@ -268,14 +287,24 @@ def orth(A, dim=None):
         tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
         dim = np.sum(s > tol, axis=-1, dtype=int)
         if not np.all(dim == dim.flat[0]):
-            raise ValueError('Cannot calculate the image spaces of matrices when the spaces have different dimensions.')
+            raise ValueError(
+                "Cannot calculate the image spaces of matrices when the spaces have different dimensions."
+            )
         dim = dim.flat[0]
 
     Q = u[..., :dim]
     return Q
 
 
-def matmul(a, b, transpose_a=False, transpose_b=False, adjoint_a=False, adjoint_b=False, **kwargs):
+def matmul(
+    a,
+    b,
+    transpose_a=False,
+    transpose_b=False,
+    adjoint_a=False,
+    adjoint_b=False,
+    **kwargs
+):
     """Matrix product of two arrays.
 
     Parameters
@@ -332,6 +361,11 @@ def matvec(a, b, transpose_a=False, adjoint_a=False, **kwargs):
         The matrix-vector product of the inputs.
 
     """
-    result = matmul(a, np.expand_dims(b, axis=-1), transpose_a=transpose_a, adjoint_a=adjoint_a, **kwargs)
+    result = matmul(
+        a,
+        np.expand_dims(b, axis=-1),
+        transpose_a=transpose_a,
+        adjoint_a=adjoint_a,
+        **kwargs
+    )
     return np.squeeze(result, axis=-1)
-
