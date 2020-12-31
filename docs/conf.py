@@ -25,7 +25,7 @@ import inspect
 from os.path import relpath, dirname
 
 project = "geometer"
-copyright = "2019, Jan Müller"
+copyright = "2021, Jan Müller"
 author = "Jan Müller"
 
 # The short X.Y version
