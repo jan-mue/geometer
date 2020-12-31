@@ -1,9 +1,20 @@
 import numpy as np
-from geometer import Point, Line, Plane, PointCollection, LineCollection, PlaneCollection, join, meet, is_perpendicular, translation, rotation
+from geometer import (
+    Point,
+    Line,
+    Plane,
+    PointCollection,
+    LineCollection,
+    PlaneCollection,
+    join,
+    meet,
+    is_perpendicular,
+    translation,
+    rotation,
+)
 
 
 class Test2D:
-
     def test_join(self):
         p = Point(1, 0)
         q = Point(0, 1)
@@ -21,7 +32,7 @@ class Test2D:
 
         p = Point([1, 0, 0])
         q = Point(0, 1)
-        assert 2*p + 3*q == Point(2, 3)
+        assert 2 * p + 3 * q == Point(2, 3)
 
     def test_parallel(self):
         p = Point(0, 1)
@@ -52,7 +63,6 @@ class Test2D:
 
 
 class Test3D:
-
     def test_join(self):
         p1 = Point(1, 1, 0)
         p2 = Point(2, 1, 0)
@@ -145,7 +155,6 @@ class Test3D:
 
 
 class Test4D:
-
     def test_join(self):
         p1 = Point(1, 1, 4, 0)
         p2 = Point(2, 1, 5, 0)
@@ -203,7 +212,6 @@ class Test4D:
 
 
 class TestCollections:
-
     def test_join(self):
         # 2 points
         a = PointCollection([Point(0, 0), Point(0, 1)])
@@ -224,7 +232,9 @@ class TestCollections:
         assert join(l, m) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
         # point and line
-        assert join(a, b.join(c)) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
+        assert join(a, b.join(c)) == PlaneCollection(
+            [Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)]
+        )
 
     def test_meet(self):
         # three planes
@@ -235,7 +245,9 @@ class TestCollections:
 
         # two planes
         l = a.meet(b)
-        m = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 1, 0), Point(1, 1, 1))])
+        m = LineCollection(
+            [Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 1, 0), Point(1, 1, 1))]
+        )
         assert l == m
 
         # two lines in 2D
@@ -244,12 +256,18 @@ class TestCollections:
         assert a.meet(b) == PointCollection([Point(0, 0), Point(1, 1)])
 
         # two lines in 3D
-        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
-        b = LineCollection([Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))])
+        a = LineCollection(
+            [Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))]
+        )
+        b = LineCollection(
+            [Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))]
+        )
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 0)])
 
         # plane and line
-        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
+        a = LineCollection(
+            [Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))]
+        )
         b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
 
@@ -266,15 +284,19 @@ class TestCollections:
 
         assert a + b == c
         assert a - c == -b
-        assert 2*a + 2*b == 2*c
-        assert (2*a + 2*b) / 2 == c
+        assert 2 * a + 2 * b == 2 * c
+        assert (2 * a + 2 * b) / 2 == c
         assert a + Point(1, 0) == c
 
     def test_transform(self):
         a = PointCollection([(1, 0), (0, 1)], homogenize=True)
 
-        assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)], homogenize=True)
-        assert rotation(np.pi/2) * a == PointCollection([(0, 1), (-1, 0)], homogenize=True)
+        assert translation(1, 1) * a == PointCollection(
+            [(2, 1), (1, 2)], homogenize=True
+        )
+        assert rotation(np.pi / 2) * a == PointCollection(
+            [(0, 1), (-1, 0)], homogenize=True
+        )
 
     def test_basis_matrix(self):
         a = PlaneCollection([Plane(1, 0, 0, 0), Plane(0, 1, 0, 0), Plane(0, 0, 1, 0)])

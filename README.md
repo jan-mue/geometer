@@ -13,13 +13,15 @@ is represented by a four-dimensional vector. This has the following advantages:
 
 - There are points at infinity that can be treated just like normal points.
 - Projective transformations are described by matrices but they can also
-  represent affine transformations i.e. also translations.
-- Every two lines have a unique point of intersection if they lie in the same
+  represent translations and general affine transformations.
+- Two lines have a unique point of intersection if they lie in the same
   plane. Parallel lines have a point of intersection at infinity.
 - Points of intersection, planes or lines through given points can be
   calculated using simple cross products or tensor diagrams.
 - Special complex points at infinity and cross ratios can be used to calculate
   angles and to construct perpendicular geometric structures.
+- Collections of points and lines can be represented by tensors. Their connecting lines
+  and intersections can be calculated using fast matrix multiplications.
 
 Most of the computation in the library is done via tensor diagrams (using numpy.einsum).
 
@@ -36,7 +38,7 @@ You can install the package directly from PyPI:
 ```bash
 pip install geometer
 ```
-   
+
 ## Usage
 
 ```Python
@@ -67,6 +69,14 @@ t1 = translation(0, -1)
 t2 = rotation(-np.pi)
 t1*t2*p
 # Point(-2, -5)
+
+# Collections of points and lines
+coordinates = np.random.randint(100, size=(1000, 2))
+points = PointCollection([Point(x, y) for x, y in coordinates])
+lines = points.join(-points)
+zero = PointCollection(np.zeros((1000, 2)), homogenize=True)
+lines.meet(rotation(np.pi/2)*lines) == zero
+# True
 
 # Ellipses/Quadratic forms
 a = Point(-1, 0)

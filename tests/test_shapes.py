@@ -1,9 +1,24 @@
 import numpy as np
-from geometer import Point, Segment, Rectangle, Simplex, Triangle, Cuboid, Line, RegularPolygon, Polygon, SegmentCollection, PolygonCollection, PointCollection, dist, rotation, translation
+from geometer import (
+    Point,
+    Segment,
+    Rectangle,
+    Simplex,
+    Triangle,
+    Cuboid,
+    Line,
+    RegularPolygon,
+    Polygon,
+    SegmentCollection,
+    PolygonCollection,
+    PointCollection,
+    dist,
+    rotation,
+    translation,
+)
 
 
 class TestSegment:
-
     def test_contains(self):
         # both points finite
         p = Point(0, 0)
@@ -21,8 +36,8 @@ class TestSegment:
         s = Segment(p, q)
         assert s.contains(p)
         assert s.contains(q)
-        assert s.contains(0.5*q)
-        assert not s.contains(2*q)
+        assert s.contains(0.5 * q)
+        assert not s.contains(2 * q)
 
         # second point at infinity
         p = Point(0, 0)
@@ -39,8 +54,8 @@ class TestSegment:
         s = Segment(p, q)
         assert s.contains(p)
         assert s.contains(q)
-        assert s.contains(0.5*(p+q))
-        assert not s.contains(p-q)
+        assert s.contains(0.5 * (p + q))
+        assert not s.contains(p - q)
         assert not s.contains(Point(0, 0))
 
     def test_equal(self):
@@ -79,8 +94,8 @@ class TestSegment:
         q = Point(2, 2)
         s = Segment(p, q)
 
-        r = rotation(np.pi/2)
-        assert r*s == Segment(p, Point(-2, 2))
+        r = rotation(np.pi / 2)
+        assert r * s == Segment(p, Point(-2, 2))
         assert r.apply(s)._line == r.apply(s._line)
 
     def test_getitem(self):
@@ -93,7 +108,6 @@ class TestSegment:
 
 
 class TestPolygon:
-
     def test_equal(self):
         points = np.random.rand(50, 3)
 
@@ -111,12 +125,16 @@ class TestPolygon:
         s = Segment(a, c)
         assert r.intersect(s) == [a, c]
 
-        foo = Rectangle(Point(148.06094049635456, 10.151151779987144, 60.522099063951394),
-                        Point(129.78569335065157, -42.129870038015355, 60.54878245579997),
-                        Point(85.91668756014471, -26.79517716452499, 60.41723371984577),
-                        Point(104.19193470584759, 25.485844653477507, 60.390550327997126))
-        bar = Segment(Point(-38.9592826559563, -6.703132040294841, 64.78693707404751),
-                      Point(133.01711836447913, -6.633886165038485, 54.310634812542006))
+        foo = Rectangle(
+            Point(148.06094049635456, 10.151151779987144, 60.522099063951394),
+            Point(129.78569335065157, -42.129870038015355, 60.54878245579997),
+            Point(85.91668756014471, -26.79517716452499, 60.41723371984577),
+            Point(104.19193470584759, 25.485844653477507, 60.390550327997126),
+        )
+        bar = Segment(
+            Point(-38.9592826559563, -6.703132040294841, 64.78693707404751),
+            Point(133.01711836447913, -6.633886165038485, 54.310634812542006),
+        )
 
         assert len(foo.intersect(bar)) == 0
 
@@ -169,17 +187,19 @@ class TestPolygon:
         c = Point(2, 1)
         d = Point(2, 0)
         r = Rectangle(a, b, c, d)
-        r2 = rotation(np.pi/2)*r
+        r2 = rotation(np.pi / 2) * r
 
         assert r.area == r2.area
         assert r2.contains(Point(-0.5, 1.5))
 
         l = Line(Point(0, 0, -10), Point(0, 0, 10))
-        r = Rectangle(Point(-10, -10, 0), Point(10, -10, 0), Point(10, 10, 0), Point(-10, 10, 0))
-        t = rotation(np.pi/6, Point(1, 0, 0))
+        r = Rectangle(
+            Point(-10, -10, 0), Point(10, -10, 0), Point(10, 10, 0), Point(-10, 10, 0)
+        )
+        t = rotation(np.pi / 6, Point(1, 0, 0))
 
         assert r.intersect(l) == [Point(0, 0, 0)]
-        assert (t*r).intersect(l) == [Point(0, 0, 0)]
+        assert (t * r).intersect(l) == [Point(0, 0, 0)]
 
     def test_copy(self):
         a = Point(0, 0)
@@ -223,7 +243,6 @@ class TestPolygon:
 
 
 class TestTriangle:
-
     def test_contains(self):
         a = Point(0, 0)
         b = Point(0, 2)
@@ -252,7 +271,7 @@ class TestTriangle:
         l1 = s1.midpoint.join(c)
         l2 = s2.midpoint.join(a)
 
-        assert t.centroid == (a+b+c)/3
+        assert t.centroid == (a + b + c) / 3
         assert t.centroid == l1.meet(l2)
 
     def test_circumcenter(self):
@@ -265,7 +284,6 @@ class TestTriangle:
 
 
 class TestRegularPolygon:
-
     def test_init(self):
         a = Point(0, 0, 0)
         p = RegularPolygon(a, 1, 6, axis=Point(0, 0, 1))
@@ -275,25 +293,24 @@ class TestRegularPolygon:
         assert len(p.vertices) == 6
         assert np.isclose(dist(a, p.vertices[0]), 1)
         assert all(np.isclose(p.edges[1:].length, d))
-        assert np.allclose(p.angles, np.pi/3)
+        assert np.allclose(p.angles, np.pi / 3)
         assert p.center == a
 
     def test_radius(self):
         p = RegularPolygon(Point(0, 0, 0), 1, 6, axis=Point(0, 0, 1))
 
         assert np.isclose(p.radius, 1)
-        assert np.isclose(p.inradius, np.cos(np.pi/6))
+        assert np.isclose(p.inradius, np.cos(np.pi / 6))
 
     def test_transform(self):
         p = RegularPolygon(Point(0, 0, 0), 1, 6, axis=Point(0, 0, 1))
         t = translation(1, 1, 0)
 
-        assert t*p == RegularPolygon(Point(1, 1, 0), 1, 6, axis=Point(0, 0, 1))
-        assert isinstance(t*p, RegularPolygon)
-        
-        
-class TestSimplex:
+        assert t * p == RegularPolygon(Point(1, 1, 0), 1, 6, axis=Point(0, 0, 1))
+        assert isinstance(t * p, RegularPolygon)
 
+
+class TestSimplex:
     def test_volume(self):
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
@@ -301,10 +318,10 @@ class TestSimplex:
         d = Point(0, 0, 1)
         s = Simplex(a, b, c, d)
 
-        assert np.isclose(s.volume, 1/6)
+        assert np.isclose(s.volume, 1 / 6)
 
         triangle = Simplex(a, b, c)
-        assert np.isclose(triangle.volume, 1/2)
+        assert np.isclose(triangle.volume, 1 / 2)
 
     def test_transform(self):
         a = Point(0, 0, 0)
@@ -319,7 +336,6 @@ class TestSimplex:
 
 
 class TestCuboid:
-
     def test_intersect(self):
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
@@ -357,8 +373,8 @@ class TestCuboid:
         x = Point(1, 1, 1)
         t = translation(x)
 
-        assert t*cube == Cuboid(a+x, b+x, c+x, d+x)
-        assert isinstance(t*cube, Cuboid)
+        assert t * cube == Cuboid(a + x, b + x, c + x, d + x)
+        assert isinstance(t * cube, Cuboid)
 
     def test_add(self):
         a = Point(0, 0, 0)
@@ -368,8 +384,8 @@ class TestCuboid:
         cube = Cuboid(a, b, c, d)
         p = Point(1, 2, 3)
 
-        assert cube + p == Cuboid(a+p, b+p, c+p, d+p)
-        assert cube - p == Cuboid(a-p, b-p, c-p, d-p)
+        assert cube + p == Cuboid(a + p, b + p, c + p, d + p)
+        assert cube - p == Cuboid(a - p, b - p, c - p, d - p)
 
     def test_getitem(self):
         a = Point(0, 0, 0)
@@ -391,7 +407,6 @@ class TestCuboid:
 
 
 class TestSegmentCollection:
-
     def test_contains(self):
         p = PointCollection([(0, 0), (1, 0)], homogenize=True)
         q = PointCollection([(2, 1), (3, 1)], homogenize=True)

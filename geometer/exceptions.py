@@ -1,5 +1,3 @@
-
-
 class GeometryException(Exception):
     """A general geometric error occurred."""
 

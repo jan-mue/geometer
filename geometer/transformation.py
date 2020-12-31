@@ -1,6 +1,12 @@
 import numpy as np
 
-from .base import ProjectiveElement, TensorDiagram, LeviCivitaTensor, Tensor, ProjectiveCollection
+from .base import (
+    ProjectiveElement,
+    TensorDiagram,
+    LeviCivitaTensor,
+    Tensor,
+    ProjectiveCollection,
+)
 from .point import Point, Subspace, infty_hyperplane
 from .utils import inv
 
@@ -27,7 +33,7 @@ def identity(dim, collection_dims=None):
         e = e.reshape((1,) * len(collection_dims) + e.shape)
         e = np.tile(e, collection_dims + (1, 1))
         return TransformationCollection(e)
-    return Transformation(np.eye(dim+1))
+    return Transformation(np.eye(dim + 1))
 
 
 def affine_transform(matrix=None, offset=0):
@@ -89,8 +95,9 @@ def rotation(angle, axis=None):
 
     """
     if axis is None:
-        return affine_transform([[np.cos(angle), -np.sin(angle)],
-                                 [np.sin(angle), np.cos(angle)]])
+        return affine_transform(
+            [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+        )
 
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)
@@ -99,7 +106,9 @@ def rotation(angle, axis=None):
     d = TensorDiagram(*[(Tensor(a, copy=False), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = np.outer(a, a)
-    result = np.cos(angle)*np.eye(dimension) + np.sin(angle)*u + (1 - np.cos(angle))*v
+    result = (
+        np.cos(angle) * np.eye(dimension) + np.sin(angle) * u + (1 - np.cos(angle)) * v
+    )
 
     return affine_transform(result)
 
@@ -165,7 +174,7 @@ def reflection(axis):
     v = axis.array[:-1]
     v = v / np.linalg.norm(v)
 
-    p = affine_transform(np.eye(axis.dim) - 2*np.outer(v, v.conj()))
+    p = affine_transform(np.eye(axis.dim) - 2 * np.outer(v, v.conj()))
 
     base = axis.basis_matrix
     ind = base[:, -1].nonzero()[0][0]
@@ -287,7 +296,9 @@ class Transformation(ProjectiveElement):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
+        raise NotImplementedError(
+            "Object of type %s cannot be transformed." % type(other)
+        )
 
     def __mul__(self, other):
         try:
@@ -317,9 +328,7 @@ class Transformation(ProjectiveElement):
 
 
 class TransformationCollection(ProjectiveCollection):
-    """A Collection of transformations.
-
-    """
+    """A Collection of transformations."""
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("covariant", [0])
@@ -341,11 +350,13 @@ class TransformationCollection(ProjectiveCollection):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
+        raise NotImplementedError(
+            "Object of type %s cannot be transformed." % type(other)
+        )
 
     def __pow__(self, power, modulo=None):
         if power == 0:
-            return identity(self.dim, self.shape[:len(self._collection_indices)])
+            return identity(self.dim, self.shape[: len(self._collection_indices)])
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 
