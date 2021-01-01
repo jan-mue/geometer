@@ -298,13 +298,18 @@ def dist(p, q):
     if p == q:
         return 0
 
-    if isinstance(p, (Plane, Line)) and isinstance(q, Point):
+    subspace_types = (Plane, PlaneCollection, Line, LineCollection)
+
+    # TODO: handle polygons
+    if isinstance(p, subspace_types) and isinstance(q, (Point, PointCollection)):
         return dist(p.project(q), q)
-    if isinstance(p, Point) and isinstance(q, (Plane, Line)):
+    if isinstance(p, (Point, PointCollection)) and isinstance(q, subspace_types):
         return dist(q.project(p), p)
-    if isinstance(p, Plane) and isinstance(q, (Plane, Line)):
+    if isinstance(p, (Plane, PlaneCollection)) and isinstance(q, subspace_types):
         return dist(p, Point(q.basis_matrix[0, :], copy=False))
-    if isinstance(q, Plane) and isinstance(p, Line):
+    if isinstance(q, (Plane, PlaneCollection)) and isinstance(
+        p, (Line, LineCollection)
+    ):
         return dist(q, p.base_point)
 
     if p.dim > 2:
