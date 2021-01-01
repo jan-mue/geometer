@@ -489,6 +489,10 @@ class Line(Subspace):
     @property
     def covariant_tensor(self):
         """Line: The covariant version of a line in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -498,6 +502,10 @@ class Line(Subspace):
     @property
     def contravariant_tensor(self):
         """Line: The contravariant version of a line in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
@@ -734,6 +742,10 @@ class Plane(Subspace):
             The mirror point.
 
         """
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         l = self.meet(infty_plane)
         l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
         p = l.base_point
@@ -790,6 +802,11 @@ class Plane(Subspace):
 
         """
         if self.contains(through):
+            if self.dim != 3:
+                raise NotImplementedError(
+                    "Expected dimension 3 but found dimension %s." % str(self.dim)
+                )
+
             l = self.meet(infty_plane)
             l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
             p1, p2 = [Point(a, copy=False) for a in l.basis_matrix]
@@ -1057,6 +1074,10 @@ class LineCollection(SubspaceCollection):
     @property
     def covariant_tensor(self):
         """LineCollection: The covariant tensors of lines in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -1066,6 +1087,10 @@ class LineCollection(SubspaceCollection):
     @property
     def contravariant_tensor(self):
         """LineCollection: The contravariant tensors of lines in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
@@ -1201,6 +1226,10 @@ class PlaneCollection(SubspaceCollection):
             The mirror points.
 
         """
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         l = self.meet(infty_plane)
         basis = l.basis_matrix
         l = LineCollection(np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False)
