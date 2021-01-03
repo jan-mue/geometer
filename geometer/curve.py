@@ -471,7 +471,7 @@ class Conic(Quadric):
                     - 18 * alpha * beta * gamma * delta
                     + 27 * alpha ** 2 * delta ** 3
                 )
-                Q = W - alpha * csqrt(27 * D)
+                Q = W - 3 * alpha * csqrt(3 * D)
                 R = np.complex128(4 * Q) ** (1 / 3)
 
                 lam = 2 * beta ** 2 - 6 * alpha * gamma - beta + R
