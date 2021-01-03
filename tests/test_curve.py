@@ -74,7 +74,7 @@ class TestConic:
 
         assert conic1 == conic2
 
-    def test_intersections(self):
+    def test_intersect(self):
         c = Circle(Point(0, 0), 1)
         i = c.intersect(Line(0, 1, 0))
         assert len(i) == 2
@@ -123,7 +123,7 @@ class TestCircle:
         c = Circle(Point(0, 1), 1)
         assert c.center == Point(0, 1)
 
-    def test_intersection(self):
+    def test_intersect(self):
         c = Circle(Point(0, 2), 2)
         l = Line(Point(-1, 2), Point(1, 2))
 
@@ -179,7 +179,7 @@ class TestQuadric:
 
 
 class TestSphere:
-    def test_intersection(self):
+    def test_intersect(self):
         s = Sphere(Point(0, 0, 2), 2)
         l = Line(Point(-1, 0, 2), Point(1, 0, 2))
 
@@ -235,7 +235,7 @@ class TestSphere:
 
 
 class TestCone:
-    def test_intersection(self):
+    def test_intersect(self):
         c = Cone(vertex=Point(1, 1, 1), base_center=Point(2, 2, 2), radius=2)
         a = np.sqrt(2)
         l = Line(Point(0, 4, 2), Point(4, 0, 2))
@@ -321,7 +321,7 @@ class TestQuadricCollection:
         q = QuadricCollection([Quadric.from_planes(e, f), Quadric.from_planes(g, h)])
         assert q.components == [PlaneCollection([e, g]), PlaneCollection([f, h])]
 
-    def test_intersection(self):
+    def test_intersect(self):
         q = QuadricCollection([Circle(Point(0, 1), 1), Circle(Point(0, 2), 2)])
         l = LineCollection(
             [Line(Point(-1, 1), Point(1, 1)), Line(Point(-1, 2), Point(1, 2))]
