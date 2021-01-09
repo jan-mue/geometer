@@ -1,4 +1,4 @@
-from geometer.utils import null_space, adjugate, det, inv
+from geometer.utils import null_space, adjugate, det, inv, roots
 import numpy as np
 
 
@@ -31,3 +31,12 @@ def test_inv():
 def test_null_space():
     a = np.array([[2, 3, 4, 3], [5, 1, 7, 6], [4, 7, 8, 1], [2, 3, 4, 3]])
     assert np.all(abs(a.dot(null_space(a))) < 1e-9)
+
+
+def test_roots():
+    np.random.seed(0)
+    polys = np.random.randint(-10, 10, size=(500, 4))
+    for p in polys:
+        sol = roots(p)
+        for x in sol:
+            assert np.isclose(np.polyval(p, x), 0)
