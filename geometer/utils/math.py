@@ -373,6 +373,25 @@ def matvec(a, b, transpose_a=False, adjoint_a=False, **kwargs):
 
 
 def roots(p):
+    r"""Calculates the roots of a polynomial for the given coefficients.
+
+    The polynomial is defined as
+
+    .. math::
+
+        p[0] x^n + p[1] x^{n-1} + \ldots + p[n-1] x + p[n].
+
+    Parameters
+    ----------
+    p : array_like
+        The coefficients of the polynomial.
+
+    Returns
+    -------
+    array_like
+        The roots of the polynomial.
+
+    """
     if len(p) == 4:
         a, b, c, d = p
     elif len(p) == 3:
