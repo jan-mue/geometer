@@ -25,7 +25,7 @@ from .base import (
     EQ_TOL_ABS,
 )
 from .exceptions import NotReducible
-from .utils import hat_matrix, is_multiple, adjugate, det, inv, matmul
+from .utils import hat_matrix, is_multiple, adjugate, det, inv, matmul, roots
 
 
 class Quadric(ProjectiveElement):
@@ -463,22 +463,10 @@ class Conic(Quadric):
                 gamma = det([a1, b2, b3]) + det([b1, a2, b3]) + det([b1, b2, a3])
                 delta = det(other.array)
 
-                W = -2 * beta ** 3 + 9 * alpha * beta * gamma - 27 * alpha ** 2 * delta
-                D = (
-                    -(beta ** 2) * gamma ** 2
-                    + 4 * alpha * gamma ** 3
-                    + 4 * beta ** 3 * delta
-                    - 18 * alpha * beta * gamma * delta
-                    + 27 * alpha ** 2 * delta ** 3
-                )
-                Q = W - alpha * csqrt(27 * D)
-                R = np.complex128(4 * Q) ** (1 / 3)
-
-                lam = 2 * beta ** 2 - 6 * alpha * gamma - beta + R
-                mu = 3 * alpha * (R + 3)
+                sol = roots([alpha, beta, gamma, delta])
 
                 c = Conic(
-                    lam * self.array + mu * other.array,
+                    sol[0] * self.array + other.array,
                     is_dual=self.is_dual,
                     copy=False,
                 )
