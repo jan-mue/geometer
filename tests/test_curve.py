@@ -139,6 +139,12 @@ class TestCircle:
             PointCollection([Point(2, 2), Point(0, 4)]),
         ]
 
+        c1 = Circle(Point(0, 0), 5)
+        c2 = Circle(Point(8, 0), 5)
+        intersections = c1.intersect(c2)
+        assert Point(4, 3) in intersections
+        assert Point(4, -3) in intersections
+
     def test_intersection_angle(self):
         c1 = Circle()
         c2 = Circle(Point(1, 1), 1)

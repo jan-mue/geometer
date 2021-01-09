@@ -8,6 +8,7 @@ from .math import (
     inv,
     matmul,
     matvec,
+    roots,
 )
 from .indexing import posify_index, normalize_index, sanitize_index
 
