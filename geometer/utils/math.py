@@ -373,11 +373,16 @@ def matvec(a, b, transpose_a=False, adjoint_a=False, **kwargs):
 
 
 def roots(p):
-    # TODO: only use this for len(p) > 4
-    if len(p) != 4:
+    if len(p) == 4:
+        a, b, c, d = p
+    elif len(p) == 3:
+        a = 0
+        b, c, d = p
+    elif len(p) == 2:
+        a = b = 0
+        c, d = p
+    else:
         return np.roots(p)
-
-    a, b, c, d = p
 
     if a == 0 and b == 0:  # Linear equation
         return [-d / c]
