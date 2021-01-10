@@ -235,12 +235,12 @@ def angle_bisectors(l, m):
 
     Parameters
     ----------
-    l, m : Line
+    l, m : Line, LineCollection
         Two lines in any dimension.
 
     Returns
     -------
-    tuple of Line
+    tuple of Line or tuple of LineCollection
         The two angle bisectors.
 
     """
@@ -249,26 +249,33 @@ def angle_bisectors(l, m):
     if o.dim > 2:
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array), copy=False)
-        M = Point(basis.dot(m.meet(infty_plane).array), copy=False)
+        L = l.meet(infty_plane)._matrix_transform(basis)
+        M = m.meet(infty_plane)._matrix_transform(basis)
 
     else:
         L, M = l.meet(infty), m.meet(infty)
 
-    p = Point(0, 0)
-    li = det([p.array, L.array, I.array])
-    lj = det([p.array, L.array, J.array])
-    mi = det([p.array, M.array, I.array])
-    mj = det([p.array, M.array, J.array])
+    p, L, M, i, j = np.broadcast_arrays([0, 0, 1], L.array, M.array, I.array, J.array)
+    li = det(np.stack([p, L, i], axis=-2))
+    lj = det(np.stack([p, L, j], axis=-2))
+    mi = det(np.stack([p, M, i], axis=-2))
+    mj = det(np.stack([p, M, j], axis=-2))
     a, b = np.sqrt(lj * mj), np.sqrt(li * mi)
-    r, s = a * I + b * J, a * I - b * J
+    a, b = np.expand_dims(a, -1), np.expand_dims(b, -1)
+    r, s = a * i + b * j, a * i - b * j
+
+    if r.ndim > 1:
+        r = PointCollection(r, copy=False)
+        s = PointCollection(s, copy=False)
+    else:
+        r = Point(r, copy=False)
+        s = Point(s, copy=False)
 
     if o.dim > 2:
-        r, s = Point(basis.T.dot(r.array), copy=False), Point(
-            basis.T.dot(s.array), copy=False
-        )
+        r = r._matrix_transform(np.swapaxes(basis, -1, -2))
+        s = s._matrix_transform(np.swapaxes(basis, -1, -2))
 
-    return Line(o, r), Line(o, s)
+    return join(o, r), join(o, s)
 
 
 def dist(p, q):

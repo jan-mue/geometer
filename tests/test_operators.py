@@ -113,7 +113,7 @@ def test_angle_bisectors():
     l = LineCollection(p1, p2)
     m = LineCollection(p1, p3)
     q, r = angle_bisectors(l, m)
-    assert is_perpendicular(q, r)
+    assert all(is_perpendicular(q, r))
     assert np.allclose(angle(l, q), angle(q, m))
 
 
