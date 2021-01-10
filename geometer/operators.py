@@ -46,29 +46,21 @@ def crossratio(a, b, c, d, from_point=None):
         from_point = a.meet(b)
         a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point
 
-    if isinstance(a, Plane):
+    if isinstance(a, (Plane, PlaneCollection)):
         l = a.meet(b)
-        e = Plane(l.direction.array, copy=False)
+        e = (
+            Plane(l.direction.array, copy=False)
+            if isinstance(l, Line)
+            else PlaneCollection(l.direction.array, copy=False)
+        )
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
-        from_point = Point(m.dot(p.array), copy=False)
-        a = Point(m.dot((p + a.direction).array), copy=False)
-        b = Point(m.dot((p + b.direction).array), copy=False)
-        c = Point(m.dot((p + c.direction).array), copy=False)
-        d = Point(m.dot((p + d.direction).array), copy=False)
-
-    if isinstance(a, PlaneCollection):
-        l = a.meet(b)
-        e = PlaneCollection(l.direction.array, copy=False)
-        a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
-        m = e.basis_matrix
-        p = e.meet(l)
-        from_point = PointCollection(m.dot(p.array), copy=False)
-        a = PointCollection(m.dot((p + a.direction).array), copy=False)
-        b = PointCollection(m.dot((p + b.direction).array), copy=False)
-        c = PointCollection(m.dot((p + c.direction).array), copy=False)
-        d = PointCollection(m.dot((p + d.direction).array), copy=False)
+        from_point = p._matrix_transform(m)
+        a = (p + a.direction)._matrix_transform(m)
+        b = (p + b.direction)._matrix_transform(m)
+        c = (p + c.direction)._matrix_transform(m)
+        d = (p + d.direction)._matrix_transform(m)
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
@@ -125,16 +117,10 @@ def harmonic_set(a, b, c):
     if n > 3:
         e = join(l, o)
         basis = e.basis_matrix
-        if isinstance(a, Point):
-            a = Point(basis.dot(a.array), copy=False)
-            b = Point(basis.dot(b.array), copy=False)
-            c = Point(basis.dot(c.array), copy=False)
-            o = Point(basis.dot(o.array), copy=False)
-        else:
-            a = PointCollection(matvec(basis, a.array), copy=False)
-            b = PointCollection(matvec(basis, b.array), copy=False)
-            c = PointCollection(matvec(basis, c.array), copy=False)
-            o = PointCollection(matvec(basis, o.array), copy=False)
+        a = a._matrix_transform(basis)
+        b = b._matrix_transform(basis)
+        c = c._matrix_transform(basis)
+        o = o._matrix_transform(basis)
 
         l = join(a, b)
 
@@ -143,11 +129,7 @@ def harmonic_set(a, b, c):
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
 
     if n > 3:
-        if isinstance(a, Point):
-            return Point(basis.T.dot(result.array), copy=False)
-        return PointCollection(
-            matvec(basis, result.array, transpose_a=True), copy=False
-        )
+        return result._matrix_transform(np.swapaxes(basis, -1, -2))
 
     return result
 
@@ -187,9 +169,9 @@ def angle(*args):
         if a.dim > 2:
             e = join(*args)
             basis = e.basis_matrix
-            a = Point(basis.dot(a.array), copy=False)
-            b = Point(basis.dot(b.array), copy=False)
-            c = Point(basis.dot(c.array), copy=False)
+            a = a._matrix_transform(basis)
+            b = b._matrix_transform(basis)
+            c = c._matrix_transform(basis)
 
     elif len(args) == 2:
         x, y = args
@@ -206,7 +188,25 @@ def angle(*args):
             j = l.join(p.join(tangent_points[1]))
             return 1 / 2j * np.log(crossratio(x, y, i, j))
 
-        if isinstance(x, Line) and isinstance(y, Line):
+        if isinstance(x, PlaneCollection) and isinstance(y, PlaneCollection):
+            l = x.meet(y)
+            p = l.meet(infty_plane)
+            polar = LineCollection(p.array[..., :-1], copy=False)
+            tangent_points = absolute_conic.intersect(polar)
+            tangent_points = [
+                PointCollection(
+                    np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1),
+                    copy=False,
+                )
+                for p in tangent_points
+            ]
+            i = l.join(p.join(tangent_points[0]))
+            j = l.join(p.join(tangent_points[1]))
+            return 1 / 2j * np.log(crossratio(x, y, i, j))
+
+        if isinstance(x, (Line, LineCollection)) and isinstance(
+            y, (Line, LineCollection)
+        ):
             a = x.meet(y)
         else:
             a = Point(*(x.dim * [0]))
@@ -218,9 +218,9 @@ def angle(*args):
         if a.dim > 2:
             e = join(x, y)
             basis = e.basis_matrix
-            a = Point(basis.dot(a.array), copy=False)
-            b = Point(basis.dot(x.meet(infty_plane).array), copy=False)
-            c = Point(basis.dot(y.meet(infty_plane).array), copy=False)
+            a = a._matrix_transform(basis)
+            b = x.meet(infty_plane)._matrix_transform(basis)
+            c = y.meet(infty_plane)._matrix_transform(basis)
         else:
             b = x.meet(infty)
             c = y.meet(infty)

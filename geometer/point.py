@@ -267,6 +267,9 @@ class Point(ProjectiveElement):
             " at Infinity" if self.isinf else ""
         )
 
+    def _matrix_transform(self, m):
+        return Point(np.dot(m, self.array), copy=False)
+
     @property
     def normalized_array(self):
         """numpy.ndarray: The normalized coordinates as array."""
@@ -644,6 +647,11 @@ class Line(Subspace):
             return np.array([a / np.linalg.norm(a), b / np.linalg.norm(b)])
         return super(Line, self).basis_matrix
 
+    def _matrix_transform(self, m):
+        transformed_basis = np.dot(m, self.basis_matrix.T)
+        transformed_basis = [Point(p, copy=False) for p in transformed_basis.T]
+        return join(*transformed_basis)
+
     @property
     def lie_coordinates(self):
         """Point: The Lie coordinates of a line in 2D."""
@@ -917,6 +925,9 @@ class PointCollection(ProjectiveCollection):
         result[~isinf] /= array[~isinf, -1, None]
         return np.real_if_close(result)
 
+    def _matrix_transform(self, m):
+        return PointCollection(matvec(m, self.array), copy=False)
+
     @property
     def normalized_array(self):
         return self._normalize_array(self.array)
@@ -970,6 +981,14 @@ class SubspaceCollection(ProjectiveCollection):
             -1,
             -2,
         )
+
+    def _matrix_transform(self, m):
+        transformed_basis = matmul(self.basis_matrix, m, transpose_b=True)
+        transformed_basis = [
+            PointCollection(p, copy=False)
+            for p in np.swapaxes(transformed_basis, 0, -2)
+        ]
+        return join(*transformed_basis)
 
     @property
     def general_point(self):

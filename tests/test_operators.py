@@ -63,11 +63,13 @@ def test_angle():
     p1 = Point(0, 0, 0)
     p2 = Point(0, 1, 0)
     p3 = Point(1, 0, 0)
+
+    assert np.isclose(abs(angle(p1, p2, p3)), np.pi / 2)
+
     l = Line(p1, p2)
     m = Line(p1, p3)
 
     assert np.isclose(abs(angle(l, m)), np.pi / 2)
-    assert np.isclose(abs(angle(p1, p2, p3)), np.pi / 2)
 
     p1 = PointCollection([(0, 0), (0, 0)], homogenize=True)
     p2 = PointCollection([(1, 1), (0, 1)], homogenize=True)
@@ -75,10 +77,15 @@ def test_angle():
 
     assert np.allclose(angle(p1, p2, p3), np.pi / 4)
 
+    l = LineCollection(p1, p2)
+    m = LineCollection(p1, p3)
+
+    assert np.allclose(angle(l, m), np.pi / 4)
+
     e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
     e2 = PlaneCollection([(1, 1, 1, 0), (0, 1, 0, 0)])
 
-    assert np.allclose(angle(e1, e2), [np.pi / 4, np.pi / 2])
+    assert np.allclose(angle(e1, e2), [np.arccos(1 / np.sqrt(3)), np.pi / 2])
 
 
 def test_angle_bisectors():
