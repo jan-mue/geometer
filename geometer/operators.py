@@ -363,10 +363,10 @@ def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     elif a.dim > 2:
         e = join(a, b, c)
         basis = e.basis_matrix
-        a = Point(basis.dot(a.array), copy=False)
-        b = Point(basis.dot(b.array), copy=False)
-        c = Point(basis.dot(c.array), copy=False)
-        d = Point(basis.dot(d.array), copy=False)
+        a = a._matrix_transform(basis)
+        b = b._matrix_transform(basis)
+        c = c._matrix_transform(basis)
+        d = d._matrix_transform(basis)
 
     i = crossratio(a, b, c, d, I)
     j = crossratio(a, b, c, d, J)
@@ -378,7 +378,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 
     Parameters
     ----------
-    l, m : Line or Plane
+    l, m : Line, LineCollection, Plane or PlaneCollection
         Two lines in any dimension or two planes in 3D.
     rtol : float, optional
         The relative tolerance parameter.
@@ -395,11 +395,13 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         L = l.meet(infty)
         M = m.meet(infty)
 
-    elif isinstance(l, Line) and isinstance(m, Line):
+    elif isinstance(l, (Line, LineCollection)) and isinstance(
+        m, (Line, LineCollection)
+    ):
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array), copy=False)
-        M = Point(basis.dot(m.meet(infty_plane).array), copy=False)
+        L = l.meet(infty_plane)._matrix_transform(basis)
+        M = m.meet(infty_plane)._matrix_transform(basis)
 
     elif isinstance(l, Plane) and isinstance(m, Plane):
         x = l.meet(m)
@@ -408,6 +410,22 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [
             Point(np.append(p.array, 0), copy=False) for p in tangent_points
+        ]
+        i = x.join(p.join(tangent_points[0]))
+        j = x.join(p.join(tangent_points[1]))
+        return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)
+
+    elif isinstance(l, PlaneCollection) and isinstance(m, PlaneCollection):
+        x = l.meet(m)
+        p = x.meet(infty_plane)
+        polar = LineCollection(p.array[..., :-1], copy=False)
+        tangent_points = absolute_conic.intersect(polar)
+        tangent_points = [
+            PointCollection(
+                np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1),
+                copy=False,
+            )
+            for p in tangent_points
         ]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))

@@ -161,6 +161,10 @@ def test_is_perpendicular():
     e2 = Plane(p1, p2, Point(0, 0, 1))
     assert is_perpendicular(e1, e2)
 
+    l = LineCollection([(0, 1, 0), (0, 1, 0)])
+    m = LineCollection([(1, 0, 0), (1, -1, 0)])
+    assert list(is_perpendicular(l, m)) == [True, False]
+
     e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
     e2 = PlaneCollection([(0, 1, 0, 0), (0, 0, 1, 0)])
     assert all(is_perpendicular(e1, e2))
