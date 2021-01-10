@@ -227,8 +227,7 @@ class Quadric(ProjectiveElement):
                         i = arr.nonzero()[0][0]
                         m = Plane(arr[i], copy=False).basis_matrix
                         q = Quadric(m.dot(self.array).dot(m.T), copy=False)
-                        line_base = other.basis_matrix.T
-                        line = Line(*[Point(x, copy=False) for x in m.dot(line_base).T])
+                        line = other._matrix_transform(m)
                         return [
                             Point(m.T.dot(p.array), copy=False)
                             for p in q.intersect(line)
@@ -238,10 +237,7 @@ class Quadric(ProjectiveElement):
                         m = PlaneCollection(
                             arr[tuple(np.indices(i.shape)) + (i,)], copy=False
                         ).basis_matrix
-                        line_base = matmul(other.basis_matrix, m, transpose_b=True)
-                        line = PointCollection(line_base[..., 0, :], copy=False).join(
-                            PointCollection(line_base[..., 1, :], copy=False)
-                        )
+                        line = other._matrix_transform(m)
                         q = QuadricCollection(
                             matmul(m.dot(self.array), m, transpose_b=True), copy=False
                         )
@@ -950,17 +946,13 @@ class QuadricCollection(ProjectiveCollection):
                     if isinstance(other, Line):
                         i = arr.nonzero()[0][0]
                         m = Plane(arr[i], copy=False).basis_matrix
-                        line_base = other.basis_matrix
-                        line = Line(*[Point(x, copy=False) for x in line_base.dot(m.T)])
                     else:
                         i = np.any(arr, axis=-1).argmax(-1)
                         m = PlaneCollection(
                             arr[tuple(np.indices(i.shape)) + (i,)], copy=False
                         ).basis_matrix
-                        line_base = matmul(other.basis_matrix, m, transpose_b=True)
-                        line = PointCollection(line_base[..., 0, :], copy=False).join(
-                            PointCollection(line_base[..., 1, :], copy=False)
-                        )
+
+                    line = other._matrix_transform(m)
 
                     q = QuadricCollection(
                         matmul(matmul(m, self.array), m, transpose_b=True), copy=False
