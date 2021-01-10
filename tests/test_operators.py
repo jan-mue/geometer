@@ -126,7 +126,7 @@ def test_is_cocircular():
     p = PointCollection([(0, 1), (1, 0)], homogenize=True)
     t = rotation(np.pi / 3)
 
-    assert is_cocircular(p, t * p, t * t * p, t * t * t * p)
+    assert all(is_cocircular(p, t * p, t * t * p, t * t * t * p))
 
 
 def test_is_coplanar():
