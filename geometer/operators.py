@@ -31,8 +31,8 @@ def crossratio(a, b, c, d, from_point=None):
 
     Returns
     -------
-    float or complex
-        The cross ration of the given objects.
+    array_like
+        The cross ratio(s) of the given objects.
 
     """
 
@@ -156,8 +156,8 @@ def angle(*args):
 
     Returns
     -------
-    float
-        The oriented angle between the given objects.
+    array_like
+        The oriented angle(s) between the given objects.
 
     References
     ----------
@@ -294,7 +294,7 @@ def dist(p, q):
 
     Returns
     -------
-    float
+    array_like
         The distance between the given objects.
 
     References
@@ -353,7 +353,7 @@ def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 
     Returns
     -------
-    bool
+    array_like
         True if the four points lie on a circle.
 
     """
@@ -387,7 +387,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 
     Returns
     -------
-    bool
+    array_like
         True if the two lines/planes are perpendicular.
 
     """
