@@ -153,6 +153,10 @@ class Test3D:
 
         assert is_perpendicular(l, m)
 
+        f = e.perpendicular(l)
+
+        assert is_perpendicular(e, f)
+
 
 class Test4D:
     def test_join(self):

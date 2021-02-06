@@ -678,7 +678,15 @@ class Line(Subspace):
         """
         l = self
         if self.dim >= 3:
-            e = join(self, pt)
+            try:
+                e = join(self, pt)
+            except LinearDependenceError:
+                return pt
+
+            if self.dim == 3:
+                f = e.perpendicular(self)
+                return f.mirror(pt)
+
             m = e.basis_matrix
             m = m[np.argsort(np.abs(m.dot(pt.array)))]
             pt = Point(m.dot(pt.array), copy=False)
@@ -793,49 +801,59 @@ class Plane(Subspace):
         return self.meet(l)
 
     def perpendicular(self, through):
-        """Construct the perpendicular line though a point.
+        """Construct the perpendicular line though a point or the perpendicular plane through a line.
 
         Only works in 3D.
 
         Parameters
         ----------
-        through : Point
+        through : Point, Line
             The point through which the perpendicular is constructed.
 
         Returns
         -------
-        Line
-            The perpendicular line.
+        Line or Plane
+            The perpendicular line or plane.
 
         """
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
+
         if self.contains(through):
-            if self.dim != 3:
-                raise NotImplementedError(
-                    "Expected dimension 3 but found dimension %s." % str(self.dim)
-                )
+            from .curve import absolute_conic
+            from .operators import harmonic_set
 
             l = self.meet(infty_plane)
             l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
+
+            if isinstance(through, Line):
+                p = through.meet(infty_plane)
+                polar = Line(p.array[:-1], copy=False)
+                tangent_points = absolute_conic.intersect(polar)
+                q = harmonic_set(*tangent_points, l.meet(polar))
+                q = Point(np.append(q.array, 0), copy=False)
+                return through.join(q)
+
             p1, p2 = [Point(a, copy=False) for a in l.basis_matrix]
             polar1 = Line(p1.array, copy=False)
             polar2 = Line(p2.array, copy=False)
 
-            from .curve import absolute_conic
-
             tangent_points1 = absolute_conic.intersect(polar1)
             tangent_points2 = absolute_conic.intersect(polar2)
 
-            from .operators import harmonic_set
-
-            q1, q2 = harmonic_set(*tangent_points1, l.meet(polar1)), harmonic_set(
-                *tangent_points2, l.meet(polar2)
-            )
+            q1 = harmonic_set(*tangent_points1, l.meet(polar1))
+            q2 = harmonic_set(*tangent_points2, l.meet(polar2))
             m1, m2 = p1.join(q1), p2.join(q2)
 
             p = m1.meet(m2)
             p = Point(np.append(p.array, 0), copy=False)
 
             return through.join(p)
+
+        if isinstance(through, Line):
+            raise NotImplementedError("Line must be contained in plane.")
 
         return self.mirror(through).join(through)
 
@@ -1310,6 +1328,7 @@ class PlaneCollection(SubspaceCollection):
 
         """
         if np.any(self.contains(through)):
+            # TODO: support lines
             # TODO: move to vectorized version
             if isinstance(through, Point):
                 through = [through] * len(self)
