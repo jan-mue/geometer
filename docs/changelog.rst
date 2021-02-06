@@ -11,6 +11,7 @@ New Features
 - Removed sympy as dependency
 - Added TensorCollection class and the following subclasses:
     - ProjectiveCollection
+    - SubspaceCollection
     - PointCollection
     - LineCollection
     - PlaneCollection
@@ -19,14 +20,20 @@ New Features
     - PolygonCollection
     - QuadricCollection
 - Faster intersection of lines with polygons & polyhedra by using the new collections
+- All functions in the operators module support collections in addition to the existing types
 - Support for TensorCollection objects in tensor diagrams
 - Implemented intersection of quadrics with a collection of lines
+- Support for Tensor indexing
 - Added Tensor.is_zero()
+- Added construction of a perpendicular plane through a line on another plane
+- Reformatted source code with black
+- Added Transformation.from_points_and_conics to map two conics and pairs of three points
+- Added Triangle.circumcenter
 
 Bug fixes
 ---------
 
-- None yet.
+- Fixed a bug in the calculation of points of intersection of two conics (issue #36)
 
 
 0.2.3 - released (8.7.2020)
