@@ -682,8 +682,7 @@ class Line(Subspace):
             m = e.basis_matrix
             m = m[np.argsort(np.abs(m.dot(pt.array)))]
             pt = Point(m.dot(pt.array), copy=False)
-            a, b = m.dot(self.basis_matrix.T).T
-            l = Line(Point(a, copy=False), Point(b, copy=False))
+            l = self._matrix_transform(m)
         l1 = I.join(pt)
         l2 = J.join(pt)
         p1 = l.meet(l1)
@@ -692,7 +691,7 @@ class Line(Subspace):
         m2 = p2.join(I)
         result = m1.meet(m2)
         if self.dim >= 3:
-            return Point(m.T.dot(result.array), copy=False)
+            return result._matrix_transform(m.T)
         return result
 
 
@@ -1139,13 +1138,12 @@ class LineCollection(SubspaceCollection):
             e = join(self, pt)
             m = e.basis_matrix
             arr = matvec(m, pt.array)
-            arr_sort = np.argsort(np.abs(arr), axis=-1)
-            m = m[..., arr_sort, :]
-            pt = PointCollection(arr[..., arr_sort], copy=False)
-            line_basis = matmul(self.basis_matrix, m, transpose_b=True)
-            a = PointCollection(line_basis[..., 0, :], copy=False)
-            b = PointCollection(line_basis[..., 1, :], copy=False)
-            l = a.join(b)
+            arr_sort = tuple(np.indices(arr.shape)[:-1]) + (
+                np.argsort(np.abs(arr), axis=-1),
+            )
+            m = m[arr_sort + (slice(None),)]
+            pt = PointCollection(arr[arr_sort], copy=False)
+            l = self._matrix_transform(m)
         l1 = I.join(pt)
         l2 = J.join(pt)
         p1 = l.meet(l1)
@@ -1154,9 +1152,7 @@ class LineCollection(SubspaceCollection):
         m2 = p2.join(I)
         result = m1.meet(m2)
         if self.dim >= 3:
-            return PointCollection(
-                matmul(m, result.array, transpose_a=True), copy=False
-            )
+            return result._matrix_transform(np.swapaxes(m, -1, -2))
         return result
 
     def perpendicular(self, through):
@@ -1228,6 +1224,11 @@ class PlaneCollection(SubspaceCollection):
             return result
 
         return PlaneCollection(result, copy=False)
+
+    @property
+    def basis_matrix(self):
+        # TODO: vectorize this
+        return np.stack([e.basis_matrix for e in self], axis=0)
 
     def mirror(self, pt):
         """Construct the reflections of points at the planes.

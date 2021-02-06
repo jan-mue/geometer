@@ -303,3 +303,13 @@ class TestCollections:
 
         assert a.basis_matrix.shape == (3, 3, 4)
         assert np.allclose(np.matmul(a.basis_matrix, a.array[..., None]), 0)
+
+    def test_project(self):
+        p1 = PointCollection([(1, 1, 0), (1, 1, 5)], homogenize=True)
+        p2 = PointCollection([(2, 1, 0), (2, 1, 5)], homogenize=True)
+        p3 = PointCollection([(0, 0, 0), (0, 0, 5)], homogenize=True)
+        l = LineCollection(p1, p2)
+        assert l.project(p3) == PointCollection([(0, 1, 0), (0, 1, 5)], homogenize=True)
+
+        e = PlaneCollection([(0, 1, 0, -1), (0, 1, 0, -2)])
+        assert e.project(p3) == PointCollection([(0, 1, 0), (0, 2, 5)], homogenize=True)
