@@ -267,6 +267,9 @@ class Point(ProjectiveElement):
             " at Infinity" if self.isinf else ""
         )
 
+    def _matrix_transform(self, m):
+        return Point(np.dot(m, self.array), copy=False)
+
     @property
     def normalized_array(self):
         """numpy.ndarray: The normalized coordinates as array."""
@@ -489,6 +492,10 @@ class Line(Subspace):
     @property
     def covariant_tensor(self):
         """Line: The covariant version of a line in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -498,6 +505,10 @@ class Line(Subspace):
     @property
     def contravariant_tensor(self):
         """Line: The contravariant version of a line in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
@@ -636,6 +647,11 @@ class Line(Subspace):
             return np.array([a / np.linalg.norm(a), b / np.linalg.norm(b)])
         return super(Line, self).basis_matrix
 
+    def _matrix_transform(self, m):
+        transformed_basis = np.dot(m, self.basis_matrix.T)
+        transformed_basis = [Point(p, copy=False) for p in transformed_basis.T]
+        return join(*transformed_basis)
+
     @property
     def lie_coordinates(self):
         """Point: The Lie coordinates of a line in 2D."""
@@ -666,8 +682,7 @@ class Line(Subspace):
             m = e.basis_matrix
             m = m[np.argsort(np.abs(m.dot(pt.array)))]
             pt = Point(m.dot(pt.array), copy=False)
-            a, b = m.dot(self.basis_matrix.T).T
-            l = Line(Point(a, copy=False), Point(b, copy=False))
+            l = self._matrix_transform(m)
         l1 = I.join(pt)
         l2 = J.join(pt)
         p1 = l.meet(l1)
@@ -676,7 +691,7 @@ class Line(Subspace):
         m2 = p2.join(I)
         result = m1.meet(m2)
         if self.dim >= 3:
-            return Point(m.T.dot(result.array), copy=False)
+            return result._matrix_transform(m.T)
         return result
 
 
@@ -734,6 +749,10 @@ class Plane(Subspace):
             The mirror point.
 
         """
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         l = self.meet(infty_plane)
         l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
         p = l.base_point
@@ -790,6 +809,11 @@ class Plane(Subspace):
 
         """
         if self.contains(through):
+            if self.dim != 3:
+                raise NotImplementedError(
+                    "Expected dimension 3 but found dimension %s." % str(self.dim)
+                )
+
             l = self.meet(infty_plane)
             l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
             p1, p2 = [Point(a, copy=False) for a in l.basis_matrix]
@@ -900,6 +924,9 @@ class PointCollection(ProjectiveCollection):
         result[~isinf] /= array[~isinf, -1, None]
         return np.real_if_close(result)
 
+    def _matrix_transform(self, m):
+        return PointCollection(matvec(m, self.array), copy=False)
+
     @property
     def normalized_array(self):
         return self._normalize_array(self.array)
@@ -953,6 +980,14 @@ class SubspaceCollection(ProjectiveCollection):
             -1,
             -2,
         )
+
+    def _matrix_transform(self, m):
+        transformed_basis = matmul(self.basis_matrix, m, transpose_b=True)
+        transformed_basis = [
+            PointCollection(p, copy=False)
+            for p in np.swapaxes(transformed_basis, 0, -2)
+        ]
+        return join(*transformed_basis)
 
     @property
     def general_point(self):
@@ -1057,6 +1092,10 @@ class LineCollection(SubspaceCollection):
     @property
     def covariant_tensor(self):
         """LineCollection: The covariant tensors of lines in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -1066,11 +1105,95 @@ class LineCollection(SubspaceCollection):
     @property
     def contravariant_tensor(self):
         """LineCollection: The contravariant tensors of lines in 3D."""
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
         diagram = TensorDiagram((self, e), (self, e))
         return LineCollection(diagram.calculate(), copy=False)
+
+    def mirror(self, pt):
+        """Construct the reflection of points at the lines.
+
+        Parameters
+        ----------
+        pt : Point, PointCollection
+            The point to reflect.
+
+        Returns
+        -------
+        PointCollection
+            The mirror points.
+
+        References
+        ----------
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
+
+        """
+        l = self
+        if self.dim >= 3:
+            e = join(self, pt)
+            m = e.basis_matrix
+            arr = matvec(m, pt.array)
+            arr_sort = tuple(np.indices(arr.shape)[:-1]) + (
+                np.argsort(np.abs(arr), axis=-1),
+            )
+            m = m[arr_sort + (slice(None),)]
+            pt = PointCollection(arr[arr_sort], copy=False)
+            l = self._matrix_transform(m)
+        l1 = I.join(pt)
+        l2 = J.join(pt)
+        p1 = l.meet(l1)
+        p2 = l.meet(l2)
+        m1 = p1.join(J)
+        m2 = p2.join(I)
+        result = m1.meet(m2)
+        if self.dim >= 3:
+            return result._matrix_transform(np.swapaxes(m, -1, -2))
+        return result
+
+    def perpendicular(self, through):
+        """Construct the perpendicular line though a point.
+
+        Parameters
+        ----------
+        through : Point, PointCollection
+            The point through which the perpendicular is constructed.
+
+        Returns
+        -------
+        LineCollection
+            The perpendicular lines.
+
+        """
+        if np.any(self.contains(through)):
+            # TODO: move to vectorized version
+            if isinstance(through, Point):
+                through = [through] * len(self)
+            # TODO: add plane parameter
+            return LineCollection([l.perpendicular(p) for l, p in zip(self, through)])
+
+        return self.mirror(through).join(through)
+
+    def project(self, pt):
+        """The orthogonal projection of points onto the lines.
+
+        Parameters
+        ----------
+        pt : Point, PointCollection
+            The points to project.
+
+        Returns
+        -------
+        PointCollection
+            The projected points.
+
+        """
+        l = self.perpendicular(pt)
+        return self.meet(l)
 
 
 class PlaneCollection(SubspaceCollection):
@@ -1101,3 +1224,95 @@ class PlaneCollection(SubspaceCollection):
             return result
 
         return PlaneCollection(result, copy=False)
+
+    @property
+    def basis_matrix(self):
+        # TODO: vectorize this
+        return np.stack([e.basis_matrix for e in self], axis=0)
+
+    def mirror(self, pt):
+        """Construct the reflections of points at the planes.
+
+        Only works in 3D.
+
+        Parameters
+        ----------
+        pt : Point, PointCollection
+            The points to reflect.
+
+        Returns
+        -------
+        PointCollection
+            The mirror points.
+
+        """
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
+        l = self.meet(infty_plane)
+        basis = l.basis_matrix
+        l = LineCollection(np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False)
+        p = l.base_point
+        polars = LineCollection(p.array, copy=False)
+
+        from .curve import absolute_conic
+
+        p1, p2 = absolute_conic.intersect(polars)
+        p1 = PointCollection(
+            np.append(p1.array, np.zeros(p1.shape[:-1] + (1,)), axis=-1), copy=False
+        )
+        p2 = PointCollection(
+            np.append(p2.array, np.zeros(p2.shape[:-1] + (1,)), axis=-1), copy=False
+        )
+
+        l1 = p1.join(pt)
+        l2 = p2.join(pt)
+        q1 = self.meet(l1)
+        q2 = self.meet(l2)
+        m1 = q1.join(p2)
+        m2 = q2.join(p1)
+        return m1.meet(m2)
+
+    def project(self, pt):
+        """The orthogonal projection of points onto the planes.
+
+        Only works in 3D.
+
+        Parameters
+        ----------
+        pt : Point, PointCollection
+            The points to project.
+
+        Returns
+        -------
+        PointCollection
+            The projected points.
+
+        """
+        l = self.perpendicular(pt)
+        return self.meet(l)
+
+    def perpendicular(self, through):
+        """Construct the perpendicular lines though the given points.
+
+        Only works in 3D.
+
+        Parameters
+        ----------
+        through : Point, PointCollection
+            The points through which the perpendiculars are constructed.
+
+        Returns
+        -------
+        LineCollection
+            The perpendicular lines.
+
+        """
+        if np.any(self.contains(through)):
+            # TODO: move to vectorized version
+            if isinstance(through, Point):
+                through = [through] * len(self)
+            return LineCollection([e.perpendicular(p) for e, p in zip(self, through)])
+
+        return self.mirror(through).join(through)

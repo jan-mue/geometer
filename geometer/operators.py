@@ -31,8 +31,8 @@ def crossratio(a, b, c, d, from_point=None):
 
     Returns
     -------
-    float or complex
-        The cross ration of the given objects.
+    array_like
+        The cross ratio(s) of the given objects.
 
     """
 
@@ -46,29 +46,21 @@ def crossratio(a, b, c, d, from_point=None):
         from_point = a.meet(b)
         a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point
 
-    if isinstance(a, Plane):
+    if isinstance(a, (Plane, PlaneCollection)):
         l = a.meet(b)
-        e = Plane(l.direction.array, copy=False)
+        e = (
+            Plane(l.direction.array, copy=False)
+            if isinstance(l, Line)
+            else PlaneCollection(l.direction.array, copy=False)
+        )
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
-        from_point = Point(m.dot(p.array), copy=False)
-        a = Point(m.dot((p + a.direction).array), copy=False)
-        b = Point(m.dot((p + b.direction).array), copy=False)
-        c = Point(m.dot((p + c.direction).array), copy=False)
-        d = Point(m.dot((p + d.direction).array), copy=False)
-
-    if isinstance(a, PlaneCollection):
-        l = a.meet(b)
-        e = PlaneCollection(l.direction.array, copy=False)
-        a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
-        m = e.basis_matrix
-        p = e.meet(l)
-        from_point = PointCollection(m.dot(p.array), copy=False)
-        a = PointCollection(m.dot((p + a.direction).array), copy=False)
-        b = PointCollection(m.dot((p + b.direction).array), copy=False)
-        c = PointCollection(m.dot((p + c.direction).array), copy=False)
-        d = PointCollection(m.dot((p + d.direction).array), copy=False)
+        from_point = p._matrix_transform(m)
+        a = (p + a.direction)._matrix_transform(m)
+        b = (p + b.direction)._matrix_transform(m)
+        c = (p + c.direction)._matrix_transform(m)
+        d = (p + d.direction)._matrix_transform(m)
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
 
@@ -125,16 +117,10 @@ def harmonic_set(a, b, c):
     if n > 3:
         e = join(l, o)
         basis = e.basis_matrix
-        if isinstance(a, Point):
-            a = Point(basis.dot(a.array), copy=False)
-            b = Point(basis.dot(b.array), copy=False)
-            c = Point(basis.dot(c.array), copy=False)
-            o = Point(basis.dot(o.array), copy=False)
-        else:
-            a = PointCollection(matvec(basis, a.array), copy=False)
-            b = PointCollection(matvec(basis, b.array), copy=False)
-            c = PointCollection(matvec(basis, c.array), copy=False)
-            o = PointCollection(matvec(basis, o.array), copy=False)
+        a = a._matrix_transform(basis)
+        b = b._matrix_transform(basis)
+        c = c._matrix_transform(basis)
+        o = o._matrix_transform(basis)
 
         l = join(a, b)
 
@@ -143,11 +129,7 @@ def harmonic_set(a, b, c):
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
 
     if n > 3:
-        if isinstance(a, Point):
-            return Point(basis.T.dot(result.array), copy=False)
-        return PointCollection(
-            matvec(basis, result.array, transpose_a=True), copy=False
-        )
+        return result._matrix_transform(np.swapaxes(basis, -1, -2))
 
     return result
 
@@ -174,8 +156,8 @@ def angle(*args):
 
     Returns
     -------
-    float
-        The oriented angle between the given objects.
+    array_like
+        The oriented angle(s) between the given objects.
 
     References
     ----------
@@ -187,9 +169,9 @@ def angle(*args):
         if a.dim > 2:
             e = join(*args)
             basis = e.basis_matrix
-            a = Point(basis.dot(a.array), copy=False)
-            b = Point(basis.dot(b.array), copy=False)
-            c = Point(basis.dot(c.array), copy=False)
+            a = a._matrix_transform(basis)
+            b = b._matrix_transform(basis)
+            c = c._matrix_transform(basis)
 
     elif len(args) == 2:
         x, y = args
@@ -206,7 +188,25 @@ def angle(*args):
             j = l.join(p.join(tangent_points[1]))
             return 1 / 2j * np.log(crossratio(x, y, i, j))
 
-        if isinstance(x, Line) and isinstance(y, Line):
+        if isinstance(x, PlaneCollection) and isinstance(y, PlaneCollection):
+            l = x.meet(y)
+            p = l.meet(infty_plane)
+            polar = LineCollection(p.array[..., :-1], copy=False)
+            tangent_points = absolute_conic.intersect(polar)
+            tangent_points = [
+                PointCollection(
+                    np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1),
+                    copy=False,
+                )
+                for p in tangent_points
+            ]
+            i = l.join(p.join(tangent_points[0]))
+            j = l.join(p.join(tangent_points[1]))
+            return 1 / 2j * np.log(crossratio(x, y, i, j))
+
+        if isinstance(x, (Line, LineCollection)) and isinstance(
+            y, (Line, LineCollection)
+        ):
             a = x.meet(y)
         else:
             a = Point(*(x.dim * [0]))
@@ -218,9 +218,9 @@ def angle(*args):
         if a.dim > 2:
             e = join(x, y)
             basis = e.basis_matrix
-            a = Point(basis.dot(a.array), copy=False)
-            b = Point(basis.dot(x.meet(infty_plane).array), copy=False)
-            c = Point(basis.dot(y.meet(infty_plane).array), copy=False)
+            a = a._matrix_transform(basis)
+            b = x.meet(infty_plane)._matrix_transform(basis)
+            c = y.meet(infty_plane)._matrix_transform(basis)
         else:
             b = x.meet(infty)
             c = y.meet(infty)
@@ -235,12 +235,12 @@ def angle_bisectors(l, m):
 
     Parameters
     ----------
-    l, m : Line
+    l, m : Line, LineCollection
         Two lines in any dimension.
 
     Returns
     -------
-    tuple of Line
+    tuple of Line or tuple of LineCollection
         The two angle bisectors.
 
     """
@@ -249,26 +249,33 @@ def angle_bisectors(l, m):
     if o.dim > 2:
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array), copy=False)
-        M = Point(basis.dot(m.meet(infty_plane).array), copy=False)
+        L = l.meet(infty_plane)._matrix_transform(basis)
+        M = m.meet(infty_plane)._matrix_transform(basis)
 
     else:
         L, M = l.meet(infty), m.meet(infty)
 
-    p = Point(0, 0)
-    li = det([p.array, L.array, I.array])
-    lj = det([p.array, L.array, J.array])
-    mi = det([p.array, M.array, I.array])
-    mj = det([p.array, M.array, J.array])
+    p, L, M, i, j = np.broadcast_arrays([0, 0, 1], L.array, M.array, I.array, J.array)
+    li = det(np.stack([p, L, i], axis=-2))
+    lj = det(np.stack([p, L, j], axis=-2))
+    mi = det(np.stack([p, M, i], axis=-2))
+    mj = det(np.stack([p, M, j], axis=-2))
     a, b = np.sqrt(lj * mj), np.sqrt(li * mi)
-    r, s = a * I + b * J, a * I - b * J
+    a, b = np.expand_dims(a, -1), np.expand_dims(b, -1)
+    r, s = a * i + b * j, a * i - b * j
+
+    if r.ndim > 1:
+        r = PointCollection(r, copy=False)
+        s = PointCollection(s, copy=False)
+    else:
+        r = Point(r, copy=False)
+        s = Point(s, copy=False)
 
     if o.dim > 2:
-        r, s = Point(basis.T.dot(r.array), copy=False), Point(
-            basis.T.dot(s.array), copy=False
-        )
+        r = r._matrix_transform(np.swapaxes(basis, -1, -2))
+        s = s._matrix_transform(np.swapaxes(basis, -1, -2))
 
-    return Line(o, r), Line(o, s)
+    return join(o, r), join(o, s)
 
 
 def dist(p, q):
@@ -287,7 +294,7 @@ def dist(p, q):
 
     Returns
     -------
-    float
+    array_like
         The distance between the given objects.
 
     References
@@ -298,13 +305,18 @@ def dist(p, q):
     if p == q:
         return 0
 
-    if isinstance(p, (Plane, Line)) and isinstance(q, Point):
+    subspace_types = (Plane, PlaneCollection, Line, LineCollection)
+
+    # TODO: handle polygons
+    if isinstance(p, subspace_types) and isinstance(q, (Point, PointCollection)):
         return dist(p.project(q), q)
-    if isinstance(p, Point) and isinstance(q, (Plane, Line)):
+    if isinstance(p, (Point, PointCollection)) and isinstance(q, subspace_types):
         return dist(q.project(p), p)
-    if isinstance(p, Plane) and isinstance(q, (Plane, Line)):
+    if isinstance(p, (Plane, PlaneCollection)) and isinstance(q, subspace_types):
         return dist(p, Point(q.basis_matrix[0, :], copy=False))
-    if isinstance(q, Plane) and isinstance(p, Line):
+    if isinstance(q, (Plane, PlaneCollection)) and isinstance(
+        p, (Line, LineCollection)
+    ):
         return dist(q, p.base_point)
 
     if p.dim > 2:
@@ -341,7 +353,7 @@ def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 
     Returns
     -------
-    bool
+    array_like
         True if the four points lie on a circle.
 
     """
@@ -351,10 +363,10 @@ def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     elif a.dim > 2:
         e = join(a, b, c)
         basis = e.basis_matrix
-        a = Point(basis.dot(a.array), copy=False)
-        b = Point(basis.dot(b.array), copy=False)
-        c = Point(basis.dot(c.array), copy=False)
-        d = Point(basis.dot(d.array), copy=False)
+        a = a._matrix_transform(basis)
+        b = b._matrix_transform(basis)
+        c = c._matrix_transform(basis)
+        d = d._matrix_transform(basis)
 
     i = crossratio(a, b, c, d, I)
     j = crossratio(a, b, c, d, J)
@@ -366,7 +378,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 
     Parameters
     ----------
-    l, m : Line or Plane
+    l, m : Line, LineCollection, Plane or PlaneCollection
         Two lines in any dimension or two planes in 3D.
     rtol : float, optional
         The relative tolerance parameter.
@@ -375,7 +387,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 
     Returns
     -------
-    bool
+    array_like
         True if the two lines/planes are perpendicular.
 
     """
@@ -383,11 +395,13 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         L = l.meet(infty)
         M = m.meet(infty)
 
-    elif isinstance(l, Line) and isinstance(m, Line):
+    elif isinstance(l, (Line, LineCollection)) and isinstance(
+        m, (Line, LineCollection)
+    ):
         e = join(l, m)
         basis = e.basis_matrix
-        L = Point(basis.dot(l.meet(infty_plane).array), copy=False)
-        M = Point(basis.dot(m.meet(infty_plane).array), copy=False)
+        L = l.meet(infty_plane)._matrix_transform(basis)
+        M = m.meet(infty_plane)._matrix_transform(basis)
 
     elif isinstance(l, Plane) and isinstance(m, Plane):
         x = l.meet(m)
@@ -396,6 +410,22 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [
             Point(np.append(p.array, 0), copy=False) for p in tangent_points
+        ]
+        i = x.join(p.join(tangent_points[0]))
+        j = x.join(p.join(tangent_points[1]))
+        return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)
+
+    elif isinstance(l, PlaneCollection) and isinstance(m, PlaneCollection):
+        x = l.meet(m)
+        p = x.meet(infty_plane)
+        polar = LineCollection(p.array[..., :-1], copy=False)
+        tangent_points = absolute_conic.intersect(polar)
+        tangent_points = [
+            PointCollection(
+                np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1),
+                copy=False,
+            )
+            for p in tangent_points
         ]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
