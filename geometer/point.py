@@ -272,7 +272,7 @@ class Point(ProjectiveElement):
 
     @property
     def normalized_array(self):
-        """numpy.ndarray: The normalized coordinates as array."""
+        """numpy.ndarray: The coordinate array of the point with the last coordinate normalized to one."""
         if self.isinf:
             return np.real_if_close(self.array)
         return np.real_if_close(self.array / self.array[-1])
@@ -305,6 +305,7 @@ class Point(ProjectiveElement):
 
     @property
     def isinf(self):
+        """bool: true if the point lies at infinity i.e. the last coordinate is zero."""
         return np.isclose(self.array[-1], 0, atol=EQ_TOL_ABS)
 
 
@@ -947,10 +948,12 @@ class PointCollection(ProjectiveCollection):
 
     @property
     def normalized_array(self):
+        """numpy.ndarray: The coordinate array of the points with the last coordinates normalized to 1."""
         return self._normalize_array(self.array)
 
     @property
     def isinf(self):
+        """array_like: Boolean array that indicates which points lie at infinity."""
         return np.isclose(self.array[..., -1], 0, atol=EQ_TOL_ABS)
 
 
@@ -1039,6 +1042,21 @@ class SubspaceCollection(ProjectiveCollection):
         return join(x, through)
 
     def contains(self, other, tol=EQ_TOL_ABS):
+        """Tests whether given points or lines lie in the subspaces.
+
+        Parameters
+        ----------
+        other : Point, PointCollection, Line or LineCollection
+            The object(s) to test.
+        tol : float, optional
+            The accepted tolerance.
+
+        Returns
+        -------
+        array_like
+            Boolean array that indicates which of given points/lines lies in the subspaces.
+
+        """
         if isinstance(other, (Point, PointCollection)):
             result = self * other
 
