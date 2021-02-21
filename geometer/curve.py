@@ -14,6 +14,7 @@ from .point import (
     I,
     J,
     infty_plane,
+    join,
 )
 from .transformation import rotation, translation
 from .base import (
@@ -390,7 +391,10 @@ class Conic(Quadric):
             The resulting conic.
 
         """
-        t1, t2, t3, t4 = Line(f1, I), Line(f1, J), Line(f2, I), Line(f2, J)
+        t1 = join(f1, I, _normalize_result=False)
+        t2 = join(f1, J, _normalize_result=False)
+        t3 = join(f2, I, _normalize_result=False)
+        t4 = join(f2, J, _normalize_result=False)
         p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
         p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
         c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)

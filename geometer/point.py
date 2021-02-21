@@ -13,7 +13,9 @@ from .exceptions import LinearDependenceError, NotCoplanar, GeometryException
 from .utils import null_space, matvec, matmul
 
 
-def _join_meet_duality(*args, intersect_lines=True, check_dependence=True):
+def _join_meet_duality(
+    *args, intersect_lines=True, check_dependence=True, normalize_result=True
+):
     if len(args) < 2:
         raise ValueError("Expected at least 2 arguments, got %s." % len(args))
 
@@ -122,10 +124,13 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True):
 
     if isinstance(result, TensorCollection):
 
-        axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
-        result.array = result.array / np.max(
-            np.abs(result.array), axis=axes, keepdims=True
-        )
+        if normalize_result:
+            axes = tuple(result._covariant_indices) + tuple(
+                result._contravariant_indices
+            )
+            result.array = result.array / np.max(
+                np.abs(result.array), axis=axes, keepdims=True
+            )
 
         if result.tensor_shape == (0, 1):
             return (
@@ -142,8 +147,9 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True):
 
         return SubspaceCollection(result, copy=False)
 
-    # normalize result to avoid large values
-    result.array = result.array / np.max(np.abs(result.array))
+    if normalize_result:
+        # normalize result to avoid large values
+        result.array = result.array / np.max(np.abs(result.array))
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
@@ -157,7 +163,7 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True):
     return Subspace(result, copy=False)
 
 
-def join(*args, _check_dependence=True):
+def join(*args, _check_dependence=True, _normalize_result=True):
     """Joins a number of objects to form a line, plane or subspace.
 
     Parameters
@@ -172,11 +178,14 @@ def join(*args, _check_dependence=True):
 
     """
     return _join_meet_duality(
-        *args, intersect_lines=False, check_dependence=_check_dependence
+        *args,
+        intersect_lines=False,
+        check_dependence=_check_dependence,
+        normalize_result=_normalize_result
     )
 
 
-def meet(*args, _check_dependence=True):
+def meet(*args, _check_dependence=True, _normalize_result=True):
     """Intersects a number of given objects.
 
     Parameters
@@ -191,7 +200,10 @@ def meet(*args, _check_dependence=True):
 
     """
     return _join_meet_duality(
-        *args, intersect_lines=True, check_dependence=_check_dependence
+        *args,
+        intersect_lines=True,
+        check_dependence=_check_dependence,
+        normalize_result=_normalize_result
     )
 
 
@@ -692,12 +704,12 @@ class Line(Subspace):
             m = m[np.argsort(np.abs(m.dot(pt.array)))]
             pt = Point(m.dot(pt.array), copy=False)
             l = self._matrix_transform(m)
-        l1 = I.join(pt)
-        l2 = J.join(pt)
+        l1 = join(I, pt, _normalize_result=False)
+        l2 = join(J, pt, _normalize_result=False)
         p1 = l.meet(l1)
         p2 = l.meet(l2)
-        m1 = p1.join(J)
-        m2 = p2.join(I)
+        m1 = join(p1, J, _normalize_result=False)
+        m2 = join(p2, I, _normalize_result=False)
         result = m1.meet(m2)
         if self.dim >= 3:
             return result._matrix_transform(m.T)
@@ -1180,12 +1192,12 @@ class LineCollection(SubspaceCollection):
             m = m[arr_sort + (slice(None),)]
             pt = PointCollection(arr[arr_sort], copy=False)
             l = self._matrix_transform(m)
-        l1 = I.join(pt)
-        l2 = J.join(pt)
+        l1 = join(I, pt, _normalize_result=False)
+        l2 = join(J, pt, _normalize_result=False)
         p1 = l.meet(l1)
         p2 = l.meet(l2)
-        m1 = p1.join(J)
-        m2 = p2.join(I)
+        m1 = join(p1, J, _normalize_result=False)
+        m2 = join(p2, I, _normalize_result=False)
         result = m1.meet(m2)
         if self.dim >= 3:
             return result._matrix_transform(np.swapaxes(m, -1, -2))
