@@ -839,7 +839,8 @@ class Plane(Subspace):
             from .operators import harmonic_set
 
             l = self.meet(infty_plane)
-            l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
+            basis = l.basis_matrix[:, :-1]
+            l = Line(np.cross(*basis), copy=False)
 
             if isinstance(through, Line):
                 p = through.meet(infty_plane)
@@ -849,7 +850,7 @@ class Plane(Subspace):
                 q = Point(np.append(q.array, 0), copy=False)
                 return through.join(q)
 
-            p1, p2 = [Point(a, copy=False) for a in l.basis_matrix]
+            p1, p2 = [Point(a, copy=False) for a in basis]
             polar1 = Line(p1.array, copy=False)
             polar2 = Line(p2.array, copy=False)
 
@@ -1371,13 +1372,11 @@ class PlaneCollection(SubspaceCollection):
             from .operators import harmonic_set
 
             l = self[contains].meet(infty_plane)
-            basis = l.basis_matrix
-            l = LineCollection(
-                np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False
-            )
+            basis = l.basis_matrix[..., :-1]
+            l = LineCollection(np.cross(basis[..., 0, :], basis[..., 1, :]), copy=False)
 
-            p1 = PointCollection(l.basis_matrix[..., 0, :], copy=False)
-            p2 = PointCollection(l.basis_matrix[..., 1, :], copy=False)
+            p1 = PointCollection(basis[..., 0, :], copy=False)
+            p2 = PointCollection(basis[..., 1, :], copy=False)
             polar1 = LineCollection(p1.array, copy=False)
             polar2 = LineCollection(p2.array, copy=False)
 
