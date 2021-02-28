@@ -1357,11 +1357,46 @@ class PlaneCollection(SubspaceCollection):
             The perpendicular lines.
 
         """
-        if np.any(self.contains(through)):
+        n = self.dim + 1
+        contains = self.contains(through)
+        result = LineCollection(
+            np.empty(contains.shape + (n,) * (n - 2), dtype=np.complex128), copy=False
+        )
+        if np.any(contains):
             # TODO: support lines
-            # TODO: move to vectorized version
-            if isinstance(through, Point):
-                through = [through] * len(self)
-            return LineCollection([e.perpendicular(p) for e, p in zip(self, through)])
+            from .curve import absolute_conic
+            from .operators import harmonic_set
 
-        return self.mirror(through).join(through)
+            l = self[contains].meet(infty_plane)
+            basis = l.basis_matrix
+            l = LineCollection(
+                np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False
+            )
+
+            p1 = PointCollection(l.basis_matrix[..., 0, :], copy=False)
+            p2 = PointCollection(l.basis_matrix[..., 1, :], copy=False)
+            polar1 = LineCollection(p1.array, copy=False)
+            polar2 = LineCollection(p2.array, copy=False)
+
+            tangent_points1 = absolute_conic.intersect(polar1)
+            tangent_points2 = absolute_conic.intersect(polar2)
+
+            q1 = harmonic_set(*tangent_points1, l.meet(polar1))
+            q2 = harmonic_set(*tangent_points2, l.meet(polar2))
+            m1, m2 = p1.join(q1), p2.join(q2)
+
+            p = m1.meet(m2)
+            p = PointCollection(
+                np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False
+            )
+
+            result[contains] = (
+                through if isinstance(through, Point) else through[contains]
+            ).join(p)
+
+        if np.any(~contains):
+            if isinstance(through, PointCollection):
+                through = through[~contains]
+            result[~contains] = self[~contains].mirror(through).join(through)
+
+        return LineCollection(np.real_if_close(result.array), copy=False)

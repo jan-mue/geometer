@@ -115,7 +115,7 @@ def harmonic_set(a, b, c):
     n = l.dim + 1
 
     if n > 3:
-        e = join(l, o)
+        e = join(l, o, _normalize_result=False)
         basis = e.basis_matrix
         a = a._matrix_transform(basis)
         b = b._matrix_transform(basis)

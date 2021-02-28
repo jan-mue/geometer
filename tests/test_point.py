@@ -142,19 +142,31 @@ class Test3D:
     def test_perpendicular(self):
         p = Point(1, 1, 0)
         q = Point(0, 0, 1)
+        r = Point(1, 2, 3)
         l = Line(p, q)
         m = l.perpendicular(p)
 
+        assert l.meet(m) == p
         assert is_perpendicular(l, m)
 
-        r = Point(1, 2, 3)
-        e = Plane(p, q, r)
+        m = l.perpendicular(r)
+
+        assert is_perpendicular(l, m)
+
+        e = Plane(l, r)
         m = e.perpendicular(p)
 
+        assert e.meet(m) == p
+        assert is_perpendicular(l, m)
+
+        m = e.perpendicular(p + m.direction)
+
+        assert e.meet(m) == p
         assert is_perpendicular(l, m)
 
         f = e.perpendicular(l)
 
+        assert e.meet(f) == l
         assert is_perpendicular(e, f)
 
 
@@ -317,3 +329,28 @@ class TestCollections:
 
         e = PlaneCollection([(0, 1, 0, -1), (0, 1, 0, -2)])
         assert e.project(p3) == PointCollection([(0, 1, 0), (0, 2, 5)], homogenize=True)
+
+    def test_perpendicular(self):
+        p1 = PointCollection([(1, 1, 0), (1, 1, 5)], homogenize=True)
+        p2 = PointCollection([(2, 1, 0), (2, 1, 5)], homogenize=True)
+        p3 = PointCollection([(0, 0, 0), (0, 0, 5)], homogenize=True)
+        l = LineCollection(p1, p2)
+        m = l.perpendicular(p1)
+
+        assert l.meet(m) == p1
+        assert all(is_perpendicular(l, m))
+
+        m = l.perpendicular(p3)
+
+        assert all(is_perpendicular(l, m))
+
+        e = PlaneCollection(l, p3)
+        m = e.perpendicular(p1)
+
+        assert e.meet(m) == p1
+        assert all(is_perpendicular(l, m))
+
+        m = e.perpendicular(p1 + PointCollection([m.direction[0], Point(0, 0, 0)]))
+
+        assert e.meet(m) == p1
+        assert all(is_perpendicular(l, m))
