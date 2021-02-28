@@ -1357,10 +1357,13 @@ class PlaneCollection(SubspaceCollection):
             The perpendicular lines.
 
         """
-        n = self.dim + 1
+        if self.dim != 3:
+            raise NotImplementedError(
+                "Expected dimension 3 but found dimension %s." % str(self.dim)
+            )
         contains = self.contains(through)
         result = LineCollection(
-            np.empty(contains.shape + (n,) * (n - 2), dtype=np.complex128), copy=False
+            np.empty(contains.shape + (4, 4), dtype=np.complex128), copy=False
         )
         if np.any(contains):
             # TODO: support lines
