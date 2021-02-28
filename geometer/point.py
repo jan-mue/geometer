@@ -1204,13 +1204,16 @@ class LineCollection(SubspaceCollection):
             return result._matrix_transform(np.swapaxes(m, -1, -2))
         return result
 
-    def perpendicular(self, through):
+    def perpendicular(self, through, plane=None):
         """Construct the perpendicular line though a point.
 
         Parameters
         ----------
         through : Point, PointCollection
             The point through which the perpendicular is constructed.
+        plane : Plane, PlaneCollection, optional
+            In three or higher dimensional spaces, the planes in which
+            the perpendicular lines are supposed to lie can be specified.
 
         Returns
         -------
@@ -1218,14 +1221,46 @@ class LineCollection(SubspaceCollection):
             The perpendicular lines.
 
         """
-        if np.any(self.contains(through)):
-            # TODO: move to vectorized version
-            if isinstance(through, Point):
-                through = [through] * len(self)
-            # TODO: add plane parameter
-            return LineCollection([l.perpendicular(p) for l, p in zip(self, through)])
+        n = self.dim + 1
+        contains = self.contains(through)
+        result = LineCollection(
+            np.empty(contains.shape + (n,) * (n - 2), np.complex128)
+        )
+        if np.any(contains):
+            l = self[contains]
 
-        return self.mirror(through).join(through)
+            if n > 3:
+
+                if plane is None:
+                    # additional point is required to determine the exact line
+                    plane = join(l, l.general_point)
+                elif isinstance(plane, PlaneCollection):
+                    plane = plane[contains]
+
+                basis = plane.basis_matrix
+                line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
+                l = LineCollection(
+                    np.cross(line_pts[..., 0, :], line_pts[..., 1, :]), copy=False
+                )
+
+            from .operators import harmonic_set
+
+            p = l.meet(infty)
+            q = harmonic_set(I, J, p)
+
+            if n > 3:
+                q = q._matrix_transform(np.swapaxes(basis, -1, -2))
+
+            result[contains] = join(
+                through if isinstance(through, Point) else through[contains], q
+            )
+
+        if np.any(~contains):
+            if isinstance(through, PointCollection):
+                through = through[~contains]
+            result[~contains] = self[~contains].mirror(through).join(through)
+
+        return LineCollection(np.real_if_close(result.array), copy=False)
 
     def project(self, pt):
         """The orthogonal projection of points onto the lines.

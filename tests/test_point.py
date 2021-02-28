@@ -340,7 +340,9 @@ class TestCollections:
         assert l.meet(m) == p1
         assert all(is_perpendicular(l, m))
 
-        m = l.perpendicular(p3)
+        m = l.perpendicular(
+            p3 + PointCollection([(1, 1, 0), (0, 0, 0)], homogenize=True)
+        )
 
         assert all(is_perpendicular(l, m))
 
