@@ -21,6 +21,10 @@ class IncidenceError(GeometryException, ValueError):
 class LinearDependenceError(GeometryException, ValueError):
     """The given values were linearly dependent, making the computation impossible."""
 
+    def __init__(self, message, dependent_values=True):
+        super(LinearDependenceError, self).__init__(message)
+        self.dependent_values = dependent_values
+
 
 class NotReducible(GeometryException, ValueError):
     """The given geometric object is not reducible."""

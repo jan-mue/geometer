@@ -119,8 +119,14 @@ def _join_meet_duality(
     else:
         raise ValueError("Wrong number of arguments.")
 
-    if check_dependence and np.any(result.is_zero()):
-        raise LinearDependenceError("Arguments are not linearly independent.")
+    if check_dependence:
+        is_zero = result.is_zero()
+        if result.rank == 1 and is_zero:
+            raise LinearDependenceError("Arguments are not linearly independent.")
+        elif np.any(is_zero):
+            raise LinearDependenceError(
+                "Some arguments are not linearly independent.", is_zero
+            )
 
     if isinstance(result, TensorCollection):
 

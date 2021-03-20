@@ -4,7 +4,16 @@ import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL
 from .utils import distinct, is_multiple, det, matmul, matvec
-from .point import Line, Plane, Point, PointCollection, infty_hyperplane, join, meet
+from .point import (
+    Line,
+    Plane,
+    Point,
+    PointCollection,
+    infty_hyperplane,
+    join,
+    meet,
+    LineCollection,
+)
 from .transformation import rotation, translation
 from .operators import dist, angle, harmonic_set, crossratio
 from .exceptions import NotCoplanar, LinearDependenceError
@@ -795,11 +804,27 @@ class PolygonCollection(PointCollection):
 
         """
         if isinstance(other, (Segment, SegmentCollection)):
-            result = self._plane.meet(other._line)
-            return result[self.contains(result) & other.contains(result)]
+            try:
+                result = self._plane.meet(other._line)
+            except LinearDependenceError as e:
+                if isinstance(other, SegmentCollection):
+                    other = other[~e.dependent_values]
+                result = self._plane[~e.dependent_values].meet(other._line)
+                return result[
+                    self[~e.dependent_values].contains(result) & other.contains(result)
+                ]
+            else:
+                return result[self.contains(result) & other.contains(result)]
 
-        result = self._plane.meet(other)
-        return result[self.contains(result)]
+        try:
+            result = self._plane.meet(other)
+        except LinearDependenceError as e:
+            if isinstance(other, LineCollection):
+                other = other[~e.dependent_values]
+            result = self._plane[~e.dependent_values].meet(other)
+            return result[self[~e.dependent_values].contains(result)]
+        else:
+            return result[self.contains(result)]
 
 
 class SegmentCollection(PointCollection):
