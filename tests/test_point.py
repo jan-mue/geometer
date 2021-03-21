@@ -356,3 +356,8 @@ class TestCollections:
 
         assert e.meet(m) == p1
         assert all(is_perpendicular(l, m))
+
+        f = e.perpendicular(l)
+
+        assert e.meet(f) == l
+        assert all(is_perpendicular(e, f))

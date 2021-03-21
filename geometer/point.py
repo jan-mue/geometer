@@ -827,7 +827,7 @@ class Plane(Subspace):
         Parameters
         ----------
         through : Point, Line
-            The point through which the perpendicular is constructed.
+            The point or line through which the perpendicular is constructed.
 
         Returns
         -------
@@ -1384,19 +1384,20 @@ class PlaneCollection(SubspaceCollection):
         return self.meet(l)
 
     def perpendicular(self, through):
-        """Construct the perpendicular lines though the given points.
+        """Construct the perpendicular lines though the given points
+        or the perpendicular planes through the given lines.
 
         Only works in 3D.
 
         Parameters
         ----------
-        through : Point, PointCollection
-            The points through which the perpendiculars are constructed.
+        through : Point, PointCollection, Line, LineCollection
+            The points or lines through which the perpendiculars are constructed.
 
         Returns
         -------
-        LineCollection
-            The perpendicular lines.
+        LineCollection or PlaneCollection
+            The perpendicular lines or planes.
 
         """
         if self.dim != 3:
@@ -1408,13 +1409,30 @@ class PlaneCollection(SubspaceCollection):
             np.empty(contains.shape + (4, 4), dtype=np.complex128), copy=False
         )
         if np.any(contains):
-            # TODO: support lines
             from .curve import absolute_conic
             from .operators import harmonic_set
 
             l = self[contains].meet(infty_plane)
             basis = l.basis_matrix[..., :-1]
             l = LineCollection(np.cross(basis[..., 0, :], basis[..., 1, :]), copy=False)
+
+            if isinstance(through, (Line, LineCollection)):
+                if not np.all(contains):
+                    raise ValueError("All lines must lie in the planes.")
+
+                p = through.meet(infty_plane)
+                polar = (
+                    Line(p.array[:-1], copy=False)
+                    if isinstance(through, Line)
+                    else LineCollection(p.array[..., :-1], copy=False)
+                )
+                tangent_points = absolute_conic.intersect(polar)
+                q = harmonic_set(*tangent_points, l.meet(polar))
+                q = PointCollection(
+                    np.append(q.array, np.zeros(q.shape[:-1] + (1,)), axis=-1),
+                    copy=False,
+                )
+                return through.join(q)
 
             p1 = PointCollection(basis[..., 0, :], copy=False)
             p2 = PointCollection(basis[..., 1, :], copy=False)
