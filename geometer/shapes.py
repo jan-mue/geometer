@@ -1,3 +1,4 @@
+import math
 from itertools import combinations
 
 import numpy as np
@@ -262,7 +263,7 @@ class Simplex(Polytope):
         n, k = points.shape
 
         if n == k:
-            return 1 / np.math.factorial(n - 1) * abs(det(points))
+            return 1 / math.factorial(n - 1) * abs(det(points))
 
         indices = np.triu_indices(n)
         distances = points[indices[0]] - points[indices[1]]
@@ -273,9 +274,7 @@ class Simplex(Polytope):
         m[-1, :-1] = 1
         m[:-1, -1] = 1
 
-        return np.sqrt(
-            (-1) ** n / (np.math.factorial(n - 1) ** 2 * 2 ** (n - 1)) * det(m)
-        )
+        return np.sqrt((-1) ** n / (math.factorial(n - 1) ** 2 * 2 ** (n - 1)) * det(m))
 
 
 class Polygon(Polytope):

@@ -345,6 +345,9 @@ class TestCuboid:
         l = Line(Point(2, 0.5, 0.5), Point(-1, 0.5, 0.5))
         assert cube.intersect(l) == [Point(0, 0.5, 0.5), Point(1, 0.5, 0.5)]
 
+        l = Line(a, Point(-1, 0, 0))
+        assert cube.intersect(l) == [Point(0, 0, 0), Point(1, 0, 0)]
+
     def test_edges(self):
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
