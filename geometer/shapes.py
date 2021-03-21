@@ -280,6 +280,8 @@ class Simplex(Polytope):
 class Polygon(Polytope):
     """A flat polygon with vertices in any dimension.
 
+    The vertices of the polygon must be given either in clockwise or counterclockwise order.
+
     Parameters
     ----------
     *args
