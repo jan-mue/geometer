@@ -121,7 +121,7 @@ def _join_meet_duality(
 
     if check_dependence:
         is_zero = result.is_zero()
-        if result.rank == 1 and is_zero:
+        if len(result._collection_indices) == 0 and is_zero:
             raise LinearDependenceError("Arguments are not linearly independent.")
         elif np.any(is_zero):
             raise LinearDependenceError(
