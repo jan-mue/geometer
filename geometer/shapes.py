@@ -916,7 +916,7 @@ class SegmentCollection(PointCollection):
 
         result = self._line.contains(other)
 
-        m = self.array
+        m = self.normalized_array
         arr = matmul(m, m, transpose_b=True)
 
         p = PointCollection(arr[..., 0], copy=False)
@@ -924,7 +924,7 @@ class SegmentCollection(PointCollection):
         d = PointCollection(arr[..., 1] - arr[..., 0], copy=False)
 
         # TODO: only project points that lie on the lines
-        other = PointCollection(matvec(m, other.array), copy=False)
+        other = other._matrix_transform(m)
 
         cr = crossratio(d, p, q, other)
 

@@ -42,6 +42,16 @@ def test_dist():
     assert np.isclose(dist(l, e), 1)
     assert np.isclose(dist(l, p1), 1)
 
+    p = Point(0, 0)
+    poly = Rectangle(Point(-1, 1), Point(1, 1), Point(1, 2), Point(-1, 2))
+    assert np.isclose(dist(p, poly), 1)
+
+    p = Point(0, 0, 0)
+    poly = Rectangle(Point(-1, -1, 1), Point(1, -1, 1), Point(1, 1, 1), Point(-1, 1, 1))
+    assert np.isclose(dist(p, poly), 1)
+    assert np.isclose(dist(Point(-1, -1, 0), poly), 1)
+    assert np.isclose(dist(Point(-4, 0, -3), poly), 5)
+
     p = PointCollection([(1, 0, 1), (1, 1, 0)], homogenize=True)
     e = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
     assert np.allclose(dist(e, p), 1)

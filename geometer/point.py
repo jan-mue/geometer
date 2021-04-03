@@ -408,7 +408,7 @@ class Subspace(ProjectiveElement):
 
         else:
             # TODO: test subspace
-            raise ValueError("argument of type %s not supported" % type(other))
+            raise TypeError("argument of type %s not supported" % type(other))
 
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)

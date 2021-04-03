@@ -289,7 +289,7 @@ def dist(p, q):
 
     Parameters
     ----------
-    p, q : Point, Line or Plane
+    p, q : Point, Line, Plane or Polygon
         The points, lines or planes to calculate the distance between.
 
     Returns
@@ -307,7 +307,6 @@ def dist(p, q):
 
     subspace_types = (Plane, PlaneCollection, Line, LineCollection)
 
-    # TODO: handle polygons
     if isinstance(p, subspace_types) and isinstance(q, (Point, PointCollection)):
         return dist(p.project(q), q)
     if isinstance(p, (Point, PointCollection)) and isinstance(q, subspace_types):
@@ -318,6 +317,34 @@ def dist(p, q):
         p, (Line, LineCollection)
     ):
         return dist(q, p.base_point)
+
+    from .shapes import Polyhedron, Polygon, Segment
+
+    # TODO: support collections
+    if isinstance(p, Point) and isinstance(q, Polygon):
+        return dist(q, p)
+    if isinstance(p, Polygon) and isinstance(q, Point):
+        if p.dim > 2:
+            r = p._plane.project(q)
+            if p.contains(r):
+                return dist(r, q)
+        return np.min([dist(e, q) for e in p.edges])
+    if isinstance(p, Point) and isinstance(q, Polyhedron):
+        return dist(q, p)
+    if isinstance(p, Polyhedron) and isinstance(q, Point):
+        return np.min([dist(e, q) for e in p.faces])
+    if isinstance(p, Point) and isinstance(q, Segment):
+        return dist(q, p)
+    if isinstance(p, Segment) and isinstance(q, Point):
+        r = p._line.project(q)
+        if p.contains(r):
+            return dist(r, q)
+        return min(dist(s, q) for s in p.vertices)
+
+    if not isinstance(p, (Point, PointCollection)) or not isinstance(
+        q, (Point, PointCollection)
+    ):
+        raise TypeError("Unsupported types %s and %s." % (type(p), type(q)))
 
     if p.dim > 2:
         x = np.stack([p.normalized_array, q.normalized_array], axis=-2)
