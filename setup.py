@@ -18,7 +18,7 @@ REQUIRES_PYTHON = ">=3.5.0"
 VERSION = None
 
 # What packages are required for this module to be executed?
-REQUIRED = ["numpy>=1.15,<1.21"]
+REQUIRED = ["numpy>=1.15,<1.22"]
 
 # What packages are optional?
 EXTRAS = {
