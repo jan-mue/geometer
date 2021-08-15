@@ -52,9 +52,22 @@ def test_dist():
     assert np.isclose(dist(Point(-1, -1, 0), poly), 1)
     assert np.isclose(dist(Point(-4, 0, -3), poly), 5)
 
+    a = Point(0, 0, 0)
+    b = Point(1, 0, 0)
+    c = Point(0, 1, 0)
+    d = Point(0, 0, 1)
+    cube = Cuboid(a, b, c, d)
+    assert np.isclose(dist(p, cube), 0)
+    assert np.isclose(dist(Point(-1, 0, 0), cube), 1)
+    assert np.isclose(dist(Point(0.5, 0.5, 2), cube), 1)
+
     p = PointCollection([(1, 0, 1), (1, 1, 0)], homogenize=True)
     e = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
+    s = Segment(Point(1, 0, 1), Point(1, 2, 1))
     assert np.allclose(dist(e, p), 1)
+    assert np.allclose(dist(p, cube), 0)
+    assert np.allclose(dist(p, poly), [0, 1])
+    assert np.allclose(dist(p, s), [0, 1])
 
 
 def test_angle():

@@ -305,49 +305,48 @@ def dist(p, q):
     if p == q:
         return 0
 
-    subspace_types = (Plane, PlaneCollection, Line, LineCollection)
+    point_types = (Point, PointCollection)
+    line_types = (Line, LineCollection)
+    plane_types = (Plane, PlaneCollection)
+    subspace_types = plane_types + line_types
 
-    if isinstance(p, subspace_types) and isinstance(q, (Point, PointCollection)):
+    if isinstance(p, subspace_types) and isinstance(q, point_types):
         return dist(p.project(q), q)
-    if isinstance(p, (Point, PointCollection)) and isinstance(q, subspace_types):
+    if isinstance(p, point_types) and isinstance(q, subspace_types):
         return dist(q.project(p), p)
-    if isinstance(p, (Plane, PlaneCollection)) and isinstance(q, subspace_types):
+    if isinstance(p, plane_types) and isinstance(q, subspace_types):
         return dist(p, Point(q.basis_matrix[0, :], copy=False))
-    if isinstance(q, (Plane, PlaneCollection)) and isinstance(
-        p, (Line, LineCollection)
-    ):
+    if isinstance(q, plane_types) and isinstance(p, line_types):
         return dist(q, p.base_point)
 
     from .shapes import Polyhedron, Polygon, Segment
 
-    # TODO: support collections
-    if isinstance(p, Point) and isinstance(q, Polygon):
+    if isinstance(p, point_types) and isinstance(q, Polygon):
         return dist(q, p)
-    if isinstance(p, Polygon) and isinstance(q, Point):
+    if isinstance(p, Polygon) and isinstance(q, point_types):
+        result = np.min([dist(e, q) for e in p.edges], axis=0)
         if p.dim > 2:
             r = p._plane.project(q)
-            if p.contains(r):
-                return dist(r, q)
-        return np.min([dist(e, q) for e in p.edges])
-    if isinstance(p, Point) and isinstance(q, Polyhedron):
+            return np.where(p.contains(r), dist(r, q), result)
+        return result
+    if isinstance(p, point_types) and isinstance(q, Polyhedron):
         return dist(q, p)
-    if isinstance(p, Polyhedron) and isinstance(q, Point):
-        return np.min([dist(e, q) for e in p.faces])
-    if isinstance(p, Point) and isinstance(q, Segment):
+    if isinstance(p, Polyhedron) and isinstance(q, point_types):
+        return np.min([dist(f, q) for f in p.faces], axis=0)
+    if isinstance(p, point_types) and isinstance(q, Segment):
         return dist(q, p)
-    if isinstance(p, Segment) and isinstance(q, Point):
+    if isinstance(p, Segment) and isinstance(q, point_types):
+        result = np.min([dist(v, q) for v in p.vertices], axis=0)
         r = p._line.project(q)
-        if p.contains(r):
-            return dist(r, q)
-        return min(dist(s, q) for s in p.vertices)
+        return np.where(p.contains(r), dist(r, q), result)
 
-    if not isinstance(p, (Point, PointCollection)) or not isinstance(
-        q, (Point, PointCollection)
-    ):
+    if not isinstance(p, point_types) or not isinstance(q, point_types):
         raise TypeError("Unsupported types %s and %s." % (type(p), type(q)))
 
     if p.dim > 2:
-        x = np.stack([p.normalized_array, q.normalized_array], axis=-2)
+        x = np.stack(
+            np.broadcast_arrays(p.normalized_array, q.normalized_array), axis=-2
+        )
         z = x[..., -1]
 
         m = orth(np.swapaxes(x, -1, -2), 2)

@@ -564,7 +564,7 @@ class Line(Subspace):
 
         Parameters
         ----------
-        through : Point
+        through : Point, PointCollection
             The point through which the perpendicular is constructed.
         plane : Plane, optional
             In three or higher dimensional spaces, the plane in which
@@ -576,45 +576,23 @@ class Line(Subspace):
             The perpendicular line.
 
         """
-        if self.contains(through):
-            n = self.dim + 1
-
-            l = self
-
-            if n > 3:
-
-                if plane is None:
-                    # additional point is required to determine the exact line
-                    plane = join(self, self.general_point)
-
-                basis = plane.basis_matrix
-                line_pts = basis.dot(self.basis_matrix.T)
-                l = Line(np.cross(*line_pts.T), copy=False)
-
-            from .operators import harmonic_set
-
-            p = l.meet(infty)
-            q = harmonic_set(I, J, p)
-
-            if n > 3:
-                q = Point(basis.T.dot(q.array), copy=False)
-
-            return Line(through, q)
-
-        return self.mirror(through).join(through)
+        result = LineCollection(
+            np.expand_dims(self.array, 0), copy=False
+        ).perpendicular(through, plane=plane)
+        return result if isinstance(through, PointCollection) else result[0]
 
     def project(self, pt):
         """The orthogonal projection of a point onto the line.
 
         Parameters
         ----------
-        pt : Point
-            The point to project.
+        pt : Point, PointCollection
+            The point(s) to project.
 
         Returns
         -------
-        Point
-            The projected point.
+        Point or PointCollection
+            The projected point(s).
 
         """
         l = self.perpendicular(pt)
@@ -682,44 +660,21 @@ class Line(Subspace):
 
         Parameters
         ----------
-        pt : Point
-            The point to reflect.
+        pt : Point, PointCollection
+            The point(s) to reflect.
 
         Returns
         -------
-        Point
-            The mirror point.
+        Point or PointCollection
+            The mirror point(s).
 
         References
         ----------
         .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
 
         """
-        l = self
-        if self.dim >= 3:
-            try:
-                e = join(self, pt)
-            except LinearDependenceError:
-                return pt
-
-            if self.dim == 3:
-                f = e.perpendicular(self)
-                return f.mirror(pt)
-
-            m = e.basis_matrix
-            m = m[np.argsort(np.abs(m.dot(pt.array)))]
-            pt = Point(m.dot(pt.array), copy=False)
-            l = self._matrix_transform(m)
-        l1 = join(I, pt, _normalize_result=False)
-        l2 = join(J, pt, _normalize_result=False)
-        p1 = l.meet(l1)
-        p2 = l.meet(l2)
-        m1 = join(p1, J, _normalize_result=False)
-        m2 = join(p2, I, _normalize_result=False)
-        result = m1.meet(m2)
-        if self.dim >= 3:
-            return result._matrix_transform(m.T)
-        return result
+        result = LineCollection(np.expand_dims(self.array, 0), copy=False).mirror(pt)
+        return result if isinstance(pt, PointCollection) else result[0]
 
 
 infty = Line(0, 0, 1)
@@ -767,38 +722,17 @@ class Plane(Subspace):
 
         Parameters
         ----------
-        pt : Point
-            The point to reflect.
+        pt : Point, PointCollection
+            The point(s) to reflect.
 
         Returns
         -------
-        Point
-            The mirror point.
+        Point or PointCollection
+            The mirror point(s).
 
         """
-        if self.dim != 3:
-            raise NotImplementedError(
-                "Expected dimension 3 but found dimension %s." % str(self.dim)
-            )
-        l = self.meet(infty_plane)
-        l = Line(np.cross(*l.basis_matrix[:, :-1]), copy=False)
-        p = l.base_point
-        polar = Line(p.array, copy=False)
-
-        from .curve import absolute_conic
-
-        tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [
-            Point(np.append(p.array, 0), copy=False) for p in tangent_points
-        ]
-
-        l1 = tangent_points[0].join(pt)
-        l2 = tangent_points[1].join(pt)
-        p1 = self.meet(l1)
-        p2 = self.meet(l2)
-        m1 = p1.join(tangent_points[1])
-        m2 = p2.join(tangent_points[0])
-        return m1.meet(m2)
+        result = PlaneCollection(np.expand_dims(self.array, 0), copy=False).mirror(pt)
+        return result if isinstance(pt, PointCollection) else result[0]
 
     def project(self, pt):
         """The orthogonal projection of a point onto the plane.
@@ -807,13 +741,13 @@ class Plane(Subspace):
 
         Parameters
         ----------
-        pt : Point
-            The point to project.
+        pt : Point, PointCollection
+            The point(s) to project.
 
         Returns
         -------
-        Point
-            The projected point.
+        Point or PointCollection
+            The projected point(s).
 
         """
         l = self.perpendicular(pt)
@@ -826,56 +760,19 @@ class Plane(Subspace):
 
         Parameters
         ----------
-        through : Point, Line
-            The point or line through which the perpendicular is constructed.
+        through : Point, PointCollection, Line, LineCollection
+            The point(s) or line(s) through which the perpendicular is constructed.
 
         Returns
         -------
-        Line or Plane
-            The perpendicular line or plane.
+        Line, LineCollection, Plane or PlaneCollection
+            The perpendicular line(s) or plane(s).
 
         """
-        if self.dim != 3:
-            raise NotImplementedError(
-                "Expected dimension 3 but found dimension %s." % str(self.dim)
-            )
-
-        if self.contains(through):
-            from .curve import absolute_conic
-            from .operators import harmonic_set
-
-            l = self.meet(infty_plane)
-            basis = l.basis_matrix[:, :-1]
-            l = Line(np.cross(*basis), copy=False)
-
-            if isinstance(through, Line):
-                p = through.meet(infty_plane)
-                polar = Line(p.array[:-1], copy=False)
-                tangent_points = absolute_conic.intersect(polar)
-                q = harmonic_set(*tangent_points, l.meet(polar))
-                q = Point(np.append(q.array, 0), copy=False)
-                return through.join(q)
-
-            p1, p2 = [Point(a, copy=False) for a in basis]
-            polar1 = Line(p1.array, copy=False)
-            polar2 = Line(p2.array, copy=False)
-
-            tangent_points1 = absolute_conic.intersect(polar1)
-            tangent_points2 = absolute_conic.intersect(polar2)
-
-            q1 = harmonic_set(*tangent_points1, l.meet(polar1))
-            q2 = harmonic_set(*tangent_points2, l.meet(polar2))
-            m1, m2 = p1.join(q1), p2.join(q2)
-
-            p = m1.meet(m2)
-            p = Point(np.append(p.array, 0), copy=False)
-
-            return through.join(p)
-
-        if isinstance(through, Line):
-            raise NotImplementedError("Line must be contained in plane.")
-
-        return self.mirror(through).join(through)
+        result = PlaneCollection(
+            np.expand_dims(self.array, 0), copy=False
+        ).perpendicular(through)
+        return result if isinstance(through, PointCollection) else result[0]
 
 
 def infty_hyperplane(dimension):
@@ -1190,14 +1087,19 @@ class LineCollection(SubspaceCollection):
         """
         l = self
         if self.dim >= 3:
+            # TODO: handle points on self
             e = join(self, pt)
+
+            if self.dim == 3:
+                f = e.perpendicular(self)
+                return f.mirror(pt)
+
             m = e.basis_matrix
             arr = matvec(m, pt.array)
-            arr_sort = tuple(np.indices(arr.shape)[:-1]) + (
-                np.argsort(np.abs(arr), axis=-1),
-            )
-            m = m[arr_sort + (slice(None),)]
-            pt = PointCollection(arr[arr_sort], copy=False)
+            arr_sort = np.argsort(np.abs(arr), axis=-1)
+            arr_ind = tuple(np.indices(arr.shape)[:-1])
+            m = m[arr_ind + (arr_sort, slice(None))]
+            pt = PointCollection(arr[arr_ind + (arr_sort,)], copy=False)
             l = self._matrix_transform(m)
         l1 = join(I, pt, _normalize_result=False)
         l2 = join(J, pt, _normalize_result=False)
@@ -1233,7 +1135,7 @@ class LineCollection(SubspaceCollection):
             np.empty(contains.shape + (n,) * (n - 2), np.complex128)
         )
         if np.any(contains):
-            l = self[contains]
+            l = self[contains] if len(self) > 1 else self
 
             if n > 3:
 
@@ -1264,7 +1166,10 @@ class LineCollection(SubspaceCollection):
         if np.any(~contains):
             if isinstance(through, PointCollection):
                 through = through[~contains]
-            result[~contains] = self[~contains].mirror(through).join(through)
+            if len(self) > 1:
+                result[~contains] = self[~contains].mirror(through).join(through)
+            else:
+                result[~contains] = self.mirror(through).join(through)
 
         return LineCollection(np.real_if_close(result.array), copy=False)
 
@@ -1412,7 +1317,10 @@ class PlaneCollection(SubspaceCollection):
             from .curve import absolute_conic
             from .operators import harmonic_set
 
-            l = self[contains].meet(infty_plane)
+            if len(self) > 1:
+                l = self[contains].meet(infty_plane)
+            else:
+                l = self.meet(infty_plane)
             basis = l.basis_matrix[..., :-1]
             l = LineCollection(np.cross(basis[..., 0, :], basis[..., 1, :]), copy=False)
 
@@ -1458,6 +1366,9 @@ class PlaneCollection(SubspaceCollection):
         if np.any(~contains):
             if isinstance(through, PointCollection):
                 through = through[~contains]
-            result[~contains] = self[~contains].mirror(through).join(through)
+            if len(self) > 1:
+                result[~contains] = self[~contains].mirror(through).join(through)
+            else:
+                result[~contains] = self.mirror(through).join(through)
 
         return LineCollection(np.real_if_close(result.array), copy=False)
