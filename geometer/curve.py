@@ -760,7 +760,7 @@ class Cone(Quadric):
 
 
 class Cylinder(Cone):
-    """A circular cylinder in 3D.
+    """An infinite circular cylinder in 3D.
 
     Parameters
     ----------
