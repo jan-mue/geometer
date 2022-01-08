@@ -7,7 +7,8 @@ Changelog
 
 New Features
 ------------
--
+- NumPy 1.20+ required
+- Drop support for Python 3.5 and 3.6
 
 Bug fixes
 ---------
