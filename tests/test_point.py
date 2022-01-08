@@ -379,3 +379,12 @@ class TestCollections:
 
         assert e.meet(f) == l
         assert all(is_perpendicular(e, f))
+
+    def test_isinf(self):
+        assert np.all(~PointCollection([(1, -2), (0, 0)], homogenize=True).isinf)
+        assert np.all(PointCollection([[1, -2, 0], [1j, -2, 0]]).isinf)
+        assert np.all(PointCollection([I, J]).isinf)
+
+    def test_isreal(self):
+        assert np.all(PointCollection([(1, -2, 1), (0, 0, 1), (1, -2, 0)]).isreal)
+        assert np.all(~PointCollection([Point([1j, -2, 0]), I, J]).isreal)

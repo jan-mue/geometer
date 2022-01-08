@@ -29,6 +29,7 @@ New Features
 - Reformatted source code with black
 - Added Transformation.from_points_and_conics to map two conics and pairs of three points
 - Added Triangle.circumcenter
+- Added Point.isreal and PointCollection.isreal
 
 Bug fixes
 ---------
