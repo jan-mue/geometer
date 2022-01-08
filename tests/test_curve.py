@@ -145,6 +145,12 @@ class TestCircle:
         assert Point(4, 3) in intersections
         assert Point(4, -3) in intersections
 
+        c1 = Circle(Point(0, 0))
+        c2 = Circle(Point(0.5, 0))
+        i = c1.intersect(c2)
+        assert len(i) == 4
+        assert len([p for p in i if p.isreal]) == 2
+
     def test_intersection_angle(self):
         c1 = Circle()
         c2 = Circle(Point(1, 1), 1)
@@ -301,6 +307,13 @@ class TestCylinder:
         assert r * c == Cylinder(
             center=Point(0, 0, 1), direction=Point(0, 0, 1), radius=4
         )
+
+    def test_intersect(self):
+        c = Cylinder()
+        l = Line(Point(-2, -2, 2), Point(2, 2, 2))
+
+        s = np.sqrt(2) / 2
+        assert c.intersect(l) == [Point(s, s, 2), Point(-s, -s, 2)]
 
 
 class TestQuadricCollection:

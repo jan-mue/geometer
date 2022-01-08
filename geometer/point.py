@@ -326,6 +326,11 @@ class Point(ProjectiveElement):
         """bool: true if the point lies at infinity i.e. the last coordinate is zero."""
         return np.isclose(self.array[-1], 0, atol=EQ_TOL_ABS)
 
+    @property
+    def isreal(self):
+        """bool: true if the point is real, i.e. the imaginary part is zero for all components."""
+        return np.all(np.isreal(self.normalized_array))
+
 
 I = Point([-1j, 1, 0])
 J = Point([1j, 1, 0])
@@ -871,6 +876,11 @@ class PointCollection(ProjectiveCollection):
     def isinf(self):
         """array_like: Boolean array that indicates which points lie at infinity."""
         return np.isclose(self.array[..., -1], 0, atol=EQ_TOL_ABS)
+
+    @property
+    def isreal(self):
+        """array_like: Boolean array that indicates which points are real."""
+        return np.all(np.isreal(self.normalized_array), axis=-1)
 
 
 class SubspaceCollection(ProjectiveCollection):

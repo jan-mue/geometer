@@ -38,6 +38,10 @@ def test_dist():
     e = Plane(1, 0, 0, 0)
     assert np.isclose(dist(e, p2), 1)
 
+    p = Point(1, 2, 0)
+    l = Line(Point(0, 0, 0), Point(3, 0, 0))
+    assert np.isclose(dist(p, l), 2)
+
     l = Line(p2, Point(1, 1, 0))
     assert np.isclose(dist(l, e), 1)
     assert np.isclose(dist(l, p1), 1)
@@ -57,6 +61,7 @@ def test_dist():
     c = Point(0, 1, 0)
     d = Point(0, 0, 1)
     cube = Cuboid(a, b, c, d)
+    # TODO: speed this up
     assert np.isclose(dist(p, cube), 0)
     assert np.isclose(dist(Point(-1, 0, 0), cube), 1)
     assert np.isclose(dist(Point(0.5, 0.5, 2), cube), 1)
@@ -64,6 +69,7 @@ def test_dist():
     p = PointCollection([(1, 0, 1), (1, 1, 0)], homogenize=True)
     e = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
     s = Segment(Point(1, 0, 1), Point(1, 2, 1))
+    # TODO: speed this up
     assert np.allclose(dist(e, p), 1)
     assert np.allclose(dist(p, cube), 0)
     assert np.allclose(dist(p, poly), [0, 1])

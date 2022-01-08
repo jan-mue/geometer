@@ -186,6 +186,7 @@ class Tensor:
             elif j in self._collection_indices:
                 collection_indices.append(i)
 
+        # TODO: return Tensor
         result = self.copy()
         result.array = self.array.transpose(perm)
         result._covariant_indices = set(covariant_indices)

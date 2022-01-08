@@ -442,3 +442,13 @@ class TestSegmentCollection:
 
         assert s1.intersect(s2) == PointCollection([(1, 1), (2, 2)], homogenize=True)
         assert s1.intersect(Line(Point(0, 0), Point(1, 1))).size == 0
+
+
+class TestPolygonCollection:
+    def test_equal(self):
+        points = np.random.rand(60, 50, 3)
+
+        p1 = PolygonCollection(points)
+        p2 = PolygonCollection([Polygon(*[Point(p) for p in poly]) for poly in points])
+
+        assert p1 == p2

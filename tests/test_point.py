@@ -11,6 +11,8 @@ from geometer import (
     is_perpendicular,
     translation,
     rotation,
+    I,
+    J,
 )
 
 
@@ -60,6 +62,22 @@ class Test2D:
         m = l.perpendicular(p)
 
         assert is_perpendicular(l, m)
+
+    def test_isinf(self):
+        assert not Point(1, -2).isinf
+        assert not Point(0, 0).isinf
+        assert Point([1, -2, 0]).isinf
+        assert Point([1j, -2, 0]).isinf
+        assert I.isinf
+        assert J.isinf
+
+    def test_isreal(self):
+        assert Point(1, -2).isreal
+        assert Point(0, 0).isreal
+        assert Point([1, -2, 0]).isreal
+        assert not Point([1j, -2, 0]).isreal
+        assert not I.isreal
+        assert not J.isreal
 
 
 class Test3D:
