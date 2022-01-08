@@ -113,9 +113,7 @@ def replace_ellipsis(n, index):
     else:
         loc = isellipsis[0]
     extra_dimensions = n - (len(index) - sum(i is None for i in index) - 1)
-    return (
-        index[:loc] + (slice(None, None, None),) * extra_dimensions + index[loc + 1 :]
-    )
+    return index[:loc] + (slice(None, None, None),) * extra_dimensions + index[loc + 1:]
 
 
 def normalize_index(idx, shape):

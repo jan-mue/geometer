@@ -1,22 +1,11 @@
 import numpy as np
-from .point import (
-    Point,
-    Line,
-    Plane,
-    I,
-    J,
-    PointCollection,
-    LineCollection,
-    PlaneCollection,
-    infty,
-    infty_plane,
-    join,
-    meet,
-)
+
+from .base import EQ_TOL_ABS, EQ_TOL_REL, LeviCivitaTensor, TensorDiagram
 from .curve import absolute_conic
-from .base import LeviCivitaTensor, TensorDiagram, EQ_TOL_REL, EQ_TOL_ABS
 from .exceptions import IncidenceError, NotCollinear
-from .utils import orth, det, matvec
+from .point import (I, J, Line, LineCollection, Plane, PlaneCollection, Point, PointCollection, infty, infty_plane,
+                    join, meet)
+from .utils import det, matvec, orth
 
 
 def crossratio(a, b, c, d, from_point=None):
@@ -48,11 +37,10 @@ def crossratio(a, b, c, d, from_point=None):
 
     if isinstance(a, (Plane, PlaneCollection)):
         l = a.meet(b)
-        e = (
-            Plane(l.direction.array, copy=False)
-            if isinstance(l, Line)
-            else PlaneCollection(l.direction.array, copy=False)
-        )
+        if isinstance(l, Line):
+            e = Plane(l.direction.array, copy=False)
+        else:
+            e = PlaneCollection(l.direction.array, copy=False)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
@@ -75,9 +63,7 @@ def crossratio(a, b, c, d, from_point=None):
         o = []
 
     elif from_point is not None:
-        a, b, c, d, from_point = np.broadcast_arrays(
-            a.array, b.array, c.array, d.array, from_point.array
-        )
+        a, b, c, d, from_point = np.broadcast_arrays(a.array, b.array, c.array, d.array, from_point.array)
         o = [from_point]
     else:
         a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
@@ -181,9 +167,7 @@ def angle(*args):
             p = l.meet(infty_plane)
             polar = Line(p.array[:-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
-            tangent_points = [
-                Point(np.append(p.array, 0), copy=False) for p in tangent_points
-            ]
+            tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
             return 1 / 2j * np.log(crossratio(x, y, i, j))
@@ -194,10 +178,7 @@ def angle(*args):
             polar = LineCollection(p.array[..., :-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [
-                PointCollection(
-                    np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1),
-                    copy=False,
-                )
+                PointCollection(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
                 for p in tangent_points
             ]
             i = l.join(p.join(tangent_points[0]))
@@ -319,7 +300,7 @@ def dist(p, q):
     if isinstance(q, plane_types) and isinstance(p, line_types):
         return dist(q, p.base_point)
 
-    from .shapes import Polyhedron, Polygon, Segment
+    from .shapes import Polygon, Polyhedron, Segment
 
     if isinstance(p, point_types) and isinstance(q, Polygon):
         return dist(q, p)
@@ -344,9 +325,7 @@ def dist(p, q):
         raise TypeError("Unsupported types %s and %s." % (type(p), type(q)))
 
     if p.dim > 2:
-        x = np.stack(
-            np.broadcast_arrays(p.normalized_array, q.normalized_array), axis=-2
-        )
+        x = np.stack(np.broadcast_arrays(p.normalized_array, q.normalized_array), axis=-2)
         z = x[..., -1]
 
         m = orth(np.swapaxes(x, -1, -2), 2)

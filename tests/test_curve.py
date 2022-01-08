@@ -1,25 +1,7 @@
 import numpy as np
-from geometer import (
-    Point,
-    Line,
-    Conic,
-    Circle,
-    Quadric,
-    Plane,
-    Ellipse,
-    Sphere,
-    Cone,
-    Cylinder,
-    QuadricCollection,
-)
-from geometer import (
-    PointCollection,
-    LineCollection,
-    PlaneCollection,
-    crossratio,
-    translation,
-    rotation,
-)
+
+from geometer import (Circle, Cone, Conic, Cylinder, Ellipse, Line, LineCollection, Plane, PlaneCollection, Point,
+                      PointCollection, Quadric, QuadricCollection, Sphere, crossratio, rotation, translation)
 
 
 class TestConic:
@@ -131,13 +113,9 @@ class TestCircle:
         assert c.intersect(l) == [Point(-2, 2), Point(2, 2)]
         assert c.intersect(l - Point(0, 2)) == [Point(0, 0)]
 
-        l = LineCollection(
-            [Line(Point(-1, 2), Point(1, 2)), Line(Point(0, 2), Point(0, 0))]
-        )
-        assert c.intersect(l) == [
-            PointCollection([Point(-2, 2), Point(0, 0)]),
-            PointCollection([Point(2, 2), Point(0, 4)]),
-        ]
+        l = LineCollection([Line(Point(-1, 2), Point(1, 2)), Line(Point(0, 2), Point(0, 0))])
+        assert c.intersect(l) == [PointCollection([Point(-2, 2), Point(0, 0)]),
+                                  PointCollection([Point(2, 2), Point(0, 4)])]
 
         c1 = Circle(Point(0, 0), 5)
         c2 = Circle(Point(8, 0), 5)
@@ -199,16 +177,9 @@ class TestSphere:
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
         assert s.intersect(l - Point(0, 0, 2)) == [Point(0, 0, 0)]
 
-        l = LineCollection(
-            [
-                Line(Point(-1, 0, 2), Point(1, 0, 2)),
-                Line(Point(0, 0, 0), Point(0, 0, 2)),
-            ]
-        )
-        assert s.intersect(l) == [
-            PointCollection([Point(-2, 0, 2), Point(0, 0, 0)]),
-            PointCollection([Point(2, 0, 2), Point(0, 0, 4)]),
-        ]
+        l = LineCollection([Line(Point(-1, 0, 2), Point(1, 0, 2)), Line(Point(0, 0, 0), Point(0, 0, 2))])
+        assert s.intersect(l) == [PointCollection([Point(-2, 0, 2), Point(0, 0, 0)]),
+                                  PointCollection([Point(2, 0, 2), Point(0, 0, 4)])]
 
         s = Sphere(Point(0, 0, 0, 2), 2)
         l = Line(Point(-1, 0, 0, 2), Point(1, 0, 0, 2))
@@ -274,9 +245,7 @@ class TestCone:
         c = Cone(vertex=Point(1, 1, 1), base_center=Point(2, 2, 2), radius=2)
         t = translation(-1, -1, -1)
 
-        assert t * c == Cone(
-            vertex=Point(0, 0, 0), base_center=Point(1, 1, 1), radius=2
-        )
+        assert t * c == Cone(vertex=Point(0, 0, 0), base_center=Point(1, 1, 1), radius=2)
 
 
 class TestCylinder:
@@ -301,12 +270,8 @@ class TestCylinder:
         t = translation(1, 1, 1)
         r = rotation(np.pi / 2, axis=Point(0, 1, 0))
 
-        assert t * c == Cylinder(
-            center=Point(2, 1, 1), direction=Point(1, 0, 0), radius=4
-        )
-        assert r * c == Cylinder(
-            center=Point(0, 0, 1), direction=Point(0, 0, 1), radius=4
-        )
+        assert t * c == Cylinder(center=Point(2, 1, 1), direction=Point(1, 0, 0), radius=4)
+        assert r * c == Cylinder(center=Point(0, 0, 1), direction=Point(0, 0, 1), radius=4)
 
     def test_intersect(self):
         c = Cylinder()
@@ -342,39 +307,24 @@ class TestQuadricCollection:
 
     def test_intersect(self):
         q = QuadricCollection([Circle(Point(0, 1), 1), Circle(Point(0, 2), 2)])
-        l = LineCollection(
-            [Line(Point(-1, 1), Point(1, 1)), Line(Point(-1, 2), Point(1, 2))]
-        )
+        l = LineCollection([Line(Point(-1, 1), Point(1, 1)), Line(Point(-1, 2), Point(1, 2))])
 
-        assert q.intersect(l) == [
-            PointCollection([Point(1, 1), Point(-2, 2)]),
-            PointCollection([Point(-1, 1), Point(2, 2)]),
-        ]
+        assert q.intersect(l) == [PointCollection([Point(1, 1), Point(-2, 2)]),
+                                  PointCollection([Point(-1, 1), Point(2, 2)])]
 
         q = QuadricCollection([Sphere(Point(0, 0, 1), 1), Sphere(Point(0, 0, 2), 2)])
-        l = LineCollection(
-            [
-                Line(Point(-1, 0, 1), Point(1, 0, 1)),
-                Line(Point(-1, 0, 2), Point(1, 0, 2)),
-            ]
-        )
+        l = LineCollection([Line(Point(-1, 0, 1), Point(1, 0, 1)), Line(Point(-1, 0, 2), Point(1, 0, 2))])
         m = Line(Point(-1, 0, 2), Point(1, 0, 2))
 
-        assert q.intersect(l) == [
-            PointCollection([Point(-1, 0, 1), Point(-2, 0, 2)]),
-            PointCollection([Point(1, 0, 1), Point(2, 0, 2)]),
-        ]
-        assert q.intersect(m) == [
-            PointCollection([Point(0, 0, 2), Point(-2, 0, 2)]),
-            PointCollection([Point(0, 0, 2), Point(2, 0, 2)]),
-        ]
+        assert q.intersect(l) == [PointCollection([Point(-1, 0, 1), Point(-2, 0, 2)]),
+                                  PointCollection([Point(1, 0, 1), Point(2, 0, 2)])]
+        assert q.intersect(m) == [PointCollection([Point(0, 0, 2), Point(-2, 0, 2)]),
+                                  PointCollection([Point(0, 0, 2), Point(2, 0, 2)])]
 
     def test_tangent(self):
         q = QuadricCollection([Sphere(), Sphere(radius=2)])
         p = PointCollection([Point(1, 0, 0), Point(2, 0, 0)])
 
         assert all(q.contains(p))
-        assert q.tangent(at=p) == PlaneCollection(
-            [Plane(1, 0, 0, -1), Plane(1, 0, 0, -2)]
-        )
+        assert q.tangent(at=p) == PlaneCollection([Plane(1, 0, 0, -1), Plane(1, 0, 0, -2)])
         assert all(q.is_tangent(q.tangent(at=p)))

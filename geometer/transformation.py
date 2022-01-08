@@ -1,13 +1,7 @@
 import numpy as np
 
-from .base import (
-    ProjectiveElement,
-    TensorDiagram,
-    LeviCivitaTensor,
-    Tensor,
-    ProjectiveCollection,
-)
-from .point import Point, Subspace, infty_hyperplane
+from .base import LeviCivitaTensor, ProjectiveCollection, ProjectiveElement, Tensor, TensorDiagram
+from .point import Point, infty_hyperplane
 from .utils import inv
 
 
@@ -95,9 +89,7 @@ def rotation(angle, axis=None):
 
     """
     if axis is None:
-        return affine_transform(
-            [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
-        )
+        return affine_transform([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)
@@ -106,9 +98,7 @@ def rotation(angle, axis=None):
     d = TensorDiagram(*[(Tensor(a, copy=False), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = np.outer(a, a)
-    result = (
-        np.cos(angle) * np.eye(dimension) + np.sin(angle) * u + (1 - np.cos(angle)) * v
-    )
+    result = np.cos(angle) * np.eye(dimension) + np.sin(angle) * u + (1 - np.cos(angle)) * v
 
     return affine_transform(result)
 
@@ -296,9 +286,7 @@ class Transformation(ProjectiveElement):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError(
-            "Object of type %s cannot be transformed." % type(other)
-        )
+        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
 
     def __mul__(self, other):
         try:
@@ -350,9 +338,7 @@ class TransformationCollection(ProjectiveCollection):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError(
-            "Object of type %s cannot be transformed." % type(other)
-        )
+        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
 
     def __pow__(self, power, modulo=None):
         if power == 0:

@@ -1,5 +1,6 @@
-from geometer.utils import null_space, adjugate, det, inv, roots
 import numpy as np
+
+from geometer.utils import adjugate, det, inv, null_space, roots
 
 
 def test_adjugate():

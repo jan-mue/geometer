@@ -1,16 +1,7 @@
 import numpy as np
-from geometer import (
-    Point,
-    Line,
-    Circle,
-    Transformation,
-    TransformationCollection,
-    translation,
-    rotation,
-    angle,
-    scaling,
-    reflection,
-)
+
+from geometer import (Circle, Line, Point, Transformation, TransformationCollection, angle, reflection, rotation,
+                      scaling, translation)
 
 
 class TestTransformation:

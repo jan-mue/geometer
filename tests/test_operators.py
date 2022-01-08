@@ -1,5 +1,8 @@
 import numpy as np
-from geometer import *
+
+from geometer import (Cuboid, Line, LineCollection, Plane, PlaneCollection, Point, PointCollection, Rectangle, Segment,
+                      Transformation, angle, angle_bisectors, crossratio, dist, harmonic_set, is_cocircular,
+                      is_collinear, is_coplanar, is_perpendicular, rotation)
 
 
 def test_is_collinear():

@@ -1,19 +1,7 @@
 import numpy as np
-from geometer import (
-    Point,
-    Line,
-    Plane,
-    PointCollection,
-    LineCollection,
-    PlaneCollection,
-    join,
-    meet,
-    is_perpendicular,
-    translation,
-    rotation,
-    I,
-    J,
-)
+
+from geometer import (I, J, Line, LineCollection, Plane, PlaneCollection, Point, PointCollection, is_perpendicular,
+                      join, meet, rotation, translation)
 
 
 class Test2D:

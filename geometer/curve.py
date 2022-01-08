@@ -4,29 +4,11 @@ from itertools import combinations
 import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
-from .point import (
-    Point,
-    Line,
-    Plane,
-    PointCollection,
-    LineCollection,
-    PlaneCollection,
-    I,
-    J,
-    infty_plane,
-    join,
-)
-from .transformation import rotation, translation
-from .base import (
-    ProjectiveElement,
-    ProjectiveCollection,
-    Tensor,
-    TensorDiagram,
-    EQ_TOL_REL,
-    EQ_TOL_ABS,
-)
+from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveCollection, ProjectiveElement, Tensor, TensorDiagram
 from .exceptions import NotReducible
-from .utils import hat_matrix, is_multiple, adjugate, det, inv, matmul, roots
+from .point import I, J, Line, LineCollection, Plane, PlaneCollection, Point, PointCollection, infty_plane, join
+from .transformation import rotation, translation
+from .utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, roots
 
 
 class Quadric(ProjectiveElement):
@@ -176,9 +158,7 @@ class Quadric(ProjectiveElement):
         i = np.unravel_index(np.abs(t).argmax(), t.shape)
         p, q = t[i[0]], t[:, i[1]]
 
-        if self.dim > 2 and not is_multiple(
-            np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS
-        ):
+        if self.dim > 2 and not is_multiple(np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
             raise NotReducible("Quadric has no decomposition in 2 components.")
 
         p, q = np.real_if_close(p), np.real_if_close(q)
@@ -220,33 +200,21 @@ class Quadric(ProjectiveElement):
 
             if not reducible:
                 if self.dim > 2:
-                    arr = other.array.reshape(
-                        other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1)
-                    )
+                    arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
 
                     if isinstance(other, Line):
                         i = arr.nonzero()[0][0]
                         m = Plane(arr[i], copy=False).basis_matrix
                         q = Quadric(m.dot(self.array).dot(m.T), copy=False)
                         line = other._matrix_transform(m)
-                        return [
-                            Point(m.T.dot(p.array), copy=False)
-                            for p in q.intersect(line)
-                        ]
+                        return [Point(m.T.dot(p.array), copy=False) for p in q.intersect(line)]
                     else:
                         i = np.any(arr, axis=-1).argmax(-1)
-                        m = PlaneCollection(
-                            arr[tuple(np.indices(i.shape)) + (i,)], copy=False
-                        ).basis_matrix
+                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
                         line = other._matrix_transform(m)
-                        q = QuadricCollection(
-                            matmul(m.dot(self.array), m, transpose_b=True), copy=False
-                        )
+                        q = QuadricCollection(matmul(m.dot(self.array), m, transpose_b=True), copy=False)
                         return [
-                            PointCollection(
-                                np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2),
-                                copy=False,
-                            )
+                            PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False)
                             for p in q.intersect(line)
                         ]
                 else:
@@ -256,9 +224,7 @@ class Quadric(ProjectiveElement):
                     if isinstance(other, Line):
                         p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
                     else:
-                        p, q = QuadricCollection(
-                            b, is_dual=not self.is_dual, copy=False
-                        ).components
+                        p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)
@@ -305,9 +271,7 @@ class Conic(Quadric):
         bde = det([b, d, e])
         ade = det([a, d, e])
         bce = det([b, c, e])
-        m = ace * bde * np.outer(np.cross(a, d), np.cross(b, c)) - ade * bce * np.outer(
-            np.cross(a, c), np.cross(b, d)
-        )
+        m = ace * bde * np.outer(np.cross(a, d), np.cross(b, c)) - ade * bce * np.outer(np.cross(a, c), np.cross(b, d))
         return Conic(np.real_if_close(m + m.T), normalize_matrix=True)
 
     @classmethod
@@ -347,14 +311,8 @@ class Conic(Quadric):
         if any(tangent.contains(p) for p in [a, b, c, d]):
             raise ValueError("The supplied points cannot lie on the supplied tangent!")
 
-        a1, a2 = (
-            Line(a, c).meet(tangent).normalized_array,
-            Line(b, d).meet(tangent).normalized_array,
-        )
-        b1, b2 = (
-            Line(a, b).meet(tangent).normalized_array,
-            Line(c, d).meet(tangent).normalized_array,
-        )
+        a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array,
+        b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array,
 
         o = tangent.general_point.array
 
@@ -465,11 +423,7 @@ class Conic(Quadric):
 
                 sol = roots([alpha, beta, gamma, delta])
 
-                c = Conic(
-                    sol[0] * self.array + other.array,
-                    is_dual=self.is_dual,
-                    copy=False,
-                )
+                c = Conic(sol[0] * self.array + other.array, is_dual=self.is_dual, copy=False)
                 g, h = c.components
 
             result = self.intersect(g)
@@ -657,9 +611,7 @@ class Sphere(Quadric):
             raise ValueError("Sphere radius cannot be 0.")
 
         c = -center.normalized_array
-        m = np.eye(
-            center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], [])
-        )
+        m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
         m[-1, :] = c
         m[:, -1] = c
         m[-1, -1] = c[:-1].dot(c[:-1]) - radius ** 2
@@ -714,13 +666,11 @@ class Cone(Quadric):
 
     """
 
-    def __init__(
-        self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs
-    ):
+    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs):
         if radius == 0:
             raise ValueError("The radius of a cone can not be zero.")
 
-        from .operators import dist, angle
+        from .operators import angle, dist
 
         h = dist(vertex, base_center)
         c = (radius / h) ** 2
@@ -775,9 +725,7 @@ class Cylinder(Cone):
 
     """
 
-    def __init__(
-        self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs
-    ):
+    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
         vertex = infty_plane.meet(Line(center, center + direction))
         super(Cylinder, self).__init__(vertex, center, radius, **kwargs)
 
@@ -861,10 +809,7 @@ class QuadricCollection(ProjectiveCollection):
             b = adjugate(self.array)
             i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
             beta = csqrt(-b[indices + (i, i)])
-            p = (
-                -b[indices + (slice(None), i)]
-                / np.where(beta != 0, beta, -1)[..., None]
-            )
+            p = (-b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None])
 
         else:
             ind = np.indices((n, n))
@@ -881,9 +826,7 @@ class QuadricCollection(ProjectiveCollection):
         t = self.array + m
 
         # components are in the non-zero rows and columns (up to scalar multiple)
-        i = np.unravel_index(
-            np.abs(t).reshape(t.shape[:-2] + (-1,)).argmax(axis=-1), t.shape[-2:]
-        )
+        i = np.unravel_index(np.abs(t).reshape(t.shape[:-2] + (-1,)).argmax(axis=-1), t.shape[-2:])
         p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
 
         if self.dim > 2 and not np.all(
@@ -931,37 +874,26 @@ class QuadricCollection(ProjectiveCollection):
 
             if not reducible:
                 if self.dim > 2:
-                    arr = other.array.reshape(
-                        other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1)
-                    )
+                    arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
 
                     if isinstance(other, Line):
                         i = arr.nonzero()[0][0]
                         m = Plane(arr[i], copy=False).basis_matrix
                     else:
                         i = np.any(arr, axis=-1).argmax(-1)
-                        m = PlaneCollection(
-                            arr[tuple(np.indices(i.shape)) + (i,)], copy=False
-                        ).basis_matrix
+                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
 
                     line = other._matrix_transform(m)
 
-                    q = QuadricCollection(
-                        matmul(matmul(m, self.array), m, transpose_b=True), copy=False
-                    )
+                    q = QuadricCollection(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
                     return [
-                        PointCollection(
-                            np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2),
-                            copy=False,
-                        )
+                        PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False)
                         for p in q.intersect(line)
                     ]
                 else:
                     m = hat_matrix(other.array)
                     b = matmul(matmul(m, self.array, transpose_a=True), m)
-                    p, q = QuadricCollection(
-                        b, is_dual=not self.is_dual, copy=False
-                    ).components
+                    p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
             else:
                 if self.is_dual:
                     p, q = e.join(other), f.join(other)

@@ -19,10 +19,11 @@
 
 # -- Project information -----------------------------------------------------
 
-import geometer
-import sys
 import inspect
-from os.path import relpath, dirname
+import sys
+from os.path import dirname, relpath
+
+import geometer
 
 project = "geometer"
 copyright = "2021, Jan Müller"

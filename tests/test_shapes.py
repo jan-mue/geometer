@@ -1,21 +1,7 @@
 import numpy as np
-from geometer import (
-    Point,
-    Segment,
-    Rectangle,
-    Simplex,
-    Triangle,
-    Cuboid,
-    Line,
-    RegularPolygon,
-    Polygon,
-    SegmentCollection,
-    PolygonCollection,
-    PointCollection,
-    dist,
-    rotation,
-    translation,
-)
+
+from geometer import (Cuboid, Line, Point, PointCollection, Polygon, PolygonCollection, Rectangle, RegularPolygon,
+                      Segment, SegmentCollection, Simplex, Triangle, dist, rotation, translation)
 
 
 class TestSegment:
@@ -193,9 +179,7 @@ class TestPolygon:
         assert r2.contains(Point(-0.5, 1.5))
 
         l = Line(Point(0, 0, -10), Point(0, 0, 10))
-        r = Rectangle(
-            Point(-10, -10, 0), Point(10, -10, 0), Point(10, 10, 0), Point(-10, 10, 0)
-        )
+        r = Rectangle(Point(-10, -10, 0), Point(10, -10, 0), Point(10, 10, 0), Point(-10, 10, 0))
         t = rotation(np.pi / 6, Point(1, 0, 0))
 
         assert r.intersect(l) == [Point(0, 0, 0)]

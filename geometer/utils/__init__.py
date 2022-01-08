@@ -1,16 +1,5 @@
-from .math import (
-    null_space,
-    hat_matrix,
-    is_multiple,
-    orth,
-    adjugate,
-    det,
-    inv,
-    matmul,
-    matvec,
-    roots,
-)
-from .indexing import posify_index, normalize_index, sanitize_index
+from .indexing import normalize_index, posify_index, sanitize_index  # noqa: F401
+from .math import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, null_space, orth, roots  # noqa: F401
 
 
 def distinct(iterable):

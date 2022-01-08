@@ -1,11 +1,6 @@
 import numpy as np
-from geometer.base import (
-    TensorDiagram,
-    Tensor,
-    TensorCollection,
-    LeviCivitaTensor,
-    KroneckerDelta,
-)
+
+from geometer.base import KroneckerDelta, LeviCivitaTensor, Tensor, TensorCollection, TensorDiagram
 
 
 class TestTensor:
@@ -105,9 +100,7 @@ class TestTensorCollection:
 class TestTensorDiagram:
     def test_add_edge(self):
         a = Tensor([1, 0, 0, 0])
-        b = Tensor(
-            [[42, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], covariant=False
-        )
+        b = Tensor([[42, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], covariant=False)
         diagram = TensorDiagram((a, b))
         assert diagram.calculate() == Tensor([42, 0, 0, 0])
         diagram.add_edge(a.copy(), b)

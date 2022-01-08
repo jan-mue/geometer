@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
@@ -42,12 +43,7 @@ def is_multiple(a, b, axis=None, rtol=1.0e-15, atol=1.0e-8):
         b = b.ravel()
 
     ab = np.sum(a * b.conj(), axis=axis)
-    return np.isclose(
-        ab * ab.conj(),
-        np.sum(a * a.conj(), axis=axis) * np.sum(b * b.conj(), axis=axis),
-        rtol,
-        atol,
-    )
+    return np.isclose(ab * ab.conj(), np.sum(a * a.conj(), axis=axis) * np.sum(b * b.conj(), axis=axis), rtol, atol)
 
 
 def hat_matrix(*args):
@@ -96,10 +92,7 @@ def hat_matrix(*args):
 
 def _assert_square_matrix(A):
     if A.ndim < 2:
-        raise np.linalg.LinAlgError(
-            "%s-dimensional array given. Array must be at least two-dimensional"
-            % A.ndim
-        )
+        raise np.linalg.LinAlgError("%s-dimensional array given. Array must be at least two-dimensional" % A.ndim)
     m, n = A.shape[-2:]
     if m != n:
         raise np.linalg.LinAlgError("Last 2 dimensions of the array must be square")
@@ -119,7 +112,8 @@ def adjugate(A):
     For small matrices, this function uses the following formula (Einstein notation):
 
     .. math::
-        \textrm{adj}(A)_{ij} = \frac{1}{(n-1)!} \varepsilon_{i\ i_2 \ldots i_n} \varepsilon_{j\ j_2 \ldots j_n} A_{j_2 i_2} \ldots A_{j_n i_n}
+        \textrm{adj}(A)_{ij} = \frac{1}{(n-1)!} \varepsilon_{i\ i_2 \ldots i_n}
+        \varepsilon_{j\ j_2 \ldots j_n} A_{j_2 i_2} \ldots A_{j_n i_n}
 
     Source (German):
     https://de.wikipedia.org/wiki/Levi-Civita-Symbol#Zusammenhang_mit_der_Determinante
@@ -149,11 +143,7 @@ def adjugate(A):
 
     if n >= 5 or A.size >= n * n * 64:
         indices = np.indices((n, n))
-        indices = [
-            np.delete(np.delete(indices, i, axis=1), j, axis=2)
-            for i in range(n)
-            for j in range(n)
-        ]
+        indices = [np.delete(np.delete(indices, i, axis=1), j, axis=2) for i in range(n) for j in range(n)]
         indices = np.stack(indices, axis=1)
         minors = A[..., indices[0], indices[1]]
         result = det(minors).reshape(A.shape)
@@ -162,7 +152,7 @@ def adjugate(A):
         result[..., ::2, 1::2] *= -1
         return result
 
-    from ..base import TensorDiagram, Tensor, LeviCivitaTensor
+    from ..base import LeviCivitaTensor, Tensor, TensorDiagram
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
@@ -257,9 +247,7 @@ def null_space(A, dim=None):
         tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
         dim = np.sum(s > tol, axis=-1, dtype=int)
         if not np.all(dim == dim.flat[0]):
-            raise ValueError(
-                "Cannot calculate the null spaces of matrices when the spaces have different dimensions."
-            )
+            raise ValueError("Cannot calculate the null spaces of matrices when the spaces have different dimensions.")
         dim = -dim.flat[0]
 
     Q = np.swapaxes(vh[..., -dim:, :], -1, -2).conj()
@@ -288,24 +276,14 @@ def orth(A, dim=None):
         tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
         dim = np.sum(s > tol, axis=-1, dtype=int)
         if not np.all(dim == dim.flat[0]):
-            raise ValueError(
-                "Cannot calculate the image spaces of matrices when the spaces have different dimensions."
-            )
+            raise ValueError("Cannot calculate the image spaces of matrices when the spaces have different dimensions.")
         dim = dim.flat[0]
 
     Q = u[..., :dim]
     return Q
 
 
-def matmul(
-    a,
-    b,
-    transpose_a=False,
-    transpose_b=False,
-    adjoint_a=False,
-    adjoint_b=False,
-    **kwargs
-):
+def matmul(a, b, transpose_a=False, transpose_b=False, adjoint_a=False, adjoint_b=False, **kwargs):
     """Matrix product of two arrays.
 
     Parameters
@@ -362,13 +340,7 @@ def matvec(a, b, transpose_a=False, adjoint_a=False, **kwargs):
         The matrix-vector product of the inputs.
 
     """
-    result = matmul(
-        a,
-        np.expand_dims(b, axis=-1),
-        transpose_a=transpose_a,
-        adjoint_a=adjoint_a,
-        **kwargs
-    )
+    result = matmul(a, np.expand_dims(b, axis=-1), transpose_a=transpose_a, adjoint_a=adjoint_a, **kwargs)
     return np.squeeze(result, axis=-1)
 
 
