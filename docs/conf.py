@@ -26,7 +26,7 @@ from os.path import dirname, relpath
 import geometer
 
 project = "geometer"
-copyright = "2021, Jan Müller"
+copyright = "2022, Jan Müller"
 author = "Jan Müller"
 
 # The short X.Y version
