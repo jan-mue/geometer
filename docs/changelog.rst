@@ -2,14 +2,14 @@
 Changelog
 =========
 
-0.3 - unreleased
-----------------
+0.3 - released (8.1.2022)
+-------------------------
 
 New Features
 ------------
 
 - Removed sympy as dependency
-- Added TensorCollection class and the following subclasses:
+- Added the TensorCollection class and the following subclasses:
     - ProjectiveCollection
     - SubspaceCollection
     - PointCollection
@@ -29,7 +29,10 @@ New Features
 - Reformatted source code with black
 - Added Transformation.from_points_and_conics to map two conics and pairs of three points
 - Added Triangle.circumcenter
-- Added Point.isreal and PointCollection.isreal
+- Removed the class AlgebraicCurve and the module utils.polynomial
+- Added Point.isreal
+- Support numpy 1.20, 1.21 and numpy 1.22
+- Run tests on Python 3.9 and Python 3.10
 
 Bug fixes
 ---------
