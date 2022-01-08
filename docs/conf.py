@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -105,11 +104,7 @@ def linkcode_resolve(domain, info):
 
     fn = relpath(fn, start=dirname(geometer.__file__))
 
-    return "https://github.com/jan-mue/geometer/blob/v%s/geometer/%s%s" % (
-        geometer.__version__,
-        fn,
-        linespec,
-    )
+    return f"https://github.com/jan-mue/geometer/blob/v{geometer.__version__}/geometer/{fn}{linespec}"
 
 
 # Looks for objects in external projects

@@ -34,10 +34,10 @@ class Polytope(PointCollection):
     """
 
     def __init__(self, *args, **kwargs):
-        super(Polytope, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
+        super().__init__(args[0] if len(args) == 1 else args, **kwargs)
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
+        return f"{self.__class__.__name__}({', '.join(str(v) for v in self.vertices)})"
 
     @property
     def vertices(self):
@@ -77,18 +77,18 @@ class Polytope(PointCollection):
 
             return False
 
-        return super(Polytope, self).__eq__(other)
+        return super().__eq__(other)
 
     def __add__(self, other):
         if not isinstance(other, Point):
-            return super(Polytope, self).__add__(other)
+            return super().__add__(other)
         return translation(other).apply(self)
 
     def __sub__(self, other):
         return self + (-other)
 
     def __getitem__(self, index):
-        result = super(Polytope, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, PointCollection):
             return result
@@ -130,11 +130,11 @@ class Segment(Polytope):
     """
 
     def __init__(self, *args, **kwargs):
-        super(Segment, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._line = Line(Point(self.array[0], copy=False), Point(self.array[1], copy=False))
 
     def __apply__(self, transformation):
-        result = super(Segment, self).__apply__(transformation)
+        result = super().__apply__(transformation)
         result._line = Line(Point(result.array[0], copy=False), Point(result.array[1], copy=False))
         return result
 
@@ -226,7 +226,7 @@ class Simplex(Polytope):
     def __init__(self, *args, **kwargs):
         if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args) - 1)]
-        super(Simplex, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def volume(self):
@@ -268,7 +268,7 @@ class Polygon(Polytope):
         if all(isinstance(x, Segment) for x in args):
             args = (np.array([s.array[0] for s in args]),)
             kwargs["copy"] = False
-        super(Polygon, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if self.dim > 2:
             vertices = self.vertices
             self._plane = Plane(*vertices[: self.dim])
@@ -278,7 +278,7 @@ class Polygon(Polytope):
             self._plane = None
 
     def __apply__(self, transformation):
-        result = super(Polygon, self).__apply__(transformation)
+        result = super().__apply__(transformation)
         if result.dim > 2:
             result._plane = Plane(*result.vertices[: result.dim])
         return result
@@ -426,7 +426,7 @@ class RegularPolygon(Polygon):
             t = translation(center) * t * translation(-center)
             vertices.append(t * vertex)
 
-        super(RegularPolygon, self).__init__(*vertices, **kwargs)
+        super().__init__(*vertices, **kwargs)
 
     @property
     def radius(self):
@@ -566,7 +566,7 @@ class Cuboid(Polyhedron):
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)
         xy = Rectangle(a, a + x, a + x + y, a + y)
-        super(Cuboid, self).__init__(yz, xz, xy, yz + x, xz + y, xy + z, **kwargs)
+        super().__init__(yz, xz, xy, yz + x, xz + y, xy + z, **kwargs)
 
 
 class PolygonCollection(PointCollection):
@@ -586,9 +586,9 @@ class PolygonCollection(PointCollection):
             args = tuple(a.array for a in args)
             args = np.broadcast_arrays(*args)
             kwargs["copy"] = False
-            super(PolygonCollection, self).__init__(np.stack(args, axis=-2), **kwargs)
+            super().__init__(np.stack(args, axis=-2), **kwargs)
         else:
-            super(PolygonCollection, self).__init__(args[0], **kwargs)
+            super().__init__(args[0], **kwargs)
         self._plane = join(*self.vertices[: self.dim]) if self.dim > 2 else None
 
     @property
@@ -600,7 +600,7 @@ class PolygonCollection(PointCollection):
         return SegmentCollection(result, copy=False)
 
     def __getitem__(self, index):
-        result = super(PolygonCollection, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, PointCollection):
             return result
@@ -641,7 +641,7 @@ class PolygonCollection(PointCollection):
         return 1 / 2 * np.abs(a)
 
     def expand_dims(self, axis):
-        result = super(PolygonCollection, self).expand_dims(axis)
+        result = super().expand_dims(axis)
         if self.dim > 2:
             result._plane = result._plane.expand_dims(axis)
         return result
@@ -787,14 +787,14 @@ class SegmentCollection(PointCollection):
             a, b = args
             a, b = np.broadcast_arrays(a.array, b.array)
             kwargs["copy"] = False
-            super(SegmentCollection, self).__init__(np.stack([a, b], axis=-2), **kwargs)
+            super().__init__(np.stack([a, b], axis=-2), **kwargs)
         else:
-            super(SegmentCollection, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
+            super().__init__(args[0] if len(args) == 1 else args, **kwargs)
 
         self._line = join(*self.vertices)
 
     def __getitem__(self, index):
-        result = super(SegmentCollection, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, PointCollection):
             return result
@@ -823,7 +823,7 @@ class SegmentCollection(PointCollection):
         return dist(*self.vertices)
 
     def expand_dims(self, axis):
-        result = super(SegmentCollection, self).expand_dims(axis)
+        result = super().expand_dims(axis)
         result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
         return result
 

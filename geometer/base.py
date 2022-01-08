@@ -216,7 +216,7 @@ class Tensor:
         return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, str(self.array.tolist()))
+        return f"{self.__class__.__name__}({self.array.tolist()})"
 
     def __getitem__(self, index):
 
@@ -376,7 +376,7 @@ class TensorCollection(Tensor):
 
     def __init__(self, elements, *, covariant=True, tensor_rank=1, **kwargs):
         if isinstance(elements, Tensor):
-            super(TensorCollection, self).__init__(elements, **kwargs)
+            super().__init__(elements, **kwargs)
             return
 
         elements = np.asarray(elements)
@@ -395,7 +395,7 @@ class TensorCollection(Tensor):
                 elements = flat_elements.reshape(elements.shape + t.shape)
                 kwargs["copy"] = False
 
-        super(TensorCollection, self).__init__(elements, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
+        super().__init__(elements, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
 
     def expand_dims(self, axis):
         """Add a new index to the collection.
@@ -416,9 +416,9 @@ class TensorCollection(Tensor):
 
         axis = sanitize_index(axis)
         axis = posify_index(self.rank, axis)
-        result._collection_indices = set(i + 1 if i >= axis else i for i in self._collection_indices)
-        result._covariant_indices = set(i + 1 if i >= axis else i for i in self._covariant_indices)
-        result._contravariant_indices = set(i + 1 if i >= axis else i for i in self._contravariant_indices)
+        result._collection_indices = {i + 1 if i >= axis else i for i in self._collection_indices}
+        result._covariant_indices = {i + 1 if i >= axis else i for i in self._covariant_indices}
+        result._contravariant_indices = {i + 1 if i >= axis else i for i in self._contravariant_indices}
         result._collection_indices.add(axis)
 
         return result
@@ -432,12 +432,12 @@ class TensorCollection(Tensor):
     def flat(self):
         """generator: A flat iterator of the collection that yields Tensor objects."""
         n_col = len(self._collection_indices)
-        covariant = set(i - n_col for i in self._covariant_indices)
+        covariant = {i - n_col for i in self._covariant_indices}
         for idx in np.ndindex(self.shape[:n_col]):
             yield self._element_class(self.array[idx], covariant=covariant, copy=False)
 
     def __getitem__(self, index):
-        result = super(TensorCollection, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, Tensor):
             return result
@@ -492,7 +492,7 @@ class LeviCivitaTensor(Tensor):
             array[tuple(indices)] = np.prod(diff, axis=0)
 
             self._cache[size] = array
-        super(LeviCivitaTensor, self).__init__(array, covariant=bool(covariant), copy=False)
+        super().__init__(array, covariant=bool(covariant), copy=False)
 
 
 class KroneckerDelta(Tensor):
@@ -549,7 +549,7 @@ class KroneckerDelta(Tensor):
             f = np.vectorize(calc)
             array = np.fromfunction(f, tuple(2 * p * [n]), dtype=int)
 
-        super(KroneckerDelta, self).__init__(array, covariant=range(p), copy=False)
+        super().__init__(array, covariant=range(p), copy=False)
 
 
 class TensorDiagram:
@@ -647,9 +647,7 @@ class TensorDiagram:
 
         if source.shape[i] != target.shape[j]:
             raise TensorComputationError(
-                "Dimension of tensors is inconsistent, encountered dimensions {} and {}.".format(
-                    str(source.shape[i]), str(target.shape[j])
-                )
+                f"Dimension of tensors is inconsistent, encountered dimensions {source.shape[i]} and {target.shape[j]}."
             )
 
         self._contraction_list.append((source_index, target_index, i, j))
@@ -715,7 +713,7 @@ class ProjectiveElement(Tensor, ABC):
 
     def __eq__(self, other):
         if np.isscalar(other):
-            return super(ProjectiveElement, self).__eq__(other)
+            return super().__eq__(other)
 
         if not isinstance(other, Tensor):
             other = Tensor(other)
@@ -736,7 +734,7 @@ class ProjectiveCollection(TensorCollection, ABC):
 
     def __eq__(self, other):
         if np.isscalar(other):
-            return super(ProjectiveCollection, self).__eq__(other)
+            return super().__eq__(other)
 
         if not isinstance(other, TensorCollection):
             other = TensorCollection(other)

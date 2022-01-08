@@ -193,7 +193,7 @@ class Transformation(ProjectiveElement):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("covariant", [0])
-        super(Transformation, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __apply__(self, transformation):
         return Transformation(transformation.array.dot(self.array), copy=False)
@@ -287,13 +287,13 @@ class Transformation(ProjectiveElement):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
+        raise NotImplementedError(f"Object of type {type(other)} cannot be transformed.")
 
     def __mul__(self, other):
         try:
             return self.apply(other)
         except NotImplementedError:
-            return super(Transformation, self).__mul__(other)
+            return super().__mul__(other)
 
     def __pow__(self, power, modulo=None):
         if power == 0:
@@ -301,7 +301,7 @@ class Transformation(ProjectiveElement):
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 
-        result = super(Transformation, self).__pow__(power, modulo)
+        result = super().__pow__(power, modulo)
         return Transformation(result, copy=False)
 
     def inverse(self):
@@ -321,7 +321,7 @@ class TransformationCollection(ProjectiveCollection):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("covariant", [0])
-        super(TransformationCollection, self).__init__(*args, tensor_rank=2, **kwargs)
+        super().__init__(*args, tensor_rank=2, **kwargs)
 
     def apply(self, other):
         """Apply the transformations to another object.
@@ -339,7 +339,7 @@ class TransformationCollection(ProjectiveCollection):
         """
         if hasattr(other, "__apply__"):
             return other.__apply__(self)
-        raise NotImplementedError("Object of type %s cannot be transformed." % type(other))
+        raise NotImplementedError(f"Object of type {type(other)} cannot be transformed.")
 
     def __pow__(self, power, modulo=None):
         if power == 0:
@@ -347,7 +347,7 @@ class TransformationCollection(ProjectiveCollection):
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 
-        result = super(TransformationCollection, self).__pow__(power, modulo)
+        result = super().__pow__(power, modulo)
         return TransformationCollection(result, copy=False)
 
     def inverse(self):

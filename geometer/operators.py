@@ -206,7 +206,7 @@ def angle(*args):
             b = x.meet(infty)
             c = y.meet(infty)
     else:
-        raise ValueError("Expected 2 or 3 arguments, got %s." % len(args))
+        raise ValueError(f"Expected 2 or 3 arguments, got {len(args)}.")
 
     return np.real(1 / 2j * np.log(crossratio(b, c, I, J, a)))
 
@@ -322,7 +322,7 @@ def dist(p, q):
         return np.where(p.contains(r), dist(r, q), result)
 
     if not isinstance(p, point_types) or not isinstance(q, point_types):
-        raise TypeError("Unsupported types %s and %s." % (type(p), type(q)))
+        raise TypeError(f"Unsupported types {type(p)} and {type(q)}.")
 
     if p.dim > 2:
         x = np.stack(np.broadcast_arrays(p.normalized_array, q.normalized_array), axis=-2)

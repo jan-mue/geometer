@@ -92,7 +92,7 @@ def hat_matrix(*args):
 
 def _assert_square_matrix(A):
     if A.ndim < 2:
-        raise np.linalg.LinAlgError("%s-dimensional array given. Array must be at least two-dimensional" % A.ndim)
+        raise np.linalg.LinAlgError(f"{A.ndim}-dimensional array given. Array must be at least two-dimensional")
     m, n = A.shape[-2:]
     if m != n:
         raise np.linalg.LinAlgError("Last 2 dimensions of the array must be square")

@@ -8,7 +8,7 @@ from .utils import matmul, matvec, null_space
 
 def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, normalize_result=True):
     if len(args) < 2:
-        raise ValueError("Expected at least 2 arguments, got %s." % len(args))
+        raise ValueError(f"Expected at least 2 arguments, got {len(args)}.")
 
     n = args[0].dim + 1
 
@@ -186,12 +186,12 @@ class Point(ProjectiveElement):
 
     def __init__(self, *args, **kwargs):
         if np.isscalar(args[0]):
-            super(Point, self).__init__(*args, 1, **kwargs)
+            super().__init__(*args, 1, **kwargs)
         else:
-            super(Point, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
     def __getitem__(self, index):
-        result = super(Point, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 0):
             return result
@@ -202,7 +202,7 @@ class Point(ProjectiveElement):
         if isinstance(other, PointCollection):
             return NotImplemented
         if not isinstance(other, Point):
-            return super(Point, self).__add__(other)
+            return super().__add__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] + b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
@@ -212,7 +212,7 @@ class Point(ProjectiveElement):
         if isinstance(other, PointCollection):
             return NotImplemented
         if not isinstance(other, Point):
-            return super(Point, self).__sub__(other)
+            return super().__sub__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[:-1] - b[:-1]
         result = np.append(result, max(a[-1], b[-1]))
@@ -220,21 +220,20 @@ class Point(ProjectiveElement):
 
     def __mul__(self, other):
         if not np.isscalar(other):
-            return super(Point, self).__mul__(other)
+            return super().__mul__(other)
         result = self.normalized_array[:-1] * other
         result = np.append(result, self.array[-1] and 1)
         return Point(result, copy=False)
 
     def __truediv__(self, other):
         if not np.isscalar(other):
-            return super(Point, self).__truediv__(other)
+            return super().__truediv__(other)
         result = self.normalized_array[:-1] / other
         result = np.append(result, self.array[-1] and 1)
         return Point(result, copy=False)
 
     def __repr__(self):
-        return "Point({})".format(", ".join(self.normalized_array[:-1].astype(str))) + (
-            " at Infinity" if self.isinf else "")
+        return f"Point({', '.join(self.normalized_array[:-1].astype(str))})" + (" at Infinity" if self.isinf else "")
 
     def _matrix_transform(self, m):
         return Point(np.dot(m, self.array), copy=False)
@@ -301,10 +300,10 @@ class Subspace(ProjectiveElement):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("covariant", False)
-        super(Subspace, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getitem__(self, index):
-        result = super(Subspace, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
             return result
@@ -313,7 +312,7 @@ class Subspace(ProjectiveElement):
 
     def __add__(self, other):
         if not isinstance(other, Point):
-            return super(Subspace, self).__add__(other)
+            return super().__add__(other)
 
         from .transformation import translation
 
@@ -364,7 +363,7 @@ class Subspace(ProjectiveElement):
 
         else:
             # TODO: test subspace
-            raise TypeError("argument of type %s not supported" % type(other))
+            raise TypeError(f"argument of type {type(other)} not supported")
 
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
@@ -460,15 +459,15 @@ class Line(Subspace):
     def __init__(self, *args, **kwargs):
         if len(args) == 2:
             kwargs["copy"] = False
-            super(Line, self).__init__(join(*args), **kwargs)
+            super().__init__(join(*args), **kwargs)
         else:
-            super(Line, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
     @property
     def covariant_tensor(self):
         """Line: The covariant version of a line in 3D."""
         if self.dim != 3:
-            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
+            raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -479,7 +478,7 @@ class Line(Subspace):
     def contravariant_tensor(self):
         """Line: The contravariant version of a line in 3D."""
         if self.dim != 3:
-            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
+            raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
@@ -590,7 +589,7 @@ class Line(Subspace):
             a = self.base_point.array
             b = np.cross(self.array, a)
             return np.array([a / np.linalg.norm(a), b / np.linalg.norm(b)])
-        return super(Line, self).basis_matrix
+        return super().basis_matrix
 
     def _matrix_transform(self, m):
         transformed_basis = np.dot(m, self.basis_matrix.T)
@@ -644,9 +643,9 @@ class Plane(Subspace):
     def __init__(self, *args, **kwargs):
         if all(isinstance(o, (Line, Point)) for o in args):
             kwargs["copy"] = False
-            super(Plane, self).__init__(join(*args), **kwargs)
+            super().__init__(join(*args), **kwargs)
         else:
-            super(Plane, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
     @property
     def basis_matrix(self):
@@ -661,7 +660,7 @@ class Plane(Subspace):
         return q.T
 
     def __repr__(self):
-        return "Plane({})".format(",".join(self.array.astype(str)))
+        return f"Plane({','.join(self.array.astype(str))})"
 
     def mirror(self, pt):
         """Construct the reflection of a point at this plane.
@@ -748,13 +747,13 @@ class PointCollection(ProjectiveCollection):
     _element_class = Point
 
     def __init__(self, elements, *, homogenize=False, **kwargs):
-        super(PointCollection, self).__init__(elements, **kwargs)
+        super().__init__(elements, **kwargs)
         if homogenize is True:
             self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=-1)
 
     def __add__(self, other):
         if not isinstance(other, (Point, PointCollection)):
-            return super(PointCollection, self).__add__(other)
+            return super().__add__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[..., :-1] + b[..., :-1]
         result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
@@ -762,7 +761,7 @@ class PointCollection(ProjectiveCollection):
 
     def __sub__(self, other):
         if not isinstance(other, (Point, PointCollection)):
-            return super(PointCollection, self).__add__(other)
+            return super().__add__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[..., :-1] - b[..., :-1]
         result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
@@ -770,14 +769,14 @@ class PointCollection(ProjectiveCollection):
 
     def __mul__(self, other):
         if not np.isscalar(other):
-            return super(PointCollection, self).__mul__(other)
+            return super().__mul__(other)
         result = self.normalized_array[..., :-1] * other
         result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return PointCollection(result, copy=False)
 
     def __truediv__(self, other):
         if not np.isscalar(other):
-            return super(PointCollection, self).__truediv__(other)
+            return super().__truediv__(other)
         result = self.normalized_array[..., :-1] / other
         result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return PointCollection(result, copy=False)
@@ -786,7 +785,7 @@ class PointCollection(ProjectiveCollection):
         return join(self, *others)
 
     def __getitem__(self, index):
-        result = super(PointCollection, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, TensorCollection) or result.tensor_shape != (1, 0):
             return result
@@ -794,9 +793,7 @@ class PointCollection(ProjectiveCollection):
         return PointCollection(result, copy=False)
 
     def __repr__(self):
-        return "{}({})".format(
-            self.__class__.__name__, str(self.normalized_array.tolist())
-        )
+        return f"{self.__class__.__name__}({self.normalized_array.tolist()})"
 
     @staticmethod
     def _normalize_array(array):
@@ -841,7 +838,7 @@ class SubspaceCollection(ProjectiveCollection):
     _element_class = Subspace
 
     def __init__(self, elements, *, tensor_rank=1, **kwargs):
-        super(SubspaceCollection, self).__init__(
+        super().__init__(
             elements, covariant=False, tensor_rank=tensor_rank, **kwargs
         )
 
@@ -852,7 +849,7 @@ class SubspaceCollection(ProjectiveCollection):
         return join(self, *others)
 
     def __getitem__(self, index):
-        result = super(SubspaceCollection, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, TensorCollection) or result.tensor_shape == (0, 0):
             return result
@@ -925,7 +922,7 @@ class SubspaceCollection(ProjectiveCollection):
 
         else:
             # TODO: test subspace
-            raise ValueError("argument of type %s not supported" % type(other))
+            raise ValueError(f"argument of type {type(other)} not supported")
 
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
@@ -948,12 +945,12 @@ class LineCollection(SubspaceCollection):
     def __init__(self, *args, **kwargs):
         if len(args) == 2:
             kwargs["copy"] = False
-            super(LineCollection, self).__init__(join(*args), tensor_rank=-2, **kwargs)
+            super().__init__(join(*args), tensor_rank=-2, **kwargs)
         else:
-            super(LineCollection, self).__init__(*args, tensor_rank=-2, **kwargs)
+            super().__init__(*args, tensor_rank=-2, **kwargs)
 
     def __getitem__(self, index):
-        result = super(LineCollection, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, TensorCollection) or result.tensor_shape != (0, self.dim - 1):
             return result
@@ -984,7 +981,7 @@ class LineCollection(SubspaceCollection):
     def covariant_tensor(self):
         """LineCollection: The covariant tensors of lines in 3D."""
         if self.dim != 3:
-            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
+            raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -995,7 +992,7 @@ class LineCollection(SubspaceCollection):
     def contravariant_tensor(self):
         """LineCollection: The contravariant tensors of lines in 3D."""
         if self.dim != 3:
-            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
+            raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
@@ -1141,12 +1138,12 @@ class PlaneCollection(SubspaceCollection):
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
             kwargs["copy"] = False
-            super(PlaneCollection, self).__init__(join(*args), **kwargs)
+            super().__init__(join(*args), **kwargs)
         else:
-            super(PlaneCollection, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
 
     def __getitem__(self, index):
-        result = super(PlaneCollection, self).__getitem__(index)
+        result = super().__getitem__(index)
 
         if not isinstance(result, TensorCollection) or result.tensor_shape != (0, 1):
             return result
@@ -1175,7 +1172,7 @@ class PlaneCollection(SubspaceCollection):
 
         """
         if self.dim != 3:
-            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
+            raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         l = self.meet(infty_plane)
         basis = l.basis_matrix
         l = LineCollection(np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False)
@@ -1233,7 +1230,7 @@ class PlaneCollection(SubspaceCollection):
 
         """
         if self.dim != 3:
-            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
+            raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         contains = self.contains(through)
         result = LineCollection(np.empty(contains.shape + (4, 4), dtype=np.complex128), copy=False)
         if np.any(contains):

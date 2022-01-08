@@ -46,11 +46,11 @@ class Quadric(ProjectiveElement):
             kwargs["copy"] = False
 
         kwargs.setdefault("covariant", False)
-        super(Quadric, self).__init__(matrix, **kwargs)
+        super().__init__(matrix, **kwargs)
 
     def __add__(self, other):
         if not isinstance(other, Point):
-            return super(Quadric, self).__add__(other)
+            return super().__add__(other)
 
         return translation(other).apply(self)
 
@@ -430,7 +430,7 @@ class Conic(Quadric):
             result += [x for x in self.intersect(h) if x not in result]
             return result
 
-        return super(Conic, self).intersect(other)
+        return super().intersect(other)
 
     def tangent(self, at):
         """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
@@ -524,7 +524,7 @@ class Ellipse(Conic):
         m = m / (np.prod(np.maximum(r[:2], 1))) ** (2 / 3)
 
         kwargs["copy"] = False
-        super(Ellipse, self).__init__(m, **kwargs)
+        super().__init__(m, **kwargs)
 
 
 class Circle(Ellipse):
@@ -542,7 +542,7 @@ class Circle(Ellipse):
     """
 
     def __init__(self, center=Point(0, 0), radius=1, **kwargs):
-        super(Circle, self).__init__(center, radius, radius, **kwargs)
+        super().__init__(center, radius, radius, **kwargs)
 
     @property
     def center(self):
@@ -620,7 +620,7 @@ class Sphere(Quadric):
         m = m / radius ** (2 / 3)
 
         kwargs["copy"] = False
-        super(Sphere, self).__init__(m, **kwargs)
+        super().__init__(m, **kwargs)
 
     @property
     def center(self):
@@ -706,7 +706,7 @@ class Cone(Quadric):
             m = t.array.T.dot(m).dot(t.array)
 
         kwargs["normalize_matrix"] = True
-        super(Cone, self).__init__(m, **kwargs)
+        super().__init__(m, **kwargs)
 
 
 class Cylinder(Cone):
@@ -727,7 +727,7 @@ class Cylinder(Cone):
 
     def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
         vertex = infty_plane.meet(Line(center, center + direction))
-        super(Cylinder, self).__init__(vertex, center, radius, **kwargs)
+        super().__init__(vertex, center, radius, **kwargs)
 
 
 class QuadricCollection(ProjectiveCollection):
@@ -738,7 +738,7 @@ class QuadricCollection(ProjectiveCollection):
 
         if not is_dual:
             kwargs.setdefault("covariant", False)
-        super(QuadricCollection, self).__init__(matrices, tensor_rank=2, **kwargs)
+        super().__init__(matrices, tensor_rank=2, **kwargs)
 
     def tangent(self, at):
         """Returns the hyperplanes defining the tangent spaces at given points.
