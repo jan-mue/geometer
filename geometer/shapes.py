@@ -37,9 +37,7 @@ class Polytope(PointCollection):
         super(Polytope, self).__init__(args[0] if len(args) == 1 else args, **kwargs)
 
     def __repr__(self):
-        return "{}({})".format(
-            self.__class__.__name__, ", ".join(str(v) for v in self.vertices)
-        )
+        return "{}({})".format(self.__class__.__name__, ", ".join(str(v) for v in self.vertices))
 
     @property
     def vertices(self):
@@ -133,15 +131,11 @@ class Segment(Polytope):
 
     def __init__(self, *args, **kwargs):
         super(Segment, self).__init__(*args, **kwargs)
-        self._line = Line(
-            Point(self.array[0], copy=False), Point(self.array[1], copy=False)
-        )
+        self._line = Line(Point(self.array[0], copy=False), Point(self.array[1], copy=False))
 
     def __apply__(self, transformation):
         result = super(Segment, self).__apply__(transformation)
-        result._line = Line(
-            Point(result.array[0], copy=False), Point(result.array[1], copy=False)
-        )
+        result._line = Line(Point(result.array[0], copy=False), Point(result.array[1], copy=False))
         return result
 
     @property
@@ -237,9 +231,7 @@ class Simplex(Polytope):
     @property
     def volume(self):
         """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
-        points = np.concatenate(
-            [v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0
-        )
+        points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
         points = self._normalize_array(points)
         n, k = points.shape
 

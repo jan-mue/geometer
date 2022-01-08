@@ -468,9 +468,7 @@ class Line(Subspace):
     def covariant_tensor(self):
         """Line: The covariant version of a line in 3D."""
         if self.dim != 3:
-            raise NotImplementedError(
-                "Expected dimension 3 but found dimension %s." % str(self.dim)
-            )
+            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
         if self.tensor_shape[0] > 0:
             return self
         e = LeviCivitaTensor(4)
@@ -481,9 +479,7 @@ class Line(Subspace):
     def contravariant_tensor(self):
         """Line: The contravariant version of a line in 3D."""
         if self.dim != 3:
-            raise NotImplementedError(
-                "Expected dimension 3 but found dimension %s." % str(self.dim)
-            )
+            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
         if self.tensor_shape[1] > 0:
             return self
         e = LeviCivitaTensor(4, False)
@@ -1179,9 +1175,7 @@ class PlaneCollection(SubspaceCollection):
 
         """
         if self.dim != 3:
-            raise NotImplementedError(
-                "Expected dimension 3 but found dimension %s." % str(self.dim)
-            )
+            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
         l = self.meet(infty_plane)
         basis = l.basis_matrix
         l = LineCollection(np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False)
@@ -1239,9 +1233,7 @@ class PlaneCollection(SubspaceCollection):
 
         """
         if self.dim != 3:
-            raise NotImplementedError(
-                "Expected dimension 3 but found dimension %s." % str(self.dim)
-            )
+            raise NotImplementedError("Expected dimension 3 but found dimension %s." % str(self.dim))
         contains = self.contains(through)
         result = LineCollection(np.empty(contains.shape + (4, 4), dtype=np.complex128), copy=False)
         if np.any(contains):

@@ -89,7 +89,8 @@ def rotation(angle, axis=None):
 
     """
     if axis is None:
-        return affine_transform([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+        return affine_transform([[np.cos(angle), -np.sin(angle)],
+                                 [np.sin(angle), np.cos(angle)]])
 
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)

@@ -73,7 +73,9 @@ class TestConic:
         assert Point(0, -1) in c.intersect(c3)
 
     def test_contains(self):
-        c = Conic([[1, 0, 0], [0, 1, 0], [0, 0, -1]])
+        c = Conic([[1, 0, 0],
+                   [0, 1, 0],
+                   [0, 0, -1]])
 
         assert c.contains(Point(1, 0))
 
@@ -153,12 +155,13 @@ class TestCircle:
 
 class TestQuadric:
     def test_tangent(self):
-        q = Quadric([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
+        q = Quadric([[1, 0, 0, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, -1]])
 
         assert q.contains(Point(1, 0, 0))
-        assert q.tangent(at=Point(1, 0, 0)) == Plane(
-            Point(1, 0, 0), Point(1, 0, 1), Point(1, 1, 0)
-        )
+        assert q.tangent(at=Point(1, 0, 0)) == Plane(Point(1, 0, 0), Point(1, 0, 1), Point(1, 1, 0))
 
     def test_components(self):
         e = Plane(1, 2, 3, 4)

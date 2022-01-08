@@ -400,9 +400,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         L = l.meet(infty)
         M = m.meet(infty)
 
-    elif isinstance(l, (Line, LineCollection)) and isinstance(
-        m, (Line, LineCollection)
-    ):
+    elif isinstance(l, (Line, LineCollection)) and isinstance(m, (Line, LineCollection)):
         e = join(l, m)
         basis = e.basis_matrix
         L = l.meet(infty_plane)._matrix_transform(basis)
@@ -413,9 +411,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         p = x.meet(infty_plane)
         polar = Line(p.array[:-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [
-            Point(np.append(p.array, 0), copy=False) for p in tangent_points
-        ]
+        tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
         return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)
@@ -426,10 +422,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         polar = LineCollection(p.array[..., :-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [
-            PointCollection(
-                np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1),
-                copy=False,
-            )
+            PointCollection(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
             for p in tangent_points
         ]
         i = x.join(p.join(tangent_points[0]))
@@ -461,9 +454,7 @@ def is_coplanar(*args, tol=EQ_TOL_ABS):
 
     """
     n = args[0].dim + 1
-    result = np.isclose(
-        det(np.stack([a.array for a in args[:n]], axis=-2)), 0, atol=tol
-    )
+    result = np.isclose(det(np.stack([a.array for a in args[:n]], axis=-2)), 0, atol=tol)
     if not np.any(result) or len(args) == n:
         return result
     covariant = args[0].tensor_shape[1] > 0

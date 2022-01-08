@@ -291,9 +291,7 @@ class Tensor:
 
     def __mul__(self, other):
         if np.isscalar(other):
-            return Tensor(
-                self.array * other, covariant=self._covariant_indices, copy=False
-            )
+            return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)
         if not isinstance(other, Tensor):
             other = Tensor(other, copy=False)
         return TensorDiagram((other, self)).calculate()
@@ -323,9 +321,7 @@ class Tensor:
 
     def __truediv__(self, other):
         if np.isscalar(other):
-            return Tensor(
-                self.array / other, covariant=self._covariant_indices, copy=False
-            )
+            return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)
         return NotImplemented
 
     def __add__(self, other):
@@ -643,9 +639,7 @@ class TensorDiagram:
                 free_target = self.add_node(target)[1]
 
         if len(free_source) == 0 or len(free_target) == 0:
-            raise TensorComputationError(
-                "Could not add the edge because no free indices are left."
-            )
+            raise TensorComputationError("Could not add the edge because no free indices are left.")
 
         # Third step: Pick some free indices
         i = free_source.pop(0)
@@ -679,9 +673,7 @@ class TensorDiagram:
         # Split the indices and insert the arrays
         args = []
         result_indices = ([], [], [])
-        for i, (node, ind, offset) in enumerate(
-            zip(self._nodes, self._free_indices, self._node_positions)
-        ):
+        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
             if len(node._collection_indices) > 0:
                 col_ind = sorted(node._collection_indices, reverse=True)
                 for j, k in enumerate(col_ind[: len(result_indices[0])]):
