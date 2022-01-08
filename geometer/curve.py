@@ -311,8 +311,8 @@ class Conic(Quadric):
         if any(tangent.contains(p) for p in [a, b, c, d]):
             raise ValueError("The supplied points cannot lie on the supplied tangent!")
 
-        a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array,
-        b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array,
+        a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
+        b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array
 
         o = tangent.general_point.array
 
