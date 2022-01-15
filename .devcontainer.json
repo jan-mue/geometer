@@ -28,11 +28,8 @@
 		"visualstudioexptteam.vscodeintellicode"
 	],
 
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip install pipenv pre-commit && pipenv sync --dev && pre-commit install ",
+	"postCreateCommand": "pip install pipenv pre-commit && pipenv sync --dev",
 
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"
