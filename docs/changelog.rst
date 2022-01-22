@@ -2,17 +2,13 @@
 Changelog
 =========
 
-0.3.1 - unreleased
-------------------
-
-New Features
-------------
--
+0.3.1 - released (22.1.2022)
+----------------------------
 
 Bug fixes
 ---------
 
--
+- Fixed numerical instability in is_multiple function (#54)
 
 0.3 - released (8.1.2022)
 -------------------------
