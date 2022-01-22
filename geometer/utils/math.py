@@ -44,7 +44,7 @@ def is_multiple(a, b, axis=None, rtol=1.0e-5, atol=1.0e-8):
         b = np.reshape(b, new_shape)
         axis = -1
     elif not isinstance(axis, int):
-        raise ValueError(f"axis must be None, a tuple, list or an integer, but got {type(axis)}")
+        raise ValueError("axis must be None, a tuple, list or an integer, but got " + str(type(axis)))
 
     a_zero = np.isclose(a, 0, rtol=rtol, atol=atol)
     b_zero = np.isclose(b, 0, rtol=rtol, atol=atol)
