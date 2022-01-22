@@ -2,18 +2,34 @@
 Changelog
 =========
 
-0.3.1 - unreleased
-------------------
+0.4 - unreleased
+----------------
 
 New Features
 ------------
 - NumPy 1.20+ required
-- Drop support for Python 3.5 and 3.6
+- Dropped support for Python 3.5 and 3.6
 
 Bug fixes
 ---------
 
 -
+
+0.3.2 - released (22.1.2022)
+----------------------------
+
+Bug fixes
+---------
+
+- Removed an f-string that caused an error in Python 3.5
+
+0.3.1 - released (22.1.2022)
+----------------------------
+
+Bug fixes
+---------
+
+- Fixed numerical instability in is_multiple function (#54)
 
 0.3 - released (8.1.2022)
 -------------------------
