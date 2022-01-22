@@ -7,10 +7,6 @@ from numpy.lib.scimath import sqrt as csqrt
 def is_multiple(a, b, axis=None, rtol=1.0e-15, atol=1.0e-8):
     """Returns a boolean array where two arrays are scalar multiples of each other along a given axis.
 
-    This function compares the absolute value of the scalar product and the product of the norm of the arrays (along
-    an axis). The Cauchy-Schwarz inequality guarantees in its edge case that this equality holds if and only if one
-    of the vectors is a scalar multiple of the other.
-
     For documentation of the tolerance parameters see :func:`numpy.isclose`.
 
     Parameters
@@ -32,18 +28,36 @@ def is_multiple(a, b, axis=None, rtol=1.0e-15, atol=1.0e-8):
         given tolerance). If no axis is given, returns a single boolean value.
 
     """
-    a = np.asarray(a)
-    b = np.asarray(b)
-
-    a = a / np.max(np.abs(a), axis=axis, keepdims=True)
-    b = b / np.max(np.abs(b), axis=axis, keepdims=True)
+    a, b = np.broadcast_arrays(a, b)
 
     if axis is None:
         a = a.ravel()
         b = b.ravel()
+    elif isinstance(axis, (tuple, list)) and len(axis) == 1:
+        axis = axis[0]
+    elif isinstance(axis, (tuple, list)):
+        new_axes = tuple(range(-1, -len(axis) - 1, -1))
+        a = np.moveaxis(a, axis, new_axes)
+        b = np.moveaxis(b, axis, new_axes)
+        new_shape = a.shape[:-len(axis)] + (-1,)
+        a = np.reshape(a, new_shape)
+        b = np.reshape(b, new_shape)
+        axis = -1
+    elif not isinstance(axis, int):
+        raise ValueError(f"axis must be None, a tuple, list or an integer, but got {type(axis)}")
 
-    ab = np.sum(a * b.conj(), axis=axis)
-    return np.isclose(ab * ab.conj(), np.sum(a * a.conj(), axis=axis) * np.sum(b * b.conj(), axis=axis), rtol, atol)
+    a_zero = np.isclose(a, 0, rtol=rtol, atol=atol)
+    b_zero = np.isclose(b, 0, rtol=rtol, atol=atol)
+    dtype = np.find_common_type([a.dtype, b.dtype, np.float64], [])
+    a_zero_or_b_zero = a_zero | b_zero
+    quotient = np.divide(a, b, out=np.zeros(a.shape, dtype), where=~a_zero_or_b_zero)
+
+    idx = np.argmax(~a_zero_or_b_zero, axis=axis, keepdims=True)
+    constant = np.take_along_axis(quotient, idx, axis=axis)
+    zeros_equal = np.all(a_zero == b_zero, axis=axis)
+    all_zero = np.all(a_zero, axis=axis) | np.all(b_zero, axis=axis)
+    nonzero_multiple = np.all(np.isclose(quotient, constant, rtol=rtol, atol=atol) | a_zero_or_b_zero, axis=-1)
+    return (nonzero_multiple & zeros_equal) | all_zero
 
 
 def hat_matrix(*args):

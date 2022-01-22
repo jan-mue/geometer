@@ -5,6 +5,14 @@ from geometer import (I, J, Line, LineCollection, Plane, PlaneCollection, Point,
 
 
 class Test2D:
+    def test_eq(self):
+        p = Point(100, 0)
+        q = Point(101, 0)
+        assert p == p
+        assert p != q
+
+        assert 1e6 * p != 1e6 * q
+
     def test_join(self):
         p = Point(1, 0)
         q = Point(0, 1)
