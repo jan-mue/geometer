@@ -2,6 +2,14 @@
 Changelog
 =========
 
+0.3.2 - released (22.1.2022)
+----------------------------
+
+Bug fixes
+---------
+
+- Removed an f-string that caused an error in Python 3.5
+
 0.3.1 - released (22.1.2022)
 ----------------------------
 
