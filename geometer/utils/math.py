@@ -4,7 +4,7 @@ import numpy as np
 from numpy.lib.scimath import sqrt as csqrt
 
 
-def is_multiple(a, b, axis=None, rtol=1.0e-15, atol=1.0e-8):
+def is_multiple(a, b, axis=None, rtol=1.0e-5, atol=1.0e-8):
     """Returns a boolean array where two arrays are scalar multiples of each other along a given axis.
 
     For documentation of the tolerance parameters see :func:`numpy.isclose`.
@@ -52,11 +52,11 @@ def is_multiple(a, b, axis=None, rtol=1.0e-15, atol=1.0e-8):
     a_zero_or_b_zero = a_zero | b_zero
     quotient = np.divide(a, b, out=np.zeros(a.shape, dtype), where=~a_zero_or_b_zero)
 
-    idx = np.argmax(~a_zero_or_b_zero, axis=axis, keepdims=True)
+    idx = np.expand_dims(np.argmax(~a_zero_or_b_zero, axis=axis), axis or 0)
     constant = np.take_along_axis(quotient, idx, axis=axis)
     zeros_equal = np.all(a_zero == b_zero, axis=axis)
     all_zero = np.all(a_zero, axis=axis) | np.all(b_zero, axis=axis)
-    nonzero_multiple = np.all(np.isclose(quotient, constant, rtol=rtol, atol=atol) | a_zero_or_b_zero, axis=-1)
+    nonzero_multiple = np.all(np.isclose(quotient, constant, rtol=rtol, atol=atol) | a_zero_or_b_zero, axis=axis)
     return (nonzero_multiple & zeros_equal) | all_zero
 
 
