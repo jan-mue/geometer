@@ -92,7 +92,12 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
 
         if normalize_result:
             axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
-            result.array = result.array / np.max(np.abs(result.array), axis=axes, keepdims=True)
+            max_abs = np.max(np.abs(result.array), axis=axes, keepdims=True)
+            if check_dependence:
+                result.array = result.array / max_abs
+            else:
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    result.array = result.array / max_abs
 
         if result.tensor_shape == (0, 1):
             return LineCollection(result, copy=False) if n == 3 else PlaneCollection(result, copy=False)
@@ -974,7 +979,9 @@ class LineCollection(SubspaceCollection):
         p_isinf = np.isclose(p[..., -1, None], 0, atol=EQ_TOL_ABS)
         q_isinf = np.isclose(q[..., -1, None], 0, atol=EQ_TOL_ABS)
         result = np.where(p_isinf, p, q)
-        result = np.where(~(p_isinf | q_isinf), p / p[..., -1, None] - q / q[..., -1, None], result)
+        p_normalized = np.divide(p, p[..., -1, None], where=~p_isinf)
+        q_normalized = np.divide(q, q[..., -1, None], where=~q_isinf)
+        result = np.where(~(p_isinf | q_isinf), p_normalized - q_normalized, result)
         return PointCollection(result, copy=False)
 
     @property
@@ -1077,9 +1084,7 @@ class LineCollection(SubspaceCollection):
 
                 basis = plane.basis_matrix
                 line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
-                l = LineCollection(
-                    np.cross(line_pts[..., 0, :], line_pts[..., 1, :]), copy=False
-                )
+                l = LineCollection(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]), copy=False)
 
             from .operators import harmonic_set
 

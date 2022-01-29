@@ -124,6 +124,17 @@ class TestPolygon:
 
         assert len(foo.intersect(bar)) == 0
 
+        p1 = Point(0, 0)
+        p2 = Point(100, 0)
+        p3 = Point(100, 100)
+        p4 = Point(0, 100)
+        square = Polygon(p1, p2, p3, p4)
+        line1 = Line(p3, p4)
+        line2 = Line(Point(100, 100 - 1e-8), Point(0, 100 + 1e-8))
+
+        assert square.intersect(line1) == [p3, p4]
+        assert len(square.intersect(line2)) == 2
+
     def test_edges(self):
         a = Point(0, 0)
         b = Point(0, 2)

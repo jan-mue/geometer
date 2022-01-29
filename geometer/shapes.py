@@ -10,6 +10,9 @@ from .point import Line, LineCollection, Plane, Point, PointCollection, infty_hy
 from .transformation import rotation, translation
 from .utils import det, distinct, is_multiple, matmul, matvec
 
+# tolerance for comparison of cross ratios
+CR_TOL_ABS = 1e-12
+
 
 class Polytope(PointCollection):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
@@ -142,7 +145,7 @@ class Segment(Polytope):
     def _edges(self):
         return self.array
 
-    def contains(self, other, tol=EQ_TOL_ABS):
+    def contains(self, other, tol=CR_TOL_ABS, atol=EQ_TOL_ABS):
         """Tests whether a point is contained in the segment.
 
         Parameters
@@ -150,7 +153,9 @@ class Segment(Polytope):
         other : Point
             The point to test.
         tol : float, optional
-            The accepted tolerance.
+            The accepted tolerance for the cross ratio.
+        atol : float, optional
+            The accepted tolerance for Line.contains.
 
         Returns
         -------
@@ -158,15 +163,21 @@ class Segment(Polytope):
             True if the point is contained in the segment.
 
         """
-        return SegmentCollection.contains(self, other, tol=tol)
+        return SegmentCollection.contains(self, other, tol=tol, atol=atol)
 
-    def intersect(self, other):
+    def intersect(self, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, ctol=CR_TOL_ABS):
         """Intersect the line segment with another object.
 
         Parameters
         ----------
         other : Line, Plane, Segment, Polygon or Polyhedron
             The object to intersect the line segment with.
+        rtol : float, optional
+            The accepted relative tolerance for is_multiple.
+        atol : float, optional
+            The accepted absolute tolerance for is_multiple, Plane.contains and Line.contains.
+        ctol : float, optional
+            The accepted tolerance for the cross ratio.
 
         Returns
         -------
@@ -179,17 +190,17 @@ class Segment(Polytope):
                 pt = other.meet(self._line)
             except (LinearDependenceError, NotCoplanar):
                 return []
-            return [pt] if self.contains(pt) else []
+            return [pt] if self.contains(pt, tol=ctol, atol=atol) else []
 
         if isinstance(other, Segment):
             if self._line == other._line:
                 return []
 
-            i = other.intersect(self._line)
-            return i if i and self.contains(i[0]) else []
+            i = other.intersect(self._line, rtol=rtol, atol=atol, ctol=ctol)
+            return i if i and self.contains(i[0], tol=ctol, atol=atol) else []
 
         if isinstance(other, (Polygon, Polyhedron)):
-            return other.intersect(self)
+            return other.intersect(self, rtol=rtol, atol=atol, ctol=ctol)
 
     @property
     def midpoint(self):
@@ -296,7 +307,7 @@ class Polygon(Polytope):
         """SegmentCollection: The edges of the polygon."""
         return SegmentCollection(self._edges, copy=False)
 
-    def contains(self, other):
+    def contains(self, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, ctol=CR_TOL_ABS):
         """Tests whether a point is contained in the polygon.
 
         Points on an edge of the polygon are considered True.
@@ -305,6 +316,12 @@ class Polygon(Polytope):
         ----------
         other : Point or PointCollection
             The point to test.
+        rtol : float, optional
+            The accepted relative tolerance for is_multiple.
+        atol : float, optional
+            The accepted absolute tolerance for is_multiple and Plane.contains.
+        ctol : float, optional
+            The accepted tolerance for the cross ratio.
 
         Returns
         -------
@@ -316,15 +333,21 @@ class Polygon(Polytope):
         .. [1] http://paulbourke.net/geometry/polygonmesh/#insidepoly
 
         """
-        return PolygonCollection.contains(self, other)
+        return PolygonCollection.contains(self, other, rtol=rtol, atol=atol, ctol=ctol)
 
-    def intersect(self, other):
+    def intersect(self, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, ctol=CR_TOL_ABS):
         """Intersect the polygon with another object.
 
         Parameters
         ----------
         other : Line or Segment
             The object to intersect the polygon with.
+        rtol : float, optional
+            The accepted relative tolerance for is_multiple.
+        atol : float, optional
+            The accepted absolute tolerance for is_multiple, Plane.contains and Line.contains.
+        ctol : float, optional
+            The accepted tolerance for the cross ratio.
 
         Returns
         -------
@@ -341,16 +364,16 @@ class Polygon(Polytope):
                     p = self._plane.meet(other)
                 except LinearDependenceError:
                     return []
-                return [p] if self.contains(p) else []
+                return [p] if self.contains(p, rtol=rtol, atol=atol, ctol=ctol) else []
 
             if isinstance(other, Segment):
-                if self._plane.contains(other._line):
+                if self._plane.contains(other._line, tol=atol):
                     return []
 
-                i = other.intersect(self._plane)
-                return i if i and self.contains(i[0]) else []
+                i = other.intersect(self._plane, rtol=rtol, atol=atol, ctol=ctol)
+                return i if i and self.contains(i[0], rtol=rtol, atol=atol, ctol=ctol) else []
 
-        return list(distinct(self.edges.intersect(other)))
+        return list(distinct(self.edges.intersect(other, tol=ctol, atol=atol)))
 
     def _normalized_projection(self):
         points = self.array
@@ -463,7 +486,7 @@ class Triangle(Polygon, Simplex):
         bisector2 = e2._line.perpendicular(e2.midpoint, plane=self._plane)
         return bisector1.meet(bisector2)
 
-    def contains(self, other):
+    def contains(self, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, ctol=CR_TOL_ABS):
         # faster algorithm using barycentric coordinates
 
         a, b, c, p = np.broadcast_arrays(*self.array, other.array)
@@ -526,13 +549,19 @@ class Polyhedron(Polytope):
         """float: The surface area of the polyhedron."""
         return np.sum(self.faces.area)
 
-    def intersect(self, other):
+    def intersect(self, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, ctol=CR_TOL_ABS):
         """Intersect the polyhedron with another object.
 
         Parameters
         ----------
         other : Line or Segment
             The object to intersect the polyhedron with.
+        rtol : float, optional
+            The accepted relative tolerance for is_multiple.
+        atol : float, optional
+            The accepted absolute tolerance for is_multiple and PlaneCollection.contains.
+        ctol : float, optional
+            The accepted tolerance for the cross ratio.
 
         Returns
         -------
@@ -540,7 +569,7 @@ class Polyhedron(Polytope):
             The points of intersection.
 
         """
-        return list(distinct(self.faces.intersect(other)))
+        return list(distinct(self.faces.intersect(other, rtol=rtol, atol=atol, ctol=ctol)))
 
 
 class Cuboid(Polyhedron):
@@ -646,7 +675,7 @@ class PolygonCollection(PointCollection):
             result._plane = result._plane.expand_dims(axis)
         return result
 
-    def contains(self, other):
+    def contains(self, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, ctol=CR_TOL_ABS):
         """Tests whether a point or a collection of points is contained in the polygons.
 
         Parameters
@@ -654,6 +683,12 @@ class PolygonCollection(PointCollection):
         other : Point or PointCollection
             The points to test. If more than one point is given, the shape of the collection must be compatible
             with the shape of the polygon collection.
+        rtol : float, optional
+            The accepted relative tolerance for is_multiple.
+        atol : float, optional
+            The accepted absolute tolerance for is_multiple and PlaneCollection.contains.
+        ctol : float, optional
+            The accepted tolerance for the cross ratio.
 
         Returns
         -------
@@ -669,7 +704,7 @@ class PolygonCollection(PointCollection):
             return np.empty((0,), dtype=bool)
 
         if self.dim > 2:
-            coplanar = self._plane.contains(other)
+            coplanar = self._plane.contains(other, tol=atol)
 
             if not np.any(coplanar):
                 return coplanar
@@ -692,10 +727,10 @@ class PolygonCollection(PointCollection):
                 other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=False)
 
             # TODO: only test coplanar points
-            return coplanar & PolygonCollection(arr, copy=False).contains(other)
+            return coplanar & PolygonCollection(arr, copy=False).contains(other, rtol=rtol, atol=atol, ctol=ctol)
 
         edges = self.edges
-        edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False))
+        edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False), tol=ctol)
 
         if isinstance(other, PointCollection):
             direction = np.zeros_like(other.array)
@@ -711,31 +746,37 @@ class PolygonCollection(PointCollection):
         intersections = meet(edges._line, rays._line, _check_dependence=False)
 
         # ignore edges along the rays
-        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
+        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=atol, rtol=rtol, axis=-1)
 
         # ignore intersections of downward edges that end on the ray
         v1 = edges.array[..., 0, :]
         v2 = edges.array[..., 1, :]
-        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(intersections.array, v1, atol=EQ_TOL_ABS,
-                                                                    rtol=EQ_TOL_REL, axis=-1)
-        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(intersections.array, v2, atol=EQ_TOL_ABS,
-                                                                    rtol=EQ_TOL_REL, axis=-1)
+        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(intersections.array, v1, atol=atol,
+                                                                    rtol=rtol, axis=-1)
+        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(intersections.array, v2, atol=atol,
+                                                                    rtol=rtol, axis=-1)
 
-        result = edges.contains(intersections)
-        result &= rays.contains(intersections)
+        result = edges.contains(intersections, tol=ctol)
+        result &= rays.contains(intersections, tol=ctol)
         result &= ~ray_edges & ~v1_intersections & ~v2_intersections
         result = np.sum(result, axis=-1) % 2 == 1
         result |= np.any(edge_points, axis=-1)
 
         return result
 
-    def intersect(self, other):
+    def intersect(self, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, ctol=CR_TOL_ABS):
         """Intersect the polygons with a line, line segment or a collection of lines.
 
         Parameters
         ----------
         other : Line, Segment, LineCollection or SegmentCollection
             The object to intersect the polygon with.
+        rtol : float, optional
+            The accepted relative tolerance for is_multiple.
+        atol : float, optional
+            The accepted absolute tolerance for is_multiple and PlaneCollection.contains.
+        ctol : float, optional
+            The accepted tolerance for the cross ratio.
 
         Returns
         -------
@@ -754,9 +795,11 @@ class PolygonCollection(PointCollection):
                 if isinstance(other, SegmentCollection):
                     other = other[~e.dependent_values]
                 result = self._plane[~e.dependent_values].meet(other._line)
-                return result[self[~e.dependent_values].contains(result) & other.contains(result)]
+                idx = self[~e.dependent_values].contains(result, rtol=rtol, atol=atol, ctol=ctol)
+                idx &= other.contains(result, tol=ctol)
+                return result[idx]
             else:
-                return result[self.contains(result) & other.contains(result)]
+                return result[self.contains(result, rtol=rtol, atol=atol, ctol=ctol) & other.contains(result, tol=ctol)]
 
         try:
             result = self._plane.meet(other)
@@ -764,9 +807,9 @@ class PolygonCollection(PointCollection):
             if isinstance(other, LineCollection):
                 other = other[~e.dependent_values]
             result = self._plane[~e.dependent_values].meet(other)
-            return result[self[~e.dependent_values].contains(result)]
+            return result[self[~e.dependent_values].contains(result, rtol=rtol, atol=atol, ctol=ctol)]
         else:
-            return result[self.contains(result)]
+            return result[self.contains(result, rtol=rtol, atol=atol, ctol=ctol)]
 
 
 class SegmentCollection(PointCollection):
@@ -827,7 +870,7 @@ class SegmentCollection(PointCollection):
         result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
         return result
 
-    def contains(self, other, tol=1e-8):
+    def contains(self, other, tol=CR_TOL_ABS, atol=EQ_TOL_ABS):
         """Tests whether a point or a collection of points is contained in the line segments.
 
         Parameters
@@ -836,7 +879,9 @@ class SegmentCollection(PointCollection):
             The points to test. If more than one point is given, the shape of the collection must be compatible
             with the shape of the segment collection.
         tol : float, optional
-            The accepted tolerance.
+            The accepted tolerance for the cross ratio.
+        atol : float, optional
+            The accepted tolerance for LineCollection.contains.
 
         Returns
         -------
@@ -851,7 +896,7 @@ class SegmentCollection(PointCollection):
         if other.shape[0] == 0:
             return np.empty((0,), dtype=bool)
 
-        result = self._line.contains(other)
+        result = self._line.contains(other, tol=atol)
 
         m = self.normalized_array
         arr = matmul(m, m, transpose_b=True)
@@ -865,15 +910,20 @@ class SegmentCollection(PointCollection):
 
         cr = crossratio(d, p, q, other)
 
-        return result & (0 <= cr + tol) & (cr <= 1 + tol)
+        with np.errstate(invalid="ignore"):
+            return result & (0 <= cr + tol) & (cr <= 1 + tol)
 
-    def intersect(self, other):
+    def intersect(self, other, tol=CR_TOL_ABS, atol=EQ_TOL_ABS):
         """Intersect the line segments with a line, line segment or a collection of lines.
 
         Parameters
         ----------
         other : Line, Segment, LineCollection or SegmentCollection
             The object to intersect the polygon with.
+        tol : float, optional
+            The accepted tolerance for the cross ratio.
+        atol : float, optional
+            The accepted tolerance for LineCollection.contains.
 
         Returns
         -------
@@ -887,7 +937,8 @@ class SegmentCollection(PointCollection):
         """
         if isinstance(other, (Segment, SegmentCollection)):
             result = meet(self._line, other._line, _check_dependence=False)
-            return result[~result.is_zero() & self.contains(result) & other.contains(result)]
+            return result[
+                ~result.is_zero() & self.contains(result, tol=tol, atol=atol) & other.contains(result, tol=tol)]
 
         result = meet(self._line, other, _check_dependence=False)
-        return result[~result.is_zero() & self.contains(result)]
+        return result[~result.is_zero() & self.contains(result, tol=tol, atol=atol)]

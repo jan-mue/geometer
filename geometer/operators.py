@@ -74,7 +74,7 @@ def crossratio(a, b, c, d, from_point=None):
     ad = det(np.stack(o + [a, d], axis=-2))
     bc = det(np.stack(o + [b, c], axis=-2))
 
-    with np.errstate(divide="ignore"):
+    with np.errstate(divide="ignore", invalid="ignore"):
         return ac * bd / (ad * bc)
 
 
