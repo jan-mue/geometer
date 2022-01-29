@@ -7,13 +7,16 @@ Changelog
 
 New Features
 ------------
+
+- More tolerance parameters in the shapes module
+- Muted warnings for invalid values in crossratio and other functions
 - NumPy 1.20+ required
 - Dropped support for Python 3.5 and 3.6
 
 Bug fixes
 ---------
 
--
+- Lower tolerance for contains method of line segments (#55)
 
 0.3.2 - released (22.1.2022)
 ----------------------------
