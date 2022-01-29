@@ -262,9 +262,7 @@ class TestCollections:
         assert join(l, m) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
         # point and line
-        assert join(a, b.join(c)) == PlaneCollection(
-            [Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)]
-        )
+        assert join(a, b.join(c)) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
     def test_meet(self):
         # three planes
@@ -275,9 +273,7 @@ class TestCollections:
 
         # two planes
         l = a.meet(b)
-        m = LineCollection(
-            [Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 1, 0), Point(1, 1, 1))]
-        )
+        m = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 1, 0), Point(1, 1, 1))])
         assert l == m
 
         # two lines in 2D
@@ -286,18 +282,12 @@ class TestCollections:
         assert a.meet(b) == PointCollection([Point(0, 0), Point(1, 1)])
 
         # two lines in 3D
-        a = LineCollection(
-            [Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))]
-        )
-        b = LineCollection(
-            [Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))]
-        )
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
+        b = LineCollection([Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))])
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 0)])
 
         # plane and line
-        a = LineCollection(
-            [Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))]
-        )
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
         b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
 
@@ -321,12 +311,8 @@ class TestCollections:
     def test_transform(self):
         a = PointCollection([(1, 0), (0, 1)], homogenize=True)
 
-        assert translation(1, 1) * a == PointCollection(
-            [(2, 1), (1, 2)], homogenize=True
-        )
-        assert rotation(np.pi / 2) * a == PointCollection(
-            [(0, 1), (-1, 0)], homogenize=True
-        )
+        assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)], homogenize=True)
+        assert rotation(np.pi / 2) * a == PointCollection([(0, 1), (-1, 0)], homogenize=True)
 
     def test_basis_matrix(self):
         a = PlaneCollection([Plane(1, 0, 0, 0), Plane(0, 1, 0, 0), Plane(0, 0, 1, 0)])
@@ -354,9 +340,7 @@ class TestCollections:
         assert l.meet(m) == p1
         assert all(is_perpendicular(l, m))
 
-        m = l.perpendicular(
-            p3 + PointCollection([(1, 1, 0), (0, 0, 0)], homogenize=True)
-        )
+        m = l.perpendicular(p3 + PointCollection([(1, 1, 0), (0, 0, 0)], homogenize=True))
 
         assert all(is_perpendicular(l, m))
 

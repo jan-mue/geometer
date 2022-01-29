@@ -67,12 +67,8 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
                 raise NotCoplanar("The given lines are not all coplanar.")
-            elif np.any(coplanar) and (
-                    isinstance(a, TensorCollection) or isinstance(b, TensorCollection)
-            ):
-                raise GeometryException(
-                    "Can only join tensors that are either all coplanar or all not coplanar."
-                )
+            elif np.any(coplanar) and (isinstance(a, TensorCollection) or isinstance(b, TensorCollection)):
+                raise GeometryException("Can only join tensors that are either all coplanar or all not coplanar.")
 
         else:
             # TODO: intersect arbitrary subspaces (use GA)
@@ -721,9 +717,7 @@ class Plane(Subspace):
             The perpendicular line(s) or plane(s).
 
         """
-        result = PlaneCollection(
-            np.expand_dims(self.array, 0), copy=False
-        ).perpendicular(through)
+        result = PlaneCollection(np.expand_dims(self.array, 0), copy=False).perpendicular(through)
         return result if isinstance(through, PointCollection) else result[0]
 
 
@@ -843,9 +837,7 @@ class SubspaceCollection(ProjectiveCollection):
     _element_class = Subspace
 
     def __init__(self, elements, *, tensor_rank=1, **kwargs):
-        super().__init__(
-            elements, covariant=False, tensor_rank=tensor_rank, **kwargs
-        )
+        super().__init__(elements, covariant=False, tensor_rank=tensor_rank, **kwargs)
 
     def meet(self, other):
         return meet(self, other)
@@ -1094,9 +1086,7 @@ class LineCollection(SubspaceCollection):
             if n > 3:
                 q = q._matrix_transform(np.swapaxes(basis, -1, -2))
 
-            result[contains] = join(
-                through if isinstance(through, Point) else through[contains], q
-            )
+            result[contains] = join(through if isinstance(through, Point) else through[contains], q)
 
         if np.any(~contains):
             if isinstance(through, PointCollection):

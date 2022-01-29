@@ -809,14 +809,11 @@ class QuadricCollection(ProjectiveCollection):
             b = adjugate(self.array)
             i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
             beta = csqrt(-b[indices + (i, i)])
-            p = (-b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None])
+            p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
 
         else:
             ind = np.indices((n, n))
-            ind = [
-                np.delete(np.delete(ind, i, axis=1), i, axis=2)
-                for i in combinations(range(n), n - 2)
-            ]
+            ind = [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)]
             ind = np.stack(ind, axis=1)
             minors = det(self.array[..., ind[0], ind[1]])
             p = csqrt(-minors)

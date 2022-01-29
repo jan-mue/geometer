@@ -655,18 +655,13 @@ class PolygonCollection(PointCollection):
     @property
     def vertices(self):
         """list of PointCollection: The vertices of the polygons."""
-        return [
-            PointCollection(self.array[..., i, :], copy=False)
-            for i in range(self.shape[-2])
-        ]
+        return [PointCollection(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
 
     @property
     def area(self):
         """array_like: The areas of the polygons."""
         points = self._normalized_projection()
-        a = sum(
-            det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2] - 1)
-        )
+        a = sum(det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2] - 1))
         return 1 / 2 * np.abs(a)
 
     def expand_dims(self, axis):
@@ -938,7 +933,8 @@ class SegmentCollection(PointCollection):
         if isinstance(other, (Segment, SegmentCollection)):
             result = meet(self._line, other._line, _check_dependence=False)
             return result[
-                ~result.is_zero() & self.contains(result, tol=tol, atol=atol) & other.contains(result, tol=tol)]
+                ~result.is_zero() & self.contains(result, tol=tol, atol=atol) & other.contains(result, tol=tol)
+            ]
 
         result = meet(self._line, other, _check_dependence=False)
         return result[~result.is_zero() & self.contains(result, tol=tol, atol=atol)]

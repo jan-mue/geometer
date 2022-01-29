@@ -120,9 +120,7 @@ class TestTensorDiagram:
 
         m = a.tensor_product(b)
         e = e1.tensor_product(e2)
-        assert TensorDiagram((e, m), (e, m)).calculate() == (a * e1).tensor_product(
-            b * e2
-        )
+        assert TensorDiagram((e, m), (e, m)).calculate() == (a * e1).tensor_product(b * e2)
 
         d = TensorDiagram()
         d.add_node(a)

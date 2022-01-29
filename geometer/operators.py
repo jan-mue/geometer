@@ -185,9 +185,7 @@ def angle(*args):
             j = l.join(p.join(tangent_points[1]))
             return 1 / 2j * np.log(crossratio(x, y, i, j))
 
-        if isinstance(x, (Line, LineCollection)) and isinstance(
-            y, (Line, LineCollection)
-        ):
+        if isinstance(x, (Line, LineCollection)) and isinstance(y, (Line, LineCollection)):
             a = x.meet(y)
         else:
             a = Point(*(x.dim * [0]))
