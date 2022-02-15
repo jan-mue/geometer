@@ -5,7 +5,7 @@ import numpy as np
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL
 from .exceptions import LinearDependenceError, NotCoplanar
-from .operators import angle, crossratio, dist, harmonic_set
+from .operators import angle, dist, harmonic_set
 from .point import Line, LineCollection, Plane, Point, PointCollection, infty_hyperplane, join, meet
 from .transformation import rotation, translation
 from .utils import det, distinct, is_multiple, matmul, matvec
@@ -827,7 +827,7 @@ class SegmentCollection(PointCollection):
         result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
         return result
 
-    def contains(self, other, tol=1e-8):
+    def contains(self, other, tol=EQ_TOL_ABS):
         """Tests whether a point or a collection of points is contained in the line segments.
 
         Parameters
@@ -856,16 +856,28 @@ class SegmentCollection(PointCollection):
         m = self.normalized_array
         arr = matmul(m, m, transpose_b=True)
 
-        p = PointCollection(arr[..., 0], copy=False)
-        q = PointCollection(arr[..., 1], copy=False)
-        d = PointCollection(arr[..., 1] - arr[..., 0], copy=False)
+        b = arr[..., 0]
+        c = arr[..., 1]
+        a = c - b
 
         # TODO: only project points that lie on the lines
-        other = other._matrix_transform(m)
+        d = other._matrix_transform(m).array
 
-        cr = crossratio(d, p, q, other)
-
-        return result & (0 <= cr + tol) & (cr <= 1 + tol)
+        # check that crossratio(a, b, c, d) is between 0 and 1
+        a, b, c, d = np.broadcast_arrays(a, b, c, d)
+        ac = det(np.stack([a, c], axis=-2))
+        bd = det(np.stack([b, d], axis=-2))
+        ad = det(np.stack([a, d], axis=-2))
+        bc = det(np.stack([b, c], axis=-2))
+        z = ac * bd
+        w = ad * bc
+        z_r, z_i = np.real(z), np.imag(z)
+        w_r, w_i = np.real(w), np.imag(w)
+        x = z_r * w_r + z_i * w_i
+        y = w_r ** 2 + w_i ** 2
+        x_zero = np.isclose(x, 0, atol=EQ_TOL_ABS)
+        y_zero = np.isclose(y, 0, atol=EQ_TOL_ABS)
+        return result & (~x_zero | ~y_zero) & (0 <= x + tol) & (x <= y + tol)
 
     def intersect(self, other):
         """Intersect the line segments with a line, line segment or a collection of lines.
