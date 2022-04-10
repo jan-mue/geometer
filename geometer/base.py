@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Iterable, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Generator, Iterator, Sequence, Union
+from typing import TYPE_CHECKING, Generator, Iterator, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -19,7 +19,7 @@ EQ_TOL_ABS = 1e-8
 
 IntegerIndex1D = Union[int, np.integer, slice, Sequence[int], Sequence[np.integer], npt.NDArray[np.integer]]
 BooleanIndex1D = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
-TensorIndex = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
+TensorIndex = Union[IntegerIndex1D, BooleanIndex1D, Tuple[IntegerIndex1D, ...], Tuple[BooleanIndex1D, ...]]
 
 
 class Tensor(Sized, Iterable):
