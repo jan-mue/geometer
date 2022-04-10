@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union, cast, overload
+from typing import Tuple, Union, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -88,7 +88,7 @@ def _join_meet_duality(
                 else:
                     max_ind = np.abs(array).reshape((np.prod(array.shape[:coplanar.ndim]), -1)).argmax(1)
                     i = np.unravel_index(max_ind, array.shape[coplanar.ndim:])
-                    i = cast(tuple[npt.NDArray[np.int_]], i)
+                    i = cast(Tuple[npt.NDArray[np.int_]], i)
                     i = tuple(np.reshape(x, array.shape[:coplanar.ndim]) for x in i)
                     indices = tuple(np.indices(array.shape[:coplanar.ndim]))
                     if not intersect_lines:
@@ -718,7 +718,7 @@ class Plane(Subspace):
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
         if all(isinstance(o, (Line, Point)) for o in args):
             kwargs["copy"] = False
-            args = cast(tuple[Union[Line, Point], ...], args)
+            args = cast(Tuple[Union[Line, Point], ...], args)
             super().__init__(join(*args), **kwargs)
         else:
             super().__init__(*args, **kwargs)
