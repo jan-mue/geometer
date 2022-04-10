@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Literal, Union, cast, overload
+from typing import Union, cast, overload
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import Literal
 
 from .base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
 from .exceptions import GeometryException, LinearDependenceError, NotCoplanar
