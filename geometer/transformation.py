@@ -1,11 +1,19 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence, cast, overload
+
 import numpy as np
+import numpy.typing as npt
 
-from .base import LeviCivitaTensor, ProjectiveCollection, ProjectiveElement, Tensor, TensorDiagram
-from .point import Point, infty_hyperplane
-from .utils import inv
+from .base import LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
+from .point import Point, Subspace, infty_hyperplane
+from .utils import inv, matmul, outer
+
+if TYPE_CHECKING:
+    from .curve import Conic
 
 
-def identity(dim, collection_dims=None):
+def identity(dim: int, collection_dims: tuple[int] | None = None) -> Transformation:
     """Returns the identity transformation.
 
     Parameters
@@ -18,7 +26,7 @@ def identity(dim, collection_dims=None):
 
     Returns
     -------
-    Transformation or TransformationCollection
+    Transformation
         The identity transformation(s).
 
     """
@@ -26,11 +34,11 @@ def identity(dim, collection_dims=None):
         e = np.eye(dim + 1)
         e = e.reshape((1,) * len(collection_dims) + e.shape)
         e = np.tile(e, collection_dims + (1, 1))
-        return TransformationCollection(e)
-    return Transformation(np.eye(dim + 1))
+        return Transformation(e, copy=False)
+    return Transformation(np.eye(dim + 1), copy=False)
 
 
-def affine_transform(matrix=None, offset=0):
+def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike = 0) -> Transformation:
     """Returns a projective transformation for the given affine transformation.
 
     Parameters
@@ -47,17 +55,17 @@ def affine_transform(matrix=None, offset=0):
 
     """
     n = 2
-    dtype = np.float32
+    dtype: npt.DTypeLike = np.int_
 
     if not np.isscalar(offset):
-        offset = np.array(offset)
+        offset = np.asarray(offset)
         n = offset.shape[0] + 1
         dtype = offset.dtype
 
     if matrix is not None:
-        matrix = np.array(matrix)
+        matrix = np.asarray(matrix)
         n = matrix.shape[0] + 1
-        dtype = np.find_common_type([dtype, matrix.dtype], [])
+        dtype = cast(np.dtype, np.find_common_type([dtype, matrix.dtype], []))
 
     result = np.eye(n, dtype=dtype)
 
@@ -65,10 +73,10 @@ def affine_transform(matrix=None, offset=0):
         result[:-1, :-1] = matrix
 
     result[:-1, -1] = offset
-    return Transformation(result)
+    return Transformation(result, copy=False)
 
 
-def rotation(angle, axis=None):
+def rotation(angle: float, axis: Point | None = None) -> Transformation:
     """Returns a projective transformation that represents a rotation by the specified angle (and axis).
 
     Parameters
@@ -98,13 +106,13 @@ def rotation(angle, axis=None):
     a = a / np.linalg.norm(a)
     d = TensorDiagram(*[(Tensor(a, copy=False), e) for _ in range(dimension - 2)])
     u = d.calculate().array
-    v = np.outer(a, a)
+    v = outer(a, a)
     result = np.cos(angle) * np.eye(dimension) + np.sin(angle) * u + (1 - np.cos(angle)) * v
 
     return affine_transform(result)
 
 
-def translation(*coordinates):
+def translation(*coordinates: Tensor | npt.ArrayLike) -> Transformation:
     """Returns a projective transformation that represents a translation by the given coordinates.
 
     Parameters
@@ -122,7 +130,7 @@ def translation(*coordinates):
     return affine_transform(offset=offset.normalized_array[:-1])
 
 
-def scaling(*factors):
+def scaling(*factors: npt._ArrayLike[np.dtype[np.integer | np.floating], int | float]) -> Transformation:
     """Returns a projective transformation that represents general scaling by given factors in each dimension.
 
     Parameters
@@ -137,11 +145,11 @@ def scaling(*factors):
 
     """
     if len(factors) == 1:
-        factors = factors[0]
+        return affine_transform(np.diag(factors[0]))
     return affine_transform(np.diag(factors))
 
 
-def reflection(axis):
+def reflection(axis: Subspace) -> Transformation:
     """Returns a projective transformation that represents a reflection at the given axis/hyperplane.
 
     Parameters
@@ -165,7 +173,7 @@ def reflection(axis):
     v = axis.array[:-1]
     v = v / np.linalg.norm(v)
 
-    p = affine_transform(np.eye(axis.dim) - 2 * np.outer(v, v.conj()))
+    p = affine_transform(np.eye(axis.dim) - 2 * outer(v, v.conj()))
 
     base = axis.basis_matrix
     ind = base[:, -1].nonzero()[0][0]
@@ -175,7 +183,7 @@ def reflection(axis):
     return translation(x) * p * translation(-x)
 
 
-class Transformation(ProjectiveElement):
+class Transformation(ProjectiveTensor):
     """Represents a projective transformation in an arbitrary projective space.
 
     The underlying array is the matrix representation of the projective transformation. The matrix must be
@@ -191,15 +199,15 @@ class Transformation(ProjectiveElement):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
         kwargs.setdefault("covariant", [0])
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, tensor_rank=2, **kwargs)
 
-    def __apply__(self, transformation):
-        return Transformation(transformation.array.dot(self.array), copy=False)
+    def __apply__(self, transformation: Transformation) -> Transformation:
+        return Transformation(matmul(transformation.array, self.array), copy=False)
 
     @classmethod
-    def from_points(cls, *args):
+    def from_points(cls, *args: tuple[Point, Point]):
         """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in
         general position.
 
@@ -233,7 +241,7 @@ class Transformation(ProjectiveElement):
         return Transformation(t2.dot(np.linalg.inv(t1)))
 
     @classmethod
-    def from_points_and_conics(cls, points1, points2, conic1, conic2):
+    def from_points_and_conics(cls, points1: Sequence[Point], points2: Sequence[Point], conic1: Conic, conic2: Conic):
         """Constructs a projective transformation from two conics and the image of pairs of 3 points on the conics.
 
         Parameters
@@ -271,7 +279,7 @@ class Transformation(ProjectiveElement):
 
         return Transformation.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
 
-    def apply(self, other):
+    def apply(self, other: Tensor) -> Tensor:
         """Apply the transformation to another object.
 
         Parameters
@@ -289,22 +297,40 @@ class Transformation(ProjectiveElement):
             return other.__apply__(self)
         raise NotImplementedError(f"Object of type {type(other)} cannot be transformed.")
 
-    def __mul__(self, other):
+    @overload
+    def __mul__(self, other: Transformation) -> Transformation:
+        ...
+
+    @overload
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        ...
+
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         try:
             return self.apply(other)
         except NotImplementedError:
             return super().__mul__(other)
 
-    def __pow__(self, power, modulo=None):
+    def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
         if power == 0:
-            return identity(self.dim)
+            if self.cdim == 0:
+                return identity(self.dim)
+            return identity(self.dim, self.shape[:self.cdim])
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 
         result = super().__pow__(power, modulo)
         return Transformation(result, copy=False)
 
-    def inverse(self):
+    def __getitem__(self, index: TensorIndex) -> Tensor:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
+            return result
+
+        return Transformation(result, copy=False)
+
+    def inverse(self) -> Transformation:
         """Calculates the inverse projective transformation.
 
         Returns
@@ -313,50 +339,4 @@ class Transformation(ProjectiveElement):
             The inverse transformation.
 
         """
-        return Transformation(np.linalg.inv(self.array))
-
-
-class TransformationCollection(ProjectiveCollection):
-    """A Collection of transformations."""
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault("covariant", [0])
-        super().__init__(*args, tensor_rank=2, **kwargs)
-
-    def apply(self, other):
-        """Apply the transformations to another object.
-
-        Parameters
-        ----------
-        other : Tensor
-            The object to apply the transformations to.
-
-        Returns
-        -------
-        TensorCollection
-            The result of applying the transformations to the supplied object.
-
-        """
-        if hasattr(other, "__apply__"):
-            return other.__apply__(self)
-        raise NotImplementedError(f"Object of type {type(other)} cannot be transformed.")
-
-    def __pow__(self, power, modulo=None):
-        if power == 0:
-            return identity(self.dim, self.shape[: len(self._collection_indices)])
-        if power < 0:
-            return self.inverse().__pow__(-power, modulo)
-
-        result = super().__pow__(power, modulo)
-        return TransformationCollection(result, copy=False)
-
-    def inverse(self):
-        """Calculates the inverse projective transformations.
-
-        Returns
-        -------
-        TransformationCollection
-            The inverse transformations.
-
-        """
-        return TransformationCollection(inv(self.array))
+        return Transformation(inv(self.array), copy=False)

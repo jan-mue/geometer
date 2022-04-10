@@ -3,8 +3,7 @@ import numpy as np
 from .base import EQ_TOL_ABS, EQ_TOL_REL, LeviCivitaTensor, TensorDiagram
 from .curve import absolute_conic
 from .exceptions import IncidenceError, NotCollinear
-from .point import (I, J, Line, LineCollection, Plane, PlaneCollection, Point, PointCollection, infty, infty_plane,
-                    join, meet)
+from .point import I, J, Line, Plane, Point, infty, infty_plane, join, meet
 from .utils import det, matvec, orth
 
 
@@ -13,9 +12,9 @@ def crossratio(a, b, c, d, from_point=None):
 
     Parameters
     ----------
-    a, b, c, d : Point, PointCollection, Line, LineCollection, Plane or PlaneCollection
+    a, b, c, d : Point, Line or Plane
         The points, lines or planes (any dimension) to calculate the cross ratio of.
-    from_point : Point or PointCollection, optional
+    from_point : Point, optional
         A 2D point, only accepted if the other arguments are also 2D points.
 
     Returns
@@ -26,21 +25,18 @@ def crossratio(a, b, c, d, from_point=None):
     """
 
     if a == b:
-        return np.ones(a.shape[: len(a._collection_indices)])
+        return np.ones(a.shape[:a.cdim])
 
-    if isinstance(a, (Line, LineCollection)):
+    if isinstance(a, Line):
         if not np.all(is_concurrent(a, b, c, d)):
             raise IncidenceError("The lines are not concurrent: " + str([a, b, c, d]))
 
         from_point = a.meet(b)
         a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point
 
-    if isinstance(a, (Plane, PlaneCollection)):
+    if isinstance(a, Plane):
         l = a.meet(b)
-        if isinstance(l, Line):
-            e = Plane(l.direction.array, copy=False)
-        else:
-            e = PlaneCollection(l.direction.array, copy=False)
+        e = Plane(l.direction.array, copy=False)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
@@ -87,12 +83,12 @@ def harmonic_set(a, b, c):
 
     Parameters
     ----------
-    a, b, c : Point or PointCollection
+    a, b, c : Point
         The points (any dimension) that are used to construct the fourth point in the harmonic set.
 
     Returns
     -------
-    Point or PointCollection
+    Point
         The point that forms a harmonic set with the given points.
 
     """
@@ -165,27 +161,17 @@ def angle(*args):
         if isinstance(x, Plane) and isinstance(y, Plane):
             l = x.meet(y)
             p = l.meet(infty_plane)
-            polar = Line(p.array[:-1], copy=False)
-            tangent_points = absolute_conic.intersect(polar)
-            tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
-            i = l.join(p.join(tangent_points[0]))
-            j = l.join(p.join(tangent_points[1]))
-            return 1 / 2j * np.log(crossratio(x, y, i, j))
-
-        if isinstance(x, PlaneCollection) and isinstance(y, PlaneCollection):
-            l = x.meet(y)
-            p = l.meet(infty_plane)
-            polar = LineCollection(p.array[..., :-1], copy=False)
+            polar = Line(p.array[..., :-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [
-                PointCollection(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
+                Point(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
                 for p in tangent_points
             ]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
             return 1 / 2j * np.log(crossratio(x, y, i, j))
 
-        if isinstance(x, (Line, LineCollection)) and isinstance(y, (Line, LineCollection)):
+        if isinstance(x, Line) and isinstance(y, Line):
             a = x.meet(y)
         else:
             a = Point(*(x.dim * [0]))
@@ -214,12 +200,12 @@ def angle_bisectors(l, m):
 
     Parameters
     ----------
-    l, m : Line, LineCollection
+    l, m : Line
         Two lines in any dimension.
 
     Returns
     -------
-    tuple of Line or tuple of LineCollection
+    tuple of Line
         The two angle bisectors.
 
     """
@@ -243,12 +229,8 @@ def angle_bisectors(l, m):
     a, b = np.expand_dims(a, -1), np.expand_dims(b, -1)
     r, s = a * i + b * j, a * i - b * j
 
-    if r.ndim > 1:
-        r = PointCollection(r, copy=False)
-        s = PointCollection(s, copy=False)
-    else:
-        r = Point(r, copy=False)
-        s = Point(s, copy=False)
+    r = Point(r, copy=False)
+    s = Point(s, copy=False)
 
     if o.dim > 2:
         r = r._matrix_transform(np.swapaxes(basis, -1, -2))
@@ -284,42 +266,39 @@ def dist(p, q):
     if p == q:
         return 0
 
-    point_types = (Point, PointCollection)
-    line_types = (Line, LineCollection)
-    plane_types = (Plane, PlaneCollection)
-    subspace_types = plane_types + line_types
+    subspace_types = (Line, Plane)
 
-    if isinstance(p, subspace_types) and isinstance(q, point_types):
+    if isinstance(p, subspace_types) and isinstance(q, Point):
         return dist(p.project(q), q)
-    if isinstance(p, point_types) and isinstance(q, subspace_types):
+    if isinstance(p, Point) and isinstance(q, subspace_types):
         return dist(q.project(p), p)
-    if isinstance(p, plane_types) and isinstance(q, subspace_types):
+    if isinstance(p, Plane) and isinstance(q, subspace_types):
         return dist(p, Point(q.basis_matrix[0, :], copy=False))
-    if isinstance(q, plane_types) and isinstance(p, line_types):
+    if isinstance(q, Plane) and isinstance(p, Line):
         return dist(q, p.base_point)
 
     from .shapes import Polygon, Polyhedron, Segment
 
-    if isinstance(p, point_types) and isinstance(q, Polygon):
+    if isinstance(p, Point) and isinstance(q, Polygon):
         return dist(q, p)
-    if isinstance(p, Polygon) and isinstance(q, point_types):
+    if isinstance(p, Polygon) and isinstance(q, Point):
         result = np.min([dist(e, q) for e in p.edges], axis=0)
         if p.dim > 2:
             r = p._plane.project(q)
             return np.where(p.contains(r), dist(r, q), result)
         return result
-    if isinstance(p, point_types) and isinstance(q, Polyhedron):
+    if isinstance(p, Point) and isinstance(q, Polyhedron):
         return dist(q, p)
-    if isinstance(p, Polyhedron) and isinstance(q, point_types):
+    if isinstance(p, Polyhedron) and isinstance(q, Point):
         return np.min([dist(f, q) for f in p.faces], axis=0)
-    if isinstance(p, point_types) and isinstance(q, Segment):
+    if isinstance(p, Point) and isinstance(q, Segment):
         return dist(q, p)
-    if isinstance(p, Segment) and isinstance(q, point_types):
+    if isinstance(p, Segment) and isinstance(q, Point):
         result = np.min([dist(v, q) for v in p.vertices], axis=0)
         r = p._line.project(q)
         return np.where(p.contains(r), dist(r, q), result)
 
-    if not isinstance(p, point_types) or not isinstance(q, point_types):
+    if not isinstance(p, Point) or not isinstance(q, Point):
         raise TypeError(f"Unsupported types {type(p)} and {type(q)}.")
 
     if p.dim > 2:
@@ -381,7 +360,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
 
     Parameters
     ----------
-    l, m : Line, LineCollection, Plane or PlaneCollection
+    l, m : Line or Plane
         Two lines in any dimension or two planes in 3D.
     rtol : float, optional
         The relative tolerance parameter.
@@ -398,7 +377,7 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
         L = l.meet(infty)
         M = m.meet(infty)
 
-    elif isinstance(l, (Line, LineCollection)) and isinstance(m, (Line, LineCollection)):
+    elif isinstance(l, Line) and isinstance(m, Line):
         e = join(l, m)
         basis = e.basis_matrix
         L = l.meet(infty_plane)._matrix_transform(basis)
@@ -407,20 +386,10 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     elif isinstance(l, Plane) and isinstance(m, Plane):
         x = l.meet(m)
         p = x.meet(infty_plane)
-        polar = Line(p.array[:-1], copy=False)
-        tangent_points = absolute_conic.intersect(polar)
-        tangent_points = [Point(np.append(p.array, 0), copy=False) for p in tangent_points]
-        i = x.join(p.join(tangent_points[0]))
-        j = x.join(p.join(tangent_points[1]))
-        return np.isclose(crossratio(l, m, i, j), -1, rtol, atol)
-
-    elif isinstance(l, PlaneCollection) and isinstance(m, PlaneCollection):
-        x = l.meet(m)
-        p = x.meet(infty_plane)
-        polar = LineCollection(p.array[..., :-1], copy=False)
+        polar = Line(p.array[..., :-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [
-            PointCollection(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
+            Point(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
             for p in tangent_points
         ]
         i = x.join(p.join(tangent_points[0]))
@@ -457,7 +426,7 @@ def is_coplanar(*args, tol=EQ_TOL_ABS):
         return result
     covariant = args[0].tensor_shape[1] > 0
     e = LeviCivitaTensor(n, covariant=covariant)
-    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[: n - 1]])
+    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n - 1]])
     tensor = diagram.calculate()
     for t in args[n:]:
         x = t * tensor if covariant else tensor * t

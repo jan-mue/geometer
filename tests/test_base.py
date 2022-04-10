@@ -1,6 +1,6 @@
 import numpy as np
 
-from geometer.base import KroneckerDelta, LeviCivitaTensor, Tensor, TensorCollection, TensorDiagram
+from geometer.base import KroneckerDelta, LeviCivitaTensor, Tensor, TensorDiagram
 
 
 class TestTensor:
@@ -43,30 +43,40 @@ class TestTensor:
         a = Tensor(2, 3, dtype=np.complex64)
         assert a.dtype == np.complex64
 
+    def test_expand_dims(self):
+        a = Tensor([[1, 2],
+                    [3, 4]], covariant=[0])
+        b = a.expand_dims(0)
+
+        assert b.shape == (1, 2, 2)
+        assert b[0] == a
+        assert b.squeeze(0) == a
+        assert b.squeeze(0).tensor_shape == a.tensor_shape
+
 
 class TestTensorCollection:
     def test_init(self):
         # empty list
-        a = TensorCollection([])
+        a = Tensor([], tensor_rank=1)
         assert len(a) == 0
 
         # numpy array
-        a = TensorCollection(np.ones((1, 2, 3)))
+        a = Tensor(np.ones((1, 2, 3)), tensor_rank=1)
         assert len(a) == 1
         assert a.size == 2
 
         # nested list of numbers
-        a = TensorCollection([[1, 2], [3, 4]])
+        a = Tensor([[1, 2], [3, 4]], tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
         # nested tuple of numbers
-        a = TensorCollection(((1, 2), (3, 4)))
+        a = Tensor(((1, 2), (3, 4)), tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
         # nested list of Tensor objects
-        a = TensorCollection([[Tensor(1, 2, 3), Tensor(3, 4, 5)]])
+        a = Tensor([[Tensor(1, 2, 3), Tensor(3, 4, 5)]], tensor_rank=1)
         assert a.shape == (1, 2, 3)
         assert len(a) == 1
         assert a.size == 2
@@ -76,13 +86,13 @@ class TestTensorCollection:
             def __array__(self):
                 return np.array([Tensor(1, 2), Tensor(3, 4)])
 
-        a = TensorCollection(A())
+        a = Tensor(A(), tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
     def test_flat(self):
         a = [Tensor([[1, 2], [3, 4]]), Tensor([[5, 6], [7, 8]])]
-        b = TensorCollection([a], tensor_rank=2)
+        b = Tensor([a], tensor_rank=2)
 
         assert list(b.flat) == a
 
@@ -91,12 +101,12 @@ class TestTensorCollection:
                     [3, 4]])
         b = Tensor([[5, 6],
                     [7, 8]])
-        c = TensorCollection([a, b])
+        c = Tensor([a, b], tensor_rank=1)
 
         assert c[0] == a
         assert c[1] == b
         assert list(c) == [a, b]
-        assert c[:, 1] == TensorCollection([Tensor([3, 4]), Tensor([7, 8])])
+        assert c[:, 1] == Tensor([Tensor([3, 4]), Tensor([7, 8])], tensor_rank=1)
         assert c[:, 0, 0] == [1, 5]
 
 

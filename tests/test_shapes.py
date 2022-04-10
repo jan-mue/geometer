@@ -436,7 +436,7 @@ class TestSegmentCollection:
         s2 = SegmentCollection(b, d)
 
         assert s1.intersect(s2) == PointCollection([(1, 1), (2, 2)], homogenize=True)
-        assert s1.intersect(Line(Point(0, 0), Point(1, 1))).size == 0
+        assert s1.intersect(Line(Point(0, 0), Point(1, 1))) == []
 
 
 class TestPolygonCollection:

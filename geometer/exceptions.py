@@ -1,3 +1,7 @@
+import numpy as np
+import numpy.typing as npt
+
+
 class GeometryException(Exception):
     """A general geometric error occurred."""
 
@@ -21,9 +25,9 @@ class IncidenceError(GeometryException, ValueError):
 class LinearDependenceError(GeometryException, ValueError):
     """The given values were linearly dependent, making the computation impossible."""
 
-    def __init__(self, message, dependent_values=True):
+    def __init__(self, message: str, dependent_values: npt.ArrayLike = True) -> None:
         super().__init__(message)
-        self.dependent_values = dependent_values
+        self.dependent_values = np.asarray(dependent_values)
 
 
 class NotReducible(GeometryException, ValueError):

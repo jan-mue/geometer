@@ -1,20 +1,24 @@
+from __future__ import annotations
+
 import math
 from itertools import combinations
+from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL
+from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor, TensorIndex
 from .exceptions import LinearDependenceError, NotCoplanar
 from .operators import angle, dist, harmonic_set
-from .point import Line, LineCollection, Plane, Point, PointCollection, infty_hyperplane, join, meet
-from .transformation import rotation, translation
+from .point import Line, Plane, Point, infty_hyperplane, join, meet
+from .transformation import Transformation, rotation, translation
 from .utils import det, distinct, is_multiple, matmul, matvec
 
 
-class Polytope(PointCollection):
+class Polytope(Point):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
-    have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons and 1-polytopes are
-    line segments.
+    have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons, 1-polytopes are
+    line segments and 0-polytopes are points.
 
     The polytope is stored as a multidimensional numpy array. Hence, all facets of the polytope must have the same
     number of vertices and facets.
@@ -23,6 +27,8 @@ class Polytope(PointCollection):
     ----------
     *args
         The polytopes defining the facets ot the polytope.
+    pdim: int, optional
+        The dimension of the polytope. Default is 0, i.e. an instance of this class is a point.
     **kwargs
         Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
@@ -30,32 +36,47 @@ class Polytope(PointCollection):
     ----------
     array : numpy.ndarray
         The underlying numpy array.
+    pdim : int
+        The dimension of the polytope.
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(args[0] if len(args) == 1 else args, **kwargs)
+    def __init__(self, *args: Tensor | npt.ArrayLike, pdim: int = 0, **kwargs) -> None:
+        self.pdim = pdim
+        super().__init__(*args, **kwargs)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({', '.join(str(v) for v in self.vertices)})"
+    def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        if self.cdim - max(self.pdim - 1, 1) > 0:
+            class_name += "Collection"
+        return f"{class_name}({', '.join(str(v) for v in self.vertices)})"
+
+    def __apply__(self, transformation: Transformation) -> Polytope:
+        result = super().__apply__(transformation)
+        return cast(Polytope, result)
 
     @property
-    def vertices(self):
+    def vertices(self) -> list[Point]:
         """list of Point: The vertices of the polytope."""
-        return list(distinct(self.flat))
+        first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
+        new_shape = self.shape[:first_polygon_index] + (-1, self.shape[-1])
+        array = self.array.reshape(new_shape)
+        return list(distinct(Point(x, copy=False) for x in np.moveaxis(array, -2, 0)))
 
     @property
-    def facets(self):
+    def facets(self) -> list[Polytope]:
         """list of Polytope: The facets of the polytope."""
-        return list(self)
+        first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
+        slices = (slice(None),) * first_polygon_index
+        return [self._cast_polytope(self[slices + (i,)], self.pdim - 1) for i in range(self.shape[first_polygon_index])]
 
     @property
-    def _edges(self):
+    def _edges(self) -> np.ndarray:
         v1 = self.array
         v2 = np.roll(v1, -1, axis=-2)
         return np.stack([v1, v2], axis=-2)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Tensor | npt.ArrayLike) -> bool | npt.NDArray[np.bool_]:
         if isinstance(other, Polytope):
 
             if self.shape != other.shape:
@@ -79,40 +100,51 @@ class Polytope(PointCollection):
 
         return super().__eq__(other)
 
-    def __add__(self, other):
+    def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, Point):
             return super().__add__(other)
         return translation(other).apply(self)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         return self + (-other)
 
-    def __getitem__(self, index):
-        result = super().__getitem__(index)
-
-        if not isinstance(result, PointCollection):
-            return result
-
-        if result.rank == 2:
-            if len(result) == 2:
-                return Segment(result, copy=False)
-            if len(result) == 3:
-                return Triangle(result, copy=False)
-            if len(result) == 4:
+    @staticmethod
+    def _cast_polytope(tensor: Tensor, pdim: int) -> Polytope:
+        if pdim == 1:
+            return Segment(tensor, copy=False)
+        if pdim == 2:
+            if tensor.shape[-2] == 3:
+                return Triangle(tensor, copy=False)
+            if tensor.shape[-2] == 4:
                 try:
-                    return Rectangle(result, copy=False)
+                    return Rectangle(tensor, copy=False)
                 except NotCoplanar:
-                    return Polytope(result, copy=False)
+                    return Polytope(tensor, copy=False)
 
             try:
-                return Polygon(result, copy=False)
+                return Polygon(tensor, copy=False)
             except NotCoplanar:
-                return Polytope(result, copy=False)
+                return Polytope(tensor, copy=False)
+        if pdim == 3:
+            return Polyhedron(tensor, copy=False)
 
-        if result.rank == 3:
-            return Polyhedron(result)
+        return Polytope(tensor, copy=False)
 
-        return Polytope(result, copy=False)
+    def __getitem__(self, index: TensorIndex) -> Tensor:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.cdim == 0 or result.tensor_shape != (1, 0):
+            return result
+
+        index_mapping = self._get_index_mapping(index)
+        removed_cdims = [i for i in self._collection_indices if i not in index_mapping]
+        first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
+        result_pdim = self.pdim - len([i for i in removed_cdims if i >= first_polygon_index])
+
+        if result_pdim == 0:
+            return result
+
+        return self._cast_polytope(result, result_pdim)
 
 
 class Segment(Polytope):
@@ -129,17 +161,50 @@ class Segment(Polytope):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._line = Line(Point(self.array[0], copy=False), Point(self.array[1], copy=False))
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
+        if len(args) == 2:
+            a, b = args
+            a, b = np.broadcast_arrays(a.array, b.array)
+            kwargs["copy"] = False
+            super().__init__(np.stack([a, b], axis=-2), pdim=1, **kwargs)
+        else:
+            super().__init__(*args, pdim=1, **kwargs)
 
-    def __apply__(self, transformation):
+        self._line = join(*self.vertices)
+
+    def __apply__(self, transformation: Transformation) -> Segment:
         result = super().__apply__(transformation)
-        result._line = Line(Point(result.array[0], copy=False), Point(result.array[1], copy=False))
+        result = cast(Segment, result)
+        result._line = transformation.apply(result._line)
+        return result
+
+    def __getitem__(self, index: TensorIndex) -> Tensor:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.rank < 2 or result.shape[-2] != 2:
+            return result
+
+        return Segment(result, copy=False)
+
+    def expand_dims(self, axis: int) -> Segment:
+        result = super().expand_dims(axis)
+        result = cast(Segment, result)
+        result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
         return result
 
     @property
-    def _edges(self):
+    def vertices(self) -> list[Point]:
+        """list of Point: The start and endpoint of the line segment."""
+        a = Point(self.array[..., 0, :], copy=False)
+        b = Point(self.array[..., 1, :], copy=False)
+        return [a, b]
+
+    @property
+    def facets(self) -> list[Point]:
+        return self.vertices
+
+    @property
+    def _edges(self) -> np.ndarray:
         return self.array
 
     def contains(self, other, tol=EQ_TOL_ABS):
@@ -158,9 +223,38 @@ class Segment(Polytope):
             True if the point is contained in the segment.
 
         """
-        return SegmentCollection.contains(self, other, tol=tol)
+        if other.shape[0] == 0:
+            return np.empty((0,), dtype=bool)
 
-    def intersect(self, other):
+        result = self._line.contains(other)
+
+        m = self.normalized_array
+        arr = matmul(m, m, transpose_b=True)
+
+        b = arr[..., 0]
+        c = arr[..., 1]
+        a = c - b
+
+        # TODO: only project points that lie on the lines
+        d = other._matrix_transform(m).array
+
+        # check that crossratio(a, b, c, d) is between 0 and 1
+        a, b, c, d = np.broadcast_arrays(a, b, c, d)
+        ac = det(np.stack([a, c], axis=-2))
+        bd = det(np.stack([b, d], axis=-2))
+        ad = det(np.stack([a, d], axis=-2))
+        bc = det(np.stack([b, c], axis=-2))
+        z = ac * bd
+        w = ad * bc
+        z_r, z_i = np.real(z), np.imag(z)
+        w_r, w_i = np.real(w), np.imag(w)
+        x = z_r * w_r + z_i * w_i
+        y = w_r ** 2 + w_i ** 2
+        x_zero = np.isclose(x, 0, atol=EQ_TOL_ABS)
+        y_zero = np.isclose(y, 0, atol=EQ_TOL_ABS)
+        return result & (~x_zero | ~y_zero) & (0 <= x + tol) & (x <= y + tol)
+
+    def intersect(self, other: Line | Plane | Segment | Polygon | Polyhedron) -> list[Point]:
         """Intersect the line segment with another object.
 
         Parameters
@@ -174,31 +268,30 @@ class Segment(Polytope):
             The points of intersection.
 
         """
-        if isinstance(other, (Line, Plane)):
-            try:
-                pt = other.meet(self._line)
-            except (LinearDependenceError, NotCoplanar):
-                return []
-            return [pt] if self.contains(pt) else []
-
-        if isinstance(other, Segment):
-            if self._line == other._line:
-                return []
-
-            i = other.intersect(self._line)
-            return i if i and self.contains(i[0]) else []
-
         if isinstance(other, (Polygon, Polyhedron)):
             return other.intersect(self)
 
+        if isinstance(other, Segment):
+            result = meet(self._line, other._line, _check_dependence=False)
+            ind = ~result.is_zero() & self.contains(result) & other.contains(result)
+        else:
+            result = meet(self._line, other, _check_dependence=False)
+            ind = ~result.is_zero() & self.contains(result)
+
+        if result.cdim > 0:
+            return list(result[ind])
+        if ind:
+            return [result]
+        return []
+
     @property
-    def midpoint(self):
+    def midpoint(self) -> Point:
         """Point: The midpoint of the segment."""
         l = self._line.meet(infty_hyperplane(self.dim))
         return harmonic_set(*self.vertices, l)
 
     @property
-    def length(self):
+    def length(self) -> float:
         """float: The length of the segment."""
         return dist(*self.vertices)
 
@@ -217,19 +310,20 @@ class Simplex(Polytope):
 
     """
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Point, **kwargs) -> Polytope:
         if len(args) == 2:
             return Segment(*args, **kwargs)
 
         return super(Polytope, cls).__new__(cls)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Point, **kwargs) -> None:
+        kwargs.setdefault("pdim", len(args) - 1)
         if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args) - 1)]
         super().__init__(*args, **kwargs)
 
     @property
-    def volume(self):
+    def volume(self) -> float:
         """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
         points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
         points = self._normalize_array(points)
@@ -264,46 +358,45 @@ class Polygon(Polytope):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
         if all(isinstance(x, Segment) for x in args):
-            args = (np.array([s.array[0] for s in args]),)
+            args = tuple(s.array[..., 0, :] for s in args)
+        if len(args) > 1:
+            args = tuple(a.array for a in args)
+            args = np.broadcast_arrays(*args)
             kwargs["copy"] = False
-        super().__init__(*args, **kwargs)
-        if self.dim > 2:
-            vertices = self.vertices
-            self._plane = Plane(*vertices[: self.dim])
-            if any(not self._plane.contains(v) for v in vertices[self.dim:]):
-                raise NotCoplanar("The given vertices are not coplanar.")
-        else:
-            self._plane = None
+            args = (np.stack(args, axis=-2),)
+        super().__init__(*args, pdim=2, **kwargs)
+        self._plane = join(*self.vertices[:self.dim]) if self.dim > 2 else None
 
-    def __apply__(self, transformation):
+    def __apply__(self, transformation: Transformation) -> Polygon:
         result = super().__apply__(transformation)
+        result = cast(Polygon, result)
         if result.dim > 2:
-            result._plane = Plane(*result.vertices[: result.dim])
+            result._plane = Plane(*result.vertices[:result.dim])
         return result
 
     @property
-    def vertices(self):
-        return [Point(x, copy=False) for x in self.array]
+    def vertices(self) -> list[Point]:
+        return [Point(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
 
     @property
-    def facets(self):
+    def facets(self) -> list[Segment]:
         return list(self.edges)
 
     @property
-    def edges(self):
-        """SegmentCollection: The edges of the polygon."""
-        return SegmentCollection(self._edges, copy=False)
+    def edges(self) -> Segment:
+        """Segment: The edges of the polygon."""
+        return Segment(self._edges, copy=False)
 
-    def contains(self, other):
+    def contains(self, other: Point) -> npt.NDArray[np.bool_]:
         """Tests whether a point is contained in the polygon.
 
         Points on an edge of the polygon are considered True.
 
         Parameters
         ----------
-        other : Point or PointCollection
+        other : Point
             The point to test.
 
         Returns
@@ -316,9 +409,71 @@ class Polygon(Polytope):
         .. [1] http://paulbourke.net/geometry/polygonmesh/#insidepoly
 
         """
-        return PolygonCollection.contains(self, other)
+        if other.shape[0] == 0:
+            return np.empty((0,), dtype=bool)
 
-    def intersect(self, other):
+        if self.dim > 2:
+            coplanar = self._plane.contains(other)
+
+            if not np.any(coplanar):
+                return coplanar
+
+            isinf = is_multiple(self._plane.array, infty_hyperplane(self.dim).array, axis=-1)
+
+            # remove coordinates with the largest absolute value in the normal vector
+            i = np.argmax(np.abs(self._plane.array[..., :-1]), axis=-1)
+            i = np.where(isinf, self.dim, i)
+            i = np.expand_dims(i, -1)
+            s = self.array.shape
+            arr = np.delete(self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s)).reshape(
+                s[:-1] + (-1,))
+
+            if other.cdim == 0 and i.ndim == 1:
+                other = Point(np.delete(other.array, i), copy=False)
+            else:
+                s = other.shape[:-1] + (1, other.shape[-1])
+                other = np.delete(other.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
+                other = Point(other.reshape(s[:-2] + (-1,)), copy=False)
+
+            # TODO: only test coplanar points
+            return coplanar & Polygon(arr, copy=False).contains(other)
+
+        edges = self.edges
+        edge_points = edges.contains(Point(np.expand_dims(other.array, -2), copy=False))
+
+        if other.cdim == 0:
+            direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
+            rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
+        else:
+            direction = np.zeros_like(other.array)
+            ind = other.isinf
+            direction[ind, 0] = other.array[ind, 1]
+            direction[ind, 1] = -other.array[ind, 0]
+            direction[~ind, 0] = 1
+            rays = Segment(np.stack([other.array, direction], axis=-2), copy=False).expand_dims(-3)
+
+        intersections = meet(edges._line, rays._line, _check_dependence=False)
+
+        # ignore edges along the rays
+        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
+
+        # ignore intersections of downward edges that end on the ray
+        v1 = edges.array[..., 0, :]
+        v2 = edges.array[..., 1, :]
+        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(intersections.array, v1, atol=EQ_TOL_ABS,
+                                                                    rtol=EQ_TOL_REL, axis=-1)
+        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(intersections.array, v2, atol=EQ_TOL_ABS,
+                                                                    rtol=EQ_TOL_REL, axis=-1)
+
+        result = edges.contains(intersections)
+        result &= rays.contains(intersections)
+        result &= ~ray_edges & ~v1_intersections & ~v2_intersections
+        result = np.sum(result, axis=-1) % 2 == 1
+        result |= np.any(edge_points, axis=-1)
+
+        return result
+
+    def intersect(self, other: Line | Segment) -> list[Point]:
         """Intersect the polygon with another object.
 
         Parameters
@@ -332,49 +487,57 @@ class Polygon(Polytope):
             The points of intersection.
 
         """
-        if self.dim > 2:
+        if self.dim == 2:
+            return list(distinct(self.edges.intersect(other)))
 
-            # TODO: support collections
+        if isinstance(other, Segment):
+            try:
+                result = self._plane.meet(other._line)
+            except LinearDependenceError as e:
+                if isinstance(other, Segment):
+                    other = other[~e.dependent_values]
+                result = self._plane[~e.dependent_values].meet(other._line)
+                return list(
+                    result[Polygon(self[~e.dependent_values], copy=False).contains(result) & other.contains(result)])
+            else:
+                return list(result[self.contains(result) & other.contains(result)])
 
-            if isinstance(other, Line):
-                try:
-                    p = self._plane.meet(other)
-                except LinearDependenceError:
-                    return []
-                return [p] if self.contains(p) else []
+        try:
+            result = self._plane.meet(other)
+        except LinearDependenceError as e:
+            if other.cdim > 0:
+                other = other[~e.dependent_values]
+            result = self._plane[~e.dependent_values].meet(other)
+            return list(result[Polygon(self[~e.dependent_values], copy=False).contains(result)])
+        else:
+            return list(result[self.contains(result)])
 
-            if isinstance(other, Segment):
-                if self._plane.contains(other._line):
-                    return []
-
-                i = other.intersect(self._plane)
-                return i if i and self.contains(i[0]) else []
-
-        return list(distinct(self.edges.intersect(other)))
-
-    def _normalized_projection(self):
+    def _normalized_projection(self) -> np.ndarray:
         points = self.array
 
         if self.dim > 2:
             e = self._plane
             o = Point(*[0] * self.dim)
-            if not e.contains(o):
+            if e.cdim > 0:
+                ind = ~e.contains(o)
+                e[ind] = e[ind].parallel(o)
+            elif not e.contains(o):
                 # use parallel hyperplane for projection to avoid rescaling
                 e = e.parallel(o)
             m = e.basis_matrix
-            points = points.dot(m.T)
+            points = matvec(np.expand_dims(m, -3), points)
 
         return self._normalize_array(points)
 
     @property
-    def area(self):
+    def area(self) -> npt.NDArray[np.float_]:
         """float: The area of the polygon."""
         points = self._normalized_projection()
-        a = sum(det(points[[0, i, i + 1]]) for i in range(1, points.shape[0] - 1))
-        return 1 / 2 * abs(a)
+        a = sum(det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2] - 1))
+        return 1 / 2 * np.abs(a)
 
     @property
-    def centroid(self):
+    def centroid(self) -> Point:
         """Point: The centroid (center of mass) of the polygon."""
         points = self.normalized_array
         centroids = [np.average(points[[0, i, i + 1], :-1], axis=0) for i in range(1, points.shape[0] - 1)]
@@ -382,7 +545,7 @@ class Polygon(Polytope):
         return Point(*np.average(centroids, weights=weights, axis=0))
 
     @property
-    def angles(self):
+    def angles(self) -> list[float]:
         """list of float: The interior angles of the polygon."""
         result = []
         a = self.edges[-1]
@@ -411,7 +574,7 @@ class RegularPolygon(Polygon):
 
     """
 
-    def __init__(self, center, radius, n, axis=None, **kwargs):
+    def __init__(self, center: Point, radius: float, n: int, axis: Point | None = None, **kwargs) -> None:
         if axis is None:
             p = Point(1, 0)
         else:
@@ -429,17 +592,17 @@ class RegularPolygon(Polygon):
         super().__init__(*vertices, **kwargs)
 
     @property
-    def radius(self):
+    def radius(self) -> float:
         """float: The Circumradius of the regular polygon."""
         return dist(self.center, self.vertices[0])
 
     @property
-    def center(self):
+    def center(self) -> Point:
         """Point: The center of the polygon."""
         return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
 
     @property
-    def inradius(self):
+    def inradius(self) -> float:
         """float: The inradius of the regular polygon."""
         return dist(self.center, self.edges[0].midpoint)
 
@@ -456,15 +619,17 @@ class Triangle(Polygon, Simplex):
     """
 
     @property
-    def circumcenter(self):
+    def circumcenter(self) -> Point:
         """Point: The circumcenter of the triangle."""
         e1, e2, e3 = self.edges
         bisector1 = e1._line.perpendicular(e1.midpoint, plane=self._plane)
         bisector2 = e2._line.perpendicular(e2.midpoint, plane=self._plane)
         return bisector1.meet(bisector2)
 
-    def contains(self, other):
+    def contains(self, other: Point) -> npt.NDArray[np.bool_]:
         # faster algorithm using barycentric coordinates
+
+        # TODO: vectorize
 
         a, b, c, p = np.broadcast_arrays(*self.array, other.array)
 
@@ -510,23 +675,26 @@ class Rectangle(Polygon):
 class Polyhedron(Polytope):
     """A class representing polyhedra (3-polytopes)."""
 
-    @property
-    def faces(self):
-        """PolygonCollection: The faces of the polyhedron."""
-        return PolygonCollection(self.array, copy=False)
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, pdim=3, **kwargs)
 
     @property
-    def edges(self):
+    def faces(self) -> Polygon:
+        """PolygonCollection: The faces of the polyhedron."""
+        return Polygon(self.array, copy=False)
+
+    @property
+    def edges(self) -> list[Segment]:
         """list of Segment: The edges of the polyhedron."""
         result = self._edges
-        return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(self.shape[:2])))
+        return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(*self.shape[:2])))
 
     @property
-    def area(self):
+    def area(self) -> npt.NDArray[np.float_]:
         """float: The surface area of the polyhedron."""
         return np.sum(self.faces.area)
 
-    def intersect(self, other):
+    def intersect(self, other: Line | Segment) -> list[Point]:
         """Intersect the polyhedron with another object.
 
         Parameters
@@ -561,340 +729,9 @@ class Cuboid(Polyhedron):
 
     """
 
-    def __init__(self, a, b, c, d, **kwargs):
+    def __init__(self, a: Point, b: Point, c: Point, d: Point, **kwargs) -> None:
         x, y, z = b - a, c - a, d - a
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)
         xy = Rectangle(a, a + x, a + x + y, a + y)
         super().__init__(yz, xz, xy, yz + x, xz + y, xy + z, **kwargs)
-
-
-class PolygonCollection(PointCollection):
-    """A collection of polygons with the same number of vertices.
-
-    Parameters
-    ----------
-    *args
-        The collections of points that define the vertices of the polygons or a (nested) sequence of vertex coordinates.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
-
-    """
-
-    def __init__(self, *args, **kwargs):
-        if len(args) > 1:
-            args = tuple(a.array for a in args)
-            args = np.broadcast_arrays(*args)
-            kwargs["copy"] = False
-            super().__init__(np.stack(args, axis=-2), **kwargs)
-        else:
-            super().__init__(args[0], **kwargs)
-        self._plane = join(*self.vertices[: self.dim]) if self.dim > 2 else None
-
-    @property
-    def edges(self):
-        """SegmentCollection: The edges of the polygons in the collection."""
-        v1 = self.array
-        v2 = np.roll(v1, -1, axis=-2)
-        result = np.stack([v1, v2], axis=-2)
-        return SegmentCollection(result, copy=False)
-
-    def __getitem__(self, index):
-        result = super().__getitem__(index)
-
-        if not isinstance(result, PointCollection):
-            return result
-
-        if result.rank == 2:
-            return Polygon(result, copy=False)
-
-        return PolygonCollection(result, copy=False)
-
-    def _normalized_projection(self):
-        points = self.array
-
-        if self.dim > 2:
-            e = self._plane
-            o = Point(*[0] * self.dim)
-            ind = ~e.contains(o)
-            e[ind] = e[ind].parallel(o)
-            m = e.basis_matrix
-            points = matvec(np.expand_dims(m, -3), points)
-
-        return self._normalize_array(points)
-
-    @property
-    def vertices(self):
-        """list of PointCollection: The vertices of the polygons."""
-        return [PointCollection(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
-
-    @property
-    def area(self):
-        """array_like: The areas of the polygons."""
-        points = self._normalized_projection()
-        a = sum(det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2] - 1))
-        return 1 / 2 * np.abs(a)
-
-    def expand_dims(self, axis):
-        result = super().expand_dims(axis)
-        if self.dim > 2:
-            result._plane = result._plane.expand_dims(axis)
-        return result
-
-    def contains(self, other):
-        """Tests whether a point or a collection of points is contained in the polygons.
-
-        Parameters
-        ----------
-        other : Point or PointCollection
-            The points to test. If more than one point is given, the shape of the collection must be compatible
-            with the shape of the polygon collection.
-
-        Returns
-        -------
-        numpy.ndarray
-            Returns a boolean array of which points are contained in the polygons.
-
-        See Also
-        --------
-        Polygon.contains
-
-        """
-        if other.shape[0] == 0:
-            return np.empty((0,), dtype=bool)
-
-        if self.dim > 2:
-            coplanar = self._plane.contains(other)
-
-            if not np.any(coplanar):
-                return coplanar
-
-            isinf = is_multiple(self._plane.array, infty_hyperplane(self.dim).array, axis=-1)
-
-            # remove coordinates with the largest absolute value in the normal vector
-            i = np.argmax(np.abs(self._plane.array[..., :-1]), axis=-1)
-            i = np.where(isinf, self.dim, i)
-            i = np.expand_dims(i, -1)
-            s = self.array.shape
-            arr = np.delete(self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s)).reshape(
-                s[:-1] + (-1,))
-
-            if isinstance(other, Point) and i.ndim == 1:
-                other = Point(np.delete(other.array, i), copy=False)
-            else:
-                s = other.shape[:-1] + (1, other.shape[-1])
-                other = np.delete(other.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
-                other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=False)
-
-            # TODO: only test coplanar points
-            return coplanar & PolygonCollection(arr, copy=False).contains(other)
-
-        edges = self.edges
-        edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False))
-
-        if isinstance(other, PointCollection):
-            direction = np.zeros_like(other.array)
-            ind = other.isinf
-            direction[ind, 0] = other.array[ind, 1]
-            direction[ind, 1] = -other.array[ind, 0]
-            direction[~ind, 0] = 1
-            rays = SegmentCollection(np.stack([other.array, direction], axis=-2), copy=False).expand_dims(-3)
-        else:
-            direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
-            rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
-
-        intersections = meet(edges._line, rays._line, _check_dependence=False)
-
-        # ignore edges along the rays
-        ray_edges = is_multiple(edges._line.array, rays._line.array, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1)
-
-        # ignore intersections of downward edges that end on the ray
-        v1 = edges.array[..., 0, :]
-        v2 = edges.array[..., 1, :]
-        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(intersections.array, v1, atol=EQ_TOL_ABS,
-                                                                    rtol=EQ_TOL_REL, axis=-1)
-        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(intersections.array, v2, atol=EQ_TOL_ABS,
-                                                                    rtol=EQ_TOL_REL, axis=-1)
-
-        result = edges.contains(intersections)
-        result &= rays.contains(intersections)
-        result &= ~ray_edges & ~v1_intersections & ~v2_intersections
-        result = np.sum(result, axis=-1) % 2 == 1
-        result |= np.any(edge_points, axis=-1)
-
-        return result
-
-    def intersect(self, other):
-        """Intersect the polygons with a line, line segment or a collection of lines.
-
-        Parameters
-        ----------
-        other : Line, Segment, LineCollection or SegmentCollection
-            The object to intersect the polygon with.
-
-        Returns
-        -------
-        PointCollection
-            The points of intersection.
-
-        See Also
-        --------
-        Polygon.intersect
-
-        """
-        if isinstance(other, (Segment, SegmentCollection)):
-            try:
-                result = self._plane.meet(other._line)
-            except LinearDependenceError as e:
-                if isinstance(other, SegmentCollection):
-                    other = other[~e.dependent_values]
-                result = self._plane[~e.dependent_values].meet(other._line)
-                return result[self[~e.dependent_values].contains(result) & other.contains(result)]
-            else:
-                return result[self.contains(result) & other.contains(result)]
-
-        try:
-            result = self._plane.meet(other)
-        except LinearDependenceError as e:
-            if isinstance(other, LineCollection):
-                other = other[~e.dependent_values]
-            result = self._plane[~e.dependent_values].meet(other)
-            return result[self[~e.dependent_values].contains(result)]
-        else:
-            return result[self.contains(result)]
-
-
-class SegmentCollection(PointCollection):
-    """A collection of line segments.
-
-    Parameters
-    ----------
-    *args
-        Two collections of points representing start and endpoints of the line segments or a (nested) sequence of
-        coordinates for the start and endpoints.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
-
-    """
-
-    def __init__(self, *args, **kwargs):
-        if len(args) == 2:
-            a, b = args
-            a, b = np.broadcast_arrays(a.array, b.array)
-            kwargs["copy"] = False
-            super().__init__(np.stack([a, b], axis=-2), **kwargs)
-        else:
-            super().__init__(args[0] if len(args) == 1 else args, **kwargs)
-
-        self._line = join(*self.vertices)
-
-    def __getitem__(self, index):
-        result = super().__getitem__(index)
-
-        if not isinstance(result, PointCollection):
-            return result
-
-        if result.rank == 2:
-            return Segment(result, copy=False)
-
-        return SegmentCollection(result, copy=False)
-
-    @property
-    def vertices(self):
-        """list of PointCollection: The start and endpoints of the line segments."""
-        a = PointCollection(self.array[..., 0, :], copy=False)
-        b = PointCollection(self.array[..., 1, :], copy=False)
-        return [a, b]
-
-    @property
-    def midpoint(self):
-        """PointCollection: The midpoints of the segments."""
-        l = self._line.meet(infty_hyperplane(self.dim))
-        return harmonic_set(*self.vertices, l)
-
-    @property
-    def length(self):
-        """array_like: The lengths of the segments."""
-        return dist(*self.vertices)
-
-    def expand_dims(self, axis):
-        result = super().expand_dims(axis)
-        result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
-        return result
-
-    def contains(self, other, tol=EQ_TOL_ABS):
-        """Tests whether a point or a collection of points is contained in the line segments.
-
-        Parameters
-        ----------
-        other : Point or PointCollection
-            The points to test. If more than one point is given, the shape of the collection must be compatible
-            with the shape of the segment collection.
-        tol : float, optional
-            The accepted tolerance.
-
-        Returns
-        -------
-        numpy.ndarray
-            Returns a boolean array of which points are contained in the line segments.
-
-        See Also
-        --------
-        Segment.contains
-
-        """
-        if other.shape[0] == 0:
-            return np.empty((0,), dtype=bool)
-
-        result = self._line.contains(other)
-
-        m = self.normalized_array
-        arr = matmul(m, m, transpose_b=True)
-
-        b = arr[..., 0]
-        c = arr[..., 1]
-        a = c - b
-
-        # TODO: only project points that lie on the lines
-        d = other._matrix_transform(m).array
-
-        # check that crossratio(a, b, c, d) is between 0 and 1
-        a, b, c, d = np.broadcast_arrays(a, b, c, d)
-        ac = det(np.stack([a, c], axis=-2))
-        bd = det(np.stack([b, d], axis=-2))
-        ad = det(np.stack([a, d], axis=-2))
-        bc = det(np.stack([b, c], axis=-2))
-        z = ac * bd
-        w = ad * bc
-        z_r, z_i = np.real(z), np.imag(z)
-        w_r, w_i = np.real(w), np.imag(w)
-        x = z_r * w_r + z_i * w_i
-        y = w_r ** 2 + w_i ** 2
-        x_zero = np.isclose(x, 0, atol=EQ_TOL_ABS)
-        y_zero = np.isclose(y, 0, atol=EQ_TOL_ABS)
-        return result & (~x_zero | ~y_zero) & (0 <= x + tol) & (x <= y + tol)
-
-    def intersect(self, other):
-        """Intersect the line segments with a line, line segment or a collection of lines.
-
-        Parameters
-        ----------
-        other : Line, Segment, LineCollection or SegmentCollection
-            The object to intersect the polygon with.
-
-        Returns
-        -------
-        PointCollection
-            The points of intersection.
-
-        See Also
-        --------
-        Segment.intersect
-
-        """
-        if isinstance(other, (Segment, SegmentCollection)):
-            result = meet(self._line, other._line, _check_dependence=False)
-            return result[~result.is_zero() & self.contains(result) & other.contains(result)]
-
-        result = meet(self._line, other, _check_dependence=False)
-        return result[~result.is_zero() & self.contains(result)]
