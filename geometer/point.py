@@ -3,7 +3,7 @@ import numpy as np
 from .base import (EQ_TOL_ABS, LeviCivitaTensor, ProjectiveCollection, ProjectiveElement, Tensor, TensorCollection,
                    TensorDiagram)
 from .exceptions import GeometryException, LinearDependenceError, NotCoplanar
-from .utils import matmul, matvec, null_space, reduce_multiples
+from .utils import matmul, matvec, null_space
 
 
 def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, normalize_result=True):
@@ -92,7 +92,7 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
 
         if normalize_result:
             axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
-            reduce_multiples(result.array, axis=axes, out=result.array)
+            result.array = result.array / np.max(np.abs(result.array), axis=axes, keepdims=True)
 
         if result.tensor_shape == (0, 1):
             return LineCollection(result, copy=False) if n == 3 else PlaneCollection(result, copy=False)
@@ -107,7 +107,7 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
 
     if normalize_result:
         # normalize result to avoid large values
-        reduce_multiples(result.array, out=result.array)
+        result.array = result.array / np.max(np.abs(result.array))
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
