@@ -2,6 +2,19 @@
 Changelog
 =========
 
+0.3.3 - released (16.4.2022)
+----------------------------
+
+New Features
+------------
+
+- Added the function reduce_multiples in utils.math that divides out multiples in an array
+
+Bug fixes
+---------
+
+- Use the function reduce_multiples to normalized arrays to avoid introducing numerical errors (#55)
+
 0.3.2 - released (22.1.2022)
 ----------------------------
 
