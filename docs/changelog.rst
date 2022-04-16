@@ -2,8 +2,8 @@
 Changelog
 =========
 
-0.3.3 - released (16.4.2022)
-----------------------------
+0.3.3 - unreleased
+------------------
 
 New Features
 ------------
@@ -14,7 +14,7 @@ Bug fixes
 ---------
 
 - Avoid division in Segment.contains for better numerical stability (#55)
-- Use the function reduce_multiples to normalized arrays to avoid introducing numerical errors (#55)
+- Use the function reduce_multiples to normalize arrays to avoid introducing numerical errors (#55)
 
 0.3.2 - released (22.1.2022)
 ----------------------------
