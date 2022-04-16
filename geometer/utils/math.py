@@ -521,4 +521,4 @@ def reduce_multiples(a: npt.ArrayLike, axis: tuple[int, ...] | int | None = None
         gcd = np.gcd.reduce(a, axis=axis, keepdims=True)
         return np.floor_divide(a, gcd, out=out)
 
-    raise NotImplementedError(f"Array with dtype {a.dtype} cannot be reduced.")
+    raise NotImplementedError(f"Array with dtype {a.dtype.name} cannot be reduced.")

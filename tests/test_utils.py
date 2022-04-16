@@ -1,6 +1,7 @@
 import numpy as np
+import pytest
 
-from geometer.utils import adjugate, det, inv, is_multiple, null_space, roots
+from geometer.utils import adjugate, det, inv, is_multiple, null_space, reduce_multiples, roots
 
 
 def test_is_multiple():
@@ -74,3 +75,18 @@ def test_roots():
         sol = roots(p)
         for x in sol:
             assert np.isclose(np.polyval(p, x), 0)
+
+
+def test_reduce_multiples():
+    a = [3, -6, 12]
+    b = [0.7 * 2**3, 0.7 * 2**4, 0.7 * 2**2]
+    c = [0.7j + 0.7 * 2**3, 0.7j * 2**3 + 0.7 * 2**4, 0.7j * 2 - 0.7 * 2**2]
+    d = [True, False, False]
+
+    assert reduce_multiples(a).tolist() == [1, -2, 4]
+    assert reduce_multiples(b).tolist() == [0.7 / 2, 0.7, 0.7 / 4]
+    assert reduce_multiples(c).tolist() == [0.7j / 16 + 0.7 / 2, 0.7j / 2 + 0.7, 0.7j / 8 - 0.7 / 4]
+    assert reduce_multiples(d).tolist() == d
+
+    with pytest.raises(NotImplementedError, match="Array with dtype str32 cannot be reduced."):
+        reduce_multiples(["3", "2", "1"])
