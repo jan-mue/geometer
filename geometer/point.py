@@ -8,7 +8,7 @@ from typing_extensions import Literal
 
 from .base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
 from .exceptions import GeometryException, LinearDependenceError, NotCoplanar
-from .utils import matmul, matvec, null_space
+from .utils import matmul, matvec, null_space, reduce_multiples
 
 
 @overload
@@ -120,12 +120,7 @@ def _join_meet_duality(
 
     if normalize_result:
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
-        max_abs = np.max(np.abs(result.array), axis=axes, keepdims=True)
-        if check_dependence:
-            result.array = result.array / max_abs
-        else:
-            with np.errstate(divide="ignore", invalid="ignore"):
-                result.array = result.array / max_abs
+        reduce_multiples(result.array, axis=axes, out=result.array)
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)

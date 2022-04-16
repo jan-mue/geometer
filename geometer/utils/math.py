@@ -450,7 +450,8 @@ def roots(p: npt.ArrayLike) -> npt.NDArray[np.float_ | np.complex_]:
         return np.array([x1, x2, x3])
 
 
-def outer(a: npt.ArrayLike, b: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
+def outer(a: npt.ArrayLike, b: npt.ArrayLike,
+          out: np.ndarray | None = None) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
     """Outer product of two arrays.
 
     Parameters
@@ -469,4 +470,55 @@ def outer(a: npt.ArrayLike, b: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_
 
     """
     a, b = np.asarray(a), np.asarray(b)
-    return np.multiply(a[..., None], b[..., None, :])
+    return np.multiply(a[..., None], b[..., None, :], out=out)
+
+
+def reduce_multiples(a: npt.ArrayLike, axis: tuple[int, ...] | int | None = None,
+                     out: np.ndarray | None = None) -> np.ndarray:
+    """Normalize the input array by dividing by the largest common divisor (for integer data types)
+    or the largest power of two used in the internal floating point representation (for float and complex data types).
+
+    Parameters
+    ----------
+    a : array_like
+        The array to normalize.
+    axis : None or int or tuple of ints, optional
+        The axis along which the common divisor is chosen.
+    out : ndarray or None, optional
+        The array to output the results to. By default, a new array will be returned.
+
+    Returns
+    -------
+    numpy.ndarray
+        The normalized array.
+
+    """
+    a = np.asarray(a)
+
+    if a.dtype.kind == "b":
+        return a
+
+    if a.dtype.kind == "f":
+        mantissa, exponent = np.frexp(a)
+        exponent -= np.max(exponent, axis=axis, keepdims=True)
+        return np.ldexp(mantissa, exponent, dtype=a.dtype, out=out)
+
+    if a.dtype.kind == "c":
+        rm, re = np.frexp(a.real)
+        im, ie = np.frexp(a.imag)
+        max_re = np.max(re, axis=axis, keepdims=True)
+        max_ie = np.max(ie, axis=axis, keepdims=True)
+        max_exponent = np.maximum(max_re, max_ie)
+        re -= max_exponent
+        ie -= max_exponent
+        if out is None:
+            out = np.empty_like(a)
+        np.ldexp(rm, re, out=out.real)
+        np.ldexp(im, ie, out=out.imag)
+        return out
+
+    if a.dtype.kind in "iu":
+        gcd = np.gcd.reduce(a, axis=axis, keepdims=True)
+        return np.floor_divide(a, gcd, out=out)
+
+    raise NotImplementedError(f"Array with dtype {a.dtype} cannot be reduced.")

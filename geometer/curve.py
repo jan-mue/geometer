@@ -79,7 +79,8 @@ class Quadric(ProjectiveTensor):
 
         """
         m = outer(e.array, f.array)
-        return Quadric(m + m.T, normalize_matrix=True)
+        m += m.T
+        return Quadric(m, normalize_matrix=True)
 
     def tangent(self, at: Point) -> Plane:
         """Returns the hyperplane defining the tangent space at a given point.
@@ -296,7 +297,8 @@ class Conic(Quadric):
 
         """
         m = outer(g.array, h.array)
-        return Conic(m + m.T, normalize_matrix=True)
+        m += m.T
+        return Conic(m, normalize_matrix=True)
 
     @classmethod
     def from_tangent(cls, tangent: Line, a: Point, b: Point, c: Point, d: Point) -> Conic:
@@ -395,8 +397,9 @@ class Conic(Quadric):
         bc = adjugate([np.ones(3), b.array, c.array])[:, 0]
 
         matrix = outer(ac, bd) - cr * outer(ad, bc)
+        matrix += matrix.T
 
-        return cls(matrix + matrix.T, normalize_matrix=True)
+        return cls(matrix, normalize_matrix=True)
 
     def intersect(self, other: Line | Conic) -> list[Point]:
         """Calculates points of intersection with the conic.

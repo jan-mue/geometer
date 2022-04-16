@@ -1,6 +1,6 @@
 from .indexing import normalize_index, posify_index, sanitize_index  # noqa: F401
 from .math import (adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, null_space, orth, outer,  # noqa: F401
-                   roots)
+                   reduce_multiples, roots)
 
 
 def distinct(iterable):
