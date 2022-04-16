@@ -475,8 +475,8 @@ def outer(a: npt.ArrayLike, b: npt.ArrayLike,
 
 def reduce_multiples(a: npt.ArrayLike, axis: tuple[int, ...] | int | None = None,
                      out: np.ndarray | None = None) -> np.ndarray:
-    """Normalize the input array by dividing by the largest common divisor (for integer data types)
-    or the largest power of two used in the internal floating point representation (for float and complex data types).
+    """Normalize the input array by dividing by the largest common divisor (for integer data types) or the twos exponent
+    of the internal floating point representation of the largest absolute value (for float and complex data types).
 
     Parameters
     ----------
@@ -499,16 +499,17 @@ def reduce_multiples(a: npt.ArrayLike, axis: tuple[int, ...] | int | None = None
         return a
 
     if a.dtype.kind == "f":
+        max_abs = np.max(np.abs(a), axis=axis, keepdims=True)
+        _, max_exponent = np.frexp(max_abs)
         mantissa, exponent = np.frexp(a)
-        exponent -= np.max(exponent, axis=axis, keepdims=True)
+        exponent -= max_exponent
         return np.ldexp(mantissa, exponent, dtype=a.dtype, out=out)
 
     if a.dtype.kind == "c":
+        max_abs = np.max(np.abs(a), axis=axis, keepdims=True)
+        _, max_exponent = np.frexp(max_abs)
         rm, re = np.frexp(a.real)
         im, ie = np.frexp(a.imag)
-        max_re = np.max(re, axis=axis, keepdims=True)
-        max_ie = np.max(ie, axis=axis, keepdims=True)
-        max_exponent = np.maximum(max_re, max_ie)
         re -= max_exponent
         ie -= max_exponent
         if out is None:
