@@ -8,7 +8,7 @@ from typing_extensions import Literal
 
 from .base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
 from .exceptions import GeometryException, LinearDependenceError, NotCoplanar
-from .utils import matmul, matvec, null_space, reduce_multiples
+from .utils import matmul, matvec, null_space
 
 
 @overload
@@ -120,7 +120,9 @@ def _join_meet_duality(
 
     if normalize_result:
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
-        reduce_multiples(result.array, axis=axes, out=result.array)
+        max_abs = np.max(np.abs(result.array), axis=axes, keepdims=True)
+        _, max_exponent = np.frexp(max_abs)
+        result.array = _divide_by_power_of_two(result.array, max_exponent)
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
@@ -132,6 +134,22 @@ def _join_meet_duality(
         return Line(result, copy=False)
 
     return Subspace(result, copy=False)
+
+
+def _divide_by_power_of_two(array: np.ndarray, power: int):
+    if array.dtype.kind == "c":
+        rm, re = np.frexp(array.real)
+        im, ie = np.frexp(array.imag)
+        re -= power
+        ie -= power
+        out = np.empty_like(array)
+        np.ldexp(rm, re, out=out.real)
+        np.ldexp(im, ie, out=out.imag)
+        return out
+
+    mantissa, exponent = np.frexp(array)
+    exponent -= power
+    return np.ldexp(mantissa, exponent)
 
 
 def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Subspace:
@@ -272,6 +290,8 @@ class Point(ProjectiveTensor):
     def _normalize_array(array: np.ndarray) -> np.ndarray:
         z = array[..., -1, None]
         isinf = np.isclose(z, 0, atol=EQ_TOL_ABS)
+        if np.all(isinf | (z == 1)):
+            return array
         dtype = np.find_common_type([np.float64, array.dtype], [])
         result = array.astype(dtype)
         np.divide(result, z, where=~isinf, out=result)
