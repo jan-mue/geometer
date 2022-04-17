@@ -858,19 +858,16 @@ class SegmentCollection(PointCollection):
 
         b = arr[..., 0]
         c = arr[..., 1]
-        a = c - b
 
         # TODO: only project points that lie on the lines
         d = other._matrix_transform(m).array
 
-        # check that crossratio(a, b, c, d) is between 0 and 1
-        a, b, c, d = np.broadcast_arrays(a, b, c, d)
-        ac = det(np.stack([a, c], axis=-2))
+        # check that crossratio(c-b, b, c, d) is between 0 and 1
+        b, c, d = np.broadcast_arrays(b, c, d)
+        cd = det(np.stack([c, d], axis=-2))
         bd = det(np.stack([b, d], axis=-2))
-        ad = det(np.stack([a, d], axis=-2))
-        bc = det(np.stack([b, c], axis=-2))
-        z = ac * bd
-        w = ad * bc
+        z = -bd
+        w = cd - bd
         z_r, z_i = np.real(z), np.imag(z)
         w_r, w_i = np.real(w), np.imag(w)
         x = z_r * w_r + z_i * w_i

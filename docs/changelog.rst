@@ -2,6 +2,19 @@
 Changelog
 =========
 
+0.3.4 - released (17.4.2022)
+----------------------------
+
+New Features
+------------
+- Point.normalized_array and PointCollection.normalized_array will return the original array if normalization is not required
+
+Bug fixes
+---------
+
+- Avoid introducing numerical errors in join/meet by normalizing arrays only by a power of two (#55)
+- Simplify code in Segment.contains to avoid integer overflow when normalized_array is an integer array
+
 0.3.3 - released (16.4.2022)
 ----------------------------
 

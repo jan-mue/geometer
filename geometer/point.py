@@ -92,7 +92,9 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
 
         if normalize_result:
             axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
-            result.array = result.array / np.max(np.abs(result.array), axis=axes, keepdims=True)
+            max_abs = np.max(np.abs(result.array), axis=axes, keepdims=True)
+            _, max_exponent = np.frexp(max_abs)
+            result.array = _divide_by_power_of_two(result.array, max_exponent)
 
         if result.tensor_shape == (0, 1):
             return LineCollection(result, copy=False) if n == 3 else PlaneCollection(result, copy=False)
@@ -107,7 +109,9 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
 
     if normalize_result:
         # normalize result to avoid large values
-        result.array = result.array / np.max(np.abs(result.array))
+        max_abs = np.max(np.abs(result.array))
+        _, max_exponent = np.frexp(max_abs)
+        result.array = _divide_by_power_of_two(result.array, max_exponent)
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
@@ -119,6 +123,22 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
         return Line(result, copy=False)
 
     return Subspace(result, copy=False)
+
+
+def _divide_by_power_of_two(array, power):
+    if array.dtype.kind == "c":
+        rm, re = np.frexp(array.real)
+        im, ie = np.frexp(array.imag)
+        re -= power
+        ie -= power
+        out = np.empty_like(array)
+        np.ldexp(rm, re, out=out.real)
+        np.ldexp(im, ie, out=out.imag)
+        return out
+
+    mantissa, exponent = np.frexp(array)
+    exponent -= power
+    return np.ldexp(mantissa, exponent)
 
 
 def join(*args, _check_dependence=True, _normalize_result=True):
@@ -242,7 +262,7 @@ class Point(ProjectiveElement):
     @property
     def normalized_array(self):
         """numpy.ndarray: The coordinate array of the point with the last coordinate normalized to one."""
-        if self.isinf:
+        if self.isinf or self.array[-1] == 1:
             return np.real_if_close(self.array)
         return np.real_if_close(self.array / self.array[-1])
 
@@ -801,6 +821,8 @@ class PointCollection(ProjectiveCollection):
     @staticmethod
     def _normalize_array(array):
         isinf = np.isclose(array[..., -1], 0, atol=EQ_TOL_ABS)
+        if np.all(isinf | (array[..., -1] == 1)):
+            return np.real_if_close(array)
         result = array.astype(np.complex128)
         result[~isinf] /= array[~isinf, -1, None]
         return np.real_if_close(result)
