@@ -111,7 +111,8 @@ def _join_meet_duality(*args, intersect_lines=True, check_dependence=True, norma
         # normalize result to avoid large values
         max_abs = np.max(np.abs(result.array))
         _, max_exponent = np.frexp(max_abs)
-        result.array = _divide_by_power_of_two(result.array, max_exponent)
+        if max_exponent != 0:
+            result.array = _divide_by_power_of_two(result.array, max_exponent)
 
     if result.tensor_shape == (0, 1):
         return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
