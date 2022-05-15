@@ -28,26 +28,18 @@ class Tensor(Sized, Iterable):
     Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
     of a tensor (see [1]).
 
-    Parameters
-    ----------
-    *args
-        Either a single iterable or multiple coordinate numbers.
-    covariant : :obj:`bool` or :obj:`list` of :obj:`int`, optional
-        If False, all indices are contravariant. If a list of indices indices is supplied, the specified indices of the
-        array will be covariant indices and all others contravariant indices. By default all indices are covariant.
-    tensor_rank : int or None, optional
-        If the object contains multiple tensors, this parameter specifies the rank of the tensors contained in the
-        collection. By default only a single tensor is contained in a Tensor object.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: Either a single iterable or multiple coordinate numbers.
+        covariant: If False, all indices are contravariant. If a list of indices indices is supplied, the specified
+            indices of the array will be covariant indices and all others contravariant indices.
+            By default, all indices are covariant.
+        tensor_rank: If the object contains multiple tensors, this parameter specifies the rank of the tensors contained
+            in the collection. By default, only a single tensor is contained in a Tensor object.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
-    Attributes
-    ----------
-    array : numpy.ndarray
-        The underlying numpy array.
+    Attributes:
+        array: The underlying numpy array.
 
-    References
-    ----------
     .. [1] https://en.wikipedia.org/wiki/Ricci_calculus#Upper_and_lower_indices
 
     """
@@ -113,28 +105,28 @@ class Tensor(Sized, Iterable):
 
     @property
     def shape(self) -> tuple[int, ...]:
-        """:obj:`tuple` of :obj:`int`: The shape of the underlying numpy array, same as ``self.array.shape``."""
+        """The shape of the underlying numpy array, same as ``self.array.shape``."""
         return self.array.shape
 
     @property
     def dtype(self) -> np.dtype:
-        """numpy.dtype: The dtype of the underlying numpy array, same as ``self.array.dtype``."""
+        """The dtype of the underlying numpy array, same as ``self.array.dtype``."""
         return self.array.dtype
 
     @property
     def cdim(self) -> int:
-        """int: Number of collection indices. For single tensors this is always zero."""
+        """Number of collection indices. For single tensors this is always zero."""
         return len(self._collection_indices)
 
     @property
     def tensor_shape(self) -> tuple[int, int]:
-        """:obj:`tuple` of :obj:`int`: The shape or type of the tensor, the first number is the number of
+        """The shape or type of the tensor, the first number is the number of
         covariant indices, the second the number of contravariant indices."""
         return len(self._covariant_indices), len(self._contravariant_indices)
 
     @property
     def rank(self) -> int:
-        """int: The rank of the Tensor, same as ``self.array.ndim``."""
+        """The rank of the Tensor, same as ``self.array.ndim``."""
         return self.array.ndim
 
     def tensor_product(self, other: Tensor) -> Tensor:
@@ -143,14 +135,10 @@ class Tensor(Sized, Iterable):
         This method will also reorder the indices of the resulting tensor, to ensure that covariant indices are in
         front of the contravariant indices.
 
-        Parameters
-        ----------
-        other : Tensor
-            The other tensor.
+        Args:
+            other: The other tensor.
 
-        Returns
-        -------
-        Tensor
+        Returns:
             The tensor product.
 
         """
@@ -165,15 +153,11 @@ class Tensor(Sized, Iterable):
     def transpose(self, perm: Iterable[int] | None = None) -> Tensor:
         """Permute the indices of the tensor.
 
-        Parameters
-        ----------
-        perm : tuple of int, optional
-            A list of permuted indices or a shorter list representing a permutation in cycle notation.
-            By default, the indices are reversed.
+        Args:
+            perm: A list of permuted indices or a shorter list representing a permutation in cycle notation.
+                By default, the indices are reversed.
 
-        Returns
-        -------
-        Tensor
+        Returns:
             The tensor with permuted indices.
 
         """
@@ -222,14 +206,10 @@ class Tensor(Sized, Iterable):
     def expand_dims(self, axis: int) -> Tensor:
         """Add a new index as collection index.
 
-        Parameters
-        ----------
-        axis : int
-            Position in the new shape where the new axis is placed.
+        Args:
+            axis: Position in the new shape where the new axis is placed.
 
-        Returns
-        -------
-        Tensor
+        Returns:
             The tensor collection with an additional index.
 
         """
@@ -248,14 +228,10 @@ class Tensor(Sized, Iterable):
     def squeeze(self, axis: int) -> Tensor:
         """Remove an axis of length one.
 
-        Parameters
-        ----------
-        axis : int
-            Axis to remove.
+        Args:
+            axis: Axis to remove.
 
-        Returns
-        -------
-        Tensor
+        Returns:
             The tensor without the removed axis.
 
         """
@@ -272,14 +248,10 @@ class Tensor(Sized, Iterable):
     def is_zero(self, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Test whether the tensor is zero with respect to covariant and contravariant indices.
 
-        Parameters
-        ----------
-        tol : float, optional
-            The accepted tolerance.
+        Args:
+            tol: The accepted tolerance.
 
-        Returns
-        -------
-        ndarray
+        Returns:
             True if the tensor is zero. If there are more indices than the covariant and contravariant indices,
             a boolean array is returned.
 
@@ -293,7 +265,7 @@ class Tensor(Sized, Iterable):
             class_name += "Collection"
         return f"{class_name}({self.array.tolist()})"
 
-    def _get_index_mapping(self, index):
+    def _get_index_mapping(self, index: TensorIndex) -> list[int]:
         index = normalize_index(index, self.shape)
         advanced_indices = []
         index_mapping = list(range(self.rank))
@@ -446,12 +418,12 @@ class Tensor(Sized, Iterable):
 
     @property
     def size(self) -> npt.NDArray[np.int_]:
-        """int: The number of tensors in the tensor, i.e. the product of the size of all collection axes."""
+        """The number of tensors in the tensor, i.e. the product of the size of all collection axes."""
         return np.prod([self.shape[i] for i in self._collection_indices], dtype=int)
 
     @property
     def flat(self) -> Generator[Tensor, None, None]:
-        """generator: A flat iterator of the collection that yields Tensor objects."""
+        """A flat iterator of the collection that yields Tensor objects."""
         if self.cdim == 0:
             # TODO: flatten all other indices as well
             raise TypeError("A Tensor without collection indices is not iterable.")
@@ -461,7 +433,7 @@ class Tensor(Sized, Iterable):
 
 
 class LeviCivitaTensor(Tensor):
-    r"""This class can be used to construct a tensor representing the Levi-Civita symbol.
+    r"""This class can be used to construct a tensor representing the Levi-Civita symbol ([1]).
 
     The Levi-Civita symbol is also called :math:`\varepsilon`-Tensor and is defined as follows:
 
@@ -474,15 +446,10 @@ class LeviCivitaTensor(Tensor):
             0 & \text{ else}
         \end{cases}
 
-    Parameters
-    ----------
-    size : int
-        The number of indices of the tensor.
-    covariant: :obj:`bool`, optional
-        If true, the tensor will only have covariant indices. Default: True
+    Args:
+        size: The number of indices of the tensor.
+        covariant: If true, the tensor will only have covariant indices. Default: True
 
-    References
-    ----------
     .. [1] https://en.wikipedia.org/wiki/Levi-Civita_symbol#Generalization_to_n_dimensions
 
     """
@@ -505,7 +472,7 @@ class LeviCivitaTensor(Tensor):
 
 
 class KroneckerDelta(Tensor):
-    r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
+    r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor ([1]).
 
     The following generalized definition of the Kronecker delta is used:
 
@@ -518,15 +485,10 @@ class KroneckerDelta(Tensor):
             0 & \text{ else}
         \end{cases}
 
-    Parameters
-    ----------
-    n : int
-        The dimension of the tensor.
-    p : int, optional
-        The number of covariant and contravariant indices of the tensor, default is 1.
+    Args:
+        n: The dimension of the tensor.
+        p: The number of covariant and contravariant indices of the tensor, default is 1.
 
-    References
-    ----------
     .. [1] https://en.wikipedia.org/wiki/Kronecker_delta#Generalizations
 
     """
@@ -569,16 +531,13 @@ class TensorDiagram:
     :math:`A_{i j}B^{i k}_l`, where :math:`j, k, l` are free indices. The indices to contract are chosen from front to
     back from contravariant and covariant indices of the tensors that are connected by an edge.
 
-    Parameters
-    ----------
-    *edges
-        Variable number of tuples, that represent the edge from one tensor to another.
+    Args:
+        *edges: Variable number of tuples, that represent the edge from one tensor to another.
 
 
-    References
-    ----------
-    .. [1] https://www-m10.ma.tum.de/foswiki/pub/Lehrstuhl/PublikationenJRG/52_TensorDiagrams.pdf
-    .. [2] J. Richter-Gebert: Perspectives on Projective Geometry, Chapters 13-14
+    References:
+        https://www-m10.ma.tum.de/foswiki/pub/Lehrstuhl/PublikationenJRG/52_TensorDiagrams.pdf
+        J. Richter-Gebert: Perspectives on Projective Geometry, Chapters 13-14
 
     """
 
@@ -598,10 +557,8 @@ class TensorDiagram:
         A diagram of nodes where none are connected is equivalent to calculating the tensor product with the
         method :meth:`Tensor.tensor_product`.
 
-        Parameters
-        ----------
-        node : Tensor
-            The node to add.
+        Args:
+            node: The node to add.
 
         """
         self._nodes.append(node)
@@ -614,12 +571,9 @@ class TensorDiagram:
     def add_edge(self, source: Tensor, target: Tensor) -> None:
         """Add an edge to the diagram.
 
-        Parameters
-        ----------
-        source : Tensor
-            The source tensor of the edge in the diagram.
-        target : Tensor
-            The target tensor of the edge in the diagram.
+        Args:
+            source: The source tensor of the edge in the diagram.
+            target: The target tensor of the edge in the diagram.
 
         """
 
@@ -664,9 +618,7 @@ class TensorDiagram:
     def calculate(self) -> Tensor:
         """Calculates the result of the diagram.
 
-        Returns
-        -------
-        Tensor
+        Returns:
             The tensor resulting from the specified tensor diagram.
 
         """
@@ -739,5 +691,5 @@ class ProjectiveTensor(Tensor, ABC):
 
     @property
     def dim(self) -> int:
-        """int: The ambient dimension of the tensor."""
+        """The ambient dimension of the tensor."""
         return self.shape[-1] - 1

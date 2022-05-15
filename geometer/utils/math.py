@@ -13,21 +13,14 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
 
     For documentation of the tolerance parameters see :func:`numpy.isclose`.
 
-    Parameters
-    ----------
-    a, b : array_like
-        Input arrays to compare.
-    axis : None or int or tuple of ints, optional
-        The axis or axes along which the two arrays are compared.
-        The default axis=None will compare the whole arrays and return only a single boolean value.
-    rtol : float, optional
-        The relative tolerance parameter.
-    atol : float, optional
-        The absolute tolerance parameter.
+    Args:
+        a, b: Numerical input arrays to compare.
+        axis: The axis or axes along which the two arrays are compared.
+            The default axis=None will compare the whole arrays and return only a single boolean value.
+        rtol: The relative tolerance parameter.
+        atol: The absolute tolerance parameter.
 
-    Returns
-    -------
-    array_like
+    Returns:
         Returns a boolean array of where along the given axis the arrays are a scalar multiple of each other (within the
         given tolerance). If no axis is given, returns a single boolean value.
 
@@ -75,14 +68,10 @@ def hat_matrix(*args: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.com
             b  & -a & 0
         \end{pmatrix}
 
-    Parameters
-    ----------
-    a, b, c : float
-        The scalars to use in the matrix.
+    Args:
+        a, b, c: The scalars to use in the matrix.
 
-    Returns
-    -------
-    numpy.ndarray
+    Returns:
         The resulting antisymmetric matrix.
 
     """
@@ -146,15 +135,11 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]
     Source (German):
     https://de.wikipedia.org/wiki/Levi-Civita-Symbol#Zusammenhang_mit_der_Determinante
 
-    Parameters
-    ----------
-    A : (..., M, M) array_like
-        The input matrix.
+    Args:
+        A: (..., M, M) The input matrix.
 
-    Returns
-    -------
-    (..., M, M) numpy.ndarray
-        The adjugate of A.
+    Returns:
+        (..., M, M) The adjugate of A.
 
     """
     A = np.asarray(A)
@@ -191,15 +176,11 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]
 def det(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
     """Computes the determinant of A.
 
-    Parameters
-    ----------
-    A : (..., M, M) array_like
-        The input matrix.
+    Args:
+        A: (..., M, M) The input matrix.
 
-    Returns
-    -------
-    (...) array_like
-        The determinant of A.
+    Returns:
+        (...) The determinant of A.
 
     """
     A = np.asarray(A)
@@ -222,15 +203,11 @@ def det(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
 def inv(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
     """Computes the inverse of A.
 
-    Parameters
-    ----------
-    A : (..., M, M) array_like
-        The input matrix.
+    Args:
+        A: (..., M, M) The input matrix.
 
-    Returns
-    -------
-    (..., M, M) numpy.ndarray
-        The inverse of A.
+    Returns:
+        (..., M, M) The inverse of A.
 
     """
     A = np.asarray(A)
@@ -251,17 +228,12 @@ def inv(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
 def null_space(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray[np.float_]:
     """Constructs an orthonormal basis for the null space of a A using SVD.
 
-    Parameters
-    ----------
-    A : (..., M, N) array_like
-        The input matrix.
-    dim : int or None, optional
-        The dimension of the null space if previously known.
+    Args:
+        A : (..., M, N) The input matrix.
+        dim: The dimension of the null space if previously known.
 
-    Returns
-    -------
-    (..., N, K) numpy.ndarray
-        Orthonormal basis for the null space of A (as column vectors in the returned matrix).
+    Returns:
+        (..., N, K) Orthonormal basis for the null space of A (as column vectors in the returned matrix).
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=True)
@@ -281,17 +253,12 @@ def null_space(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray
 def orth(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray[np.float_]:
     """Constructs an orthonormal basis for the range of A using SVD.
 
-    Parameters
-    ----------
-    A : (..., M, N) array_like
-        The input matrix.
-    dim : int or None, optional
-        The dimension of the image space if previously known.
+    Args:
+        A: (..., M, N) The input matrix.
+        dim: The dimension of the image space if previously known.
 
-    Returns
-    -------
-    (..., M, K) numpy.ndarray
-        Orthonormal basis for the range of A (as column vectors in the returned matrix).
+    Returns:
+        (..., M, K) Orthonormal basis for the range of A (as column vectors in the returned matrix).
 
     """
     u, s, vh = np.linalg.svd(A, full_matrices=False)
@@ -312,24 +279,15 @@ def matmul(a: npt.ArrayLike, b: npt.ArrayLike, transpose_a: bool = False, transp
            adjoint_a: bool = False, adjoint_b: bool = False, **kwargs) -> np.ndarray:
     """Matrix product of two arrays.
 
-    Parameters
-    ----------
-    a, b : array_like
-        Input arrays, scalars not allowed.
-    transpose_a : bool
-        If true, `a` is transposed before multiplication.
-    transpose_b : bool
-        If true, `b` is transposed before multiplication.
-    adjoint_a : bool
-        If true, `a` is conjugated and transposed before multiplication.
-    adjoint_b : bool
-        If true, `b` is conjugated and transposed before multiplication.
-    **kwargs
-        Additional keyword arguments for `numpy.matmul`.
+    Args:
+        a, b: Input arrays, scalars not allowed.
+        transpose_a: If true, `a` is transposed before multiplication.
+        transpose_b: If true, `b` is transposed before multiplication.
+        adjoint_a: If true, `a` is conjugated and transposed before multiplication.
+        adjoint_b: If true, `b` is conjugated and transposed before multiplication.
+        **kwargs: Additional keyword arguments for `numpy.matmul`.
 
-    Returns
-    -------
-    numpy.ndarray
+    Returns:
         The matrix product of the inputs.
 
     """
@@ -350,20 +308,13 @@ def matvec(a: npt.ArrayLike, b: npt.ArrayLike, transpose_a: bool = False,
            adjoint_a: bool = False, **kwargs) -> np.ndarray:
     """Matrix-vector product of two arrays.
 
-    Parameters
-    ----------
-    a, b : array_like
-        Input arrays, scalars not allowed.
-    transpose_a : bool
-        If true, `a` is transposed before multiplication.
-    adjoint_a : bool
-        If true, `a` is conjugated and transposed before multiplication.
-    **kwargs
-        Additional keyword arguments for `numpy.matmul`.
+    Args:
+        a, b: Input arrays, scalars not allowed.
+        transpose_a: If true, `a` is transposed before multiplication.
+        adjoint_a: If true, `a` is conjugated and transposed before multiplication.
+        **kwargs: Additional keyword arguments for `numpy.matmul`.
 
-    Returns
-    -------
-    numpy.ndarray
+    Returns:
         The matrix-vector product of the inputs.
 
     """
@@ -380,14 +331,10 @@ def roots(p: npt.ArrayLike) -> npt.NDArray[np.float_ | np.complex_]:
 
         p[0] x^n + p[1] x^{n-1} + \ldots + p[n-1] x + p[n].
 
-    Parameters
-    ----------
-    p : array_like
-        The coefficients of the polynomial.
+    Args:
+        p: The coefficients of the polynomial.
 
-    Returns
-    -------
-    array_like
+    Returns:
         The roots of the polynomial.
 
     """
@@ -454,19 +401,13 @@ def outer(a: npt.ArrayLike, b: npt.ArrayLike,
           out: np.ndarray | None = None) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
     """Outer product of two arrays.
 
-    Parameters
-    ----------
-    a : (..., M) array_like
-        The first input array.
-    b : (..., N) array_like
-        The second input array.
-    out : (..., M, N) ndarray, optional
-        Output array.
+    Args:
+        a: (..., M) The first input array.
+        b: (..., N) The second input array.
+        out: (..., M, N) Output array.
 
-    Returns
-    -------
-    out : (..., M, N) ndarray
-        The outer product of a and b.
+    Returns:
+        out: (..., M, N) The outer product of a and b.
 
     """
     a, b = np.asarray(a), np.asarray(b)

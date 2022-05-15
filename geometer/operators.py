@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+from typing import cast
+
 import numpy as np
+import numpy.typing as npt
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL, LeviCivitaTensor, TensorDiagram
 from .curve import absolute_conic
@@ -7,19 +12,15 @@ from .point import I, J, Line, Plane, Point, infty, infty_plane, join, meet
 from .utils import det, matvec, orth
 
 
-def crossratio(a, b, c, d, from_point=None):
+def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line | Plane, d: Point | Line | Plane,
+               from_point: Point | None = None) -> npt.NDArray[np.float_ | np.complex_]:
     """Calculates the cross ratio of points or lines.
 
-    Parameters
-    ----------
-    a, b, c, d : Point, Line or Plane
-        The points, lines or planes (any dimension) to calculate the cross ratio of.
-    from_point : Point, optional
-        A 2D point, only accepted if the other arguments are also 2D points.
+    Args:
+        a, b, c, d: The points, lines or planes (any dimension) to calculate the cross ratio of.
+        from_point: A 2D point, only accepted if the other arguments are also 2D points.
 
-    Returns
-    -------
-    array_like
+    Returns:
         The cross ratio(s) of the given objects.
 
     """
@@ -74,21 +75,17 @@ def crossratio(a, b, c, d, from_point=None):
         return ac * bd / (ad * bc)
 
 
-def harmonic_set(a, b, c):
+def harmonic_set(a: Point, b: Point, c: Point) -> Point:
     """Constructs a fourth point that forms a harmonic set with the given points.
 
     The three given points must be collinear.
 
     If the returned point is d, the points {{a, b}, {c, d}} will be in harmonic position.
 
-    Parameters
-    ----------
-    a, b, c : Point
-        The points (any dimension) that are used to construct the fourth point in the harmonic set.
+    Args:
+        a, b, c: The points (any dimension) that are used to construct the fourth point in the harmonic set.
 
-    Returns
-    -------
-    Point
+    Returns:
         The point that forms a harmonic set with the given points.
 
     """
@@ -107,6 +104,7 @@ def harmonic_set(a, b, c):
         l = join(a, b)
 
     m = join(o, c)
+    m = cast(Line, m)
     p = o + 1 / 2 * m.direction
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
 
@@ -116,7 +114,7 @@ def harmonic_set(a, b, c):
     return result
 
 
-def angle(*args):
+def angle(*args: Point | Line | Plane) -> npt.NDArray[np.float_]:
     r"""Calculates the (oriented) angle between given points, lines or planes.
 
     The function uses the Laguerre formula to calculate angles in two or three dimensional projective space
@@ -131,19 +129,14 @@ def angle(*args):
     the same order as the arguments to this function.
     When three points are given as arguments, the first point is the point at which the angle is calculated.
 
-    Parameters
-    ----------
-    *args
-        The objects between which the function calculates the angle. This can be 2 or 3 points, 2 lines or 2 planes.
+    Args:
+        *args: The objects of which the function calculates the angle. These can be 2 or 3 points, 2 lines or 2 planes.
 
-    Returns
-    -------
-    array_like
+    Returns:
         The oriented angle(s) between the given objects.
 
-    References
-    ----------
-    .. [1] Olivier Faugeras, Three-dimensional Computer Vision, Page 30
+    References:
+        .. [1] Olivier Faugeras, Three-dimensional Computer Vision, Page 30
 
     """
     if len(args) == 3:
@@ -195,17 +188,13 @@ def angle(*args):
     return np.real(1 / 2j * np.log(crossratio(b, c, I, J, a)))
 
 
-def angle_bisectors(l, m):
+def angle_bisectors(l: Line, m: Line) -> tuple[Line, Line]:
     """Constructs the angle bisectors of two given lines.
 
-    Parameters
-    ----------
-    l, m : Line
-        Two lines in any dimension.
+    Args:
+        l, m: Two lines in any dimension.
 
-    Returns
-    -------
-    tuple of Line
+    Returns:
         The two angle bisectors.
 
     """
@@ -236,10 +225,10 @@ def angle_bisectors(l, m):
         r = r._matrix_transform(np.swapaxes(basis, -1, -2))
         s = s._matrix_transform(np.swapaxes(basis, -1, -2))
 
-    return join(o, r), join(o, s)
+    return cast(Line, join(o, r)), cast(Line, join(o, s))
 
 
-def dist(p, q):
+def dist(p: Point | Line | Plane, q) -> npt.NDArray[np.float_]:
     r"""Calculates the (euclidean) distance between two objects.
 
     Instead of the usual formula for the euclidean distance this function uses
@@ -248,23 +237,18 @@ def dist(p, q):
     .. math::
         \textrm{dist}(P, Q) = 4 \left|\frac{\sqrt{[P, Q, I][P, Q, J]}}{[P, I, J][Q, I, J]}\right|
 
-    Parameters
-    ----------
-    p, q : Point, Line, Plane or Polygon
-        The points, lines or planes to calculate the distance between.
+    Args:
+        p, q: The points, lines or planes to calculate the distance between.
 
-    Returns
-    -------
-    array_like
+    Returns:
         The distance between the given objects.
 
-    References
-    ----------
-    .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 18.8
+    References:
+        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 18.8
 
     """
     if p == q:
-        return 0
+        return np.zeros(p.shape[:p.cdim])
 
     subspace_types = (Line, Plane)
 
@@ -321,21 +305,16 @@ def dist(p, q):
         return 4 * np.abs(np.sqrt(pqi * pqj) / (pij * qij))
 
 
-def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
+def is_cocircular(a: Point, b: Point, c: Point, d: Point,
+                  rtol: float = EQ_TOL_REL, atol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
     """Tests whether four points lie on a circle.
 
-    Parameters
-    ----------
-    a, b, c, d : Point
-        Four points in RP2 or CP1.
-    rtol : float, optional
-        The relative tolerance parameter.
-    atol : float, optional
-        The absolute tolerance parameter.
+    Args:
+        a, b, c, d: Four points in RP2 or CP1.
+        rtol: The relative tolerance parameter.
+        atol: The absolute tolerance parameter.
 
-    Returns
-    -------
-    array_like
+    Returns:
         True if the four points lie on a circle.
 
     """
@@ -355,21 +334,16 @@ def is_cocircular(a, b, c, d, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     return np.isclose(i, j, rtol, atol)
 
 
-def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
+def is_perpendicular(l: Line | Plane, m: Line | Plane,
+                     rtol: float = EQ_TOL_REL, atol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
     """Tests whether two lines/planes are perpendicular.
 
-    Parameters
-    ----------
-    l, m : Line or Plane
-        Two lines in any dimension or two planes in 3D.
-    rtol : float, optional
-        The relative tolerance parameter.
-    atol : float, optional
-        The absolute tolerance parameter.
+    Args:
+        l, m: Two lines in any dimension or two planes in 3D.
+        rtol: The relative tolerance parameter.
+        atol: The absolute tolerance parameter.
 
-    Returns
-    -------
-    array_like
+    Returns:
         True if the two lines/planes are perpendicular.
 
     """
@@ -402,21 +376,16 @@ def is_perpendicular(l, m, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
     return np.isclose(crossratio(L, M, I, J, Point(1, 1)), -1, rtol, atol)
 
 
-def is_coplanar(*args, tol=EQ_TOL_ABS):
+def is_coplanar(*args: Point | Line, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
     """Tests whether the given points or lines are collinear, coplanar or concurrent. Works in any dimension.
 
     Due to line point duality this function has dual versions :obj:`is_collinear` and :obj:`is_concurrent`.
 
-    Parameters
-    ----------
-    *args
-        The points or lines to test.
-    tol : float, optional
-            The accepted tolerance.
+    Args:
+        *args: The points or lines to test.
+        tol: The accepted tolerance.
 
-    Returns
-    -------
-    array_like
+    Returns:
         True if the given points are coplanar (in 3D) or collinear (in 2D) or if the given lines are concurrent.
 
     """

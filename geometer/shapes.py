@@ -23,21 +23,14 @@ class Polytope(Point):
     The polytope is stored as a multidimensional numpy array. Hence, all facets of the polytope must have the same
     number of vertices and facets.
 
-    Parameters
-    ----------
-    *args
-        The polytopes defining the facets ot the polytope.
-    pdim: int, optional
-        The dimension of the polytope. Default is 0, i.e. an instance of this class is a point.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: The polytopes defining the facets ot the polytope.
+        pdim: The dimension of the polytope. Default is 0, i.e. an instance of this class is a point.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
-    Attributes
-    ----------
-    array : numpy.ndarray
-        The underlying numpy array.
-    pdim : int
-        The dimension of the polytope.
+    Attributes:
+        array: The underlying numpy array.
+        pdim: The dimension of the polytope.
 
     """
 
@@ -57,7 +50,7 @@ class Polytope(Point):
 
     @property
     def vertices(self) -> list[Point]:
-        """list of Point: The vertices of the polytope."""
+        """The vertices of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         new_shape = self.shape[:first_polygon_index] + (-1, self.shape[-1])
         array = self.array.reshape(new_shape)
@@ -65,7 +58,7 @@ class Polytope(Point):
 
     @property
     def facets(self) -> list[Polytope]:
-        """list of Polytope: The facets of the polytope."""
+        """The facets of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         slices = (slice(None),) * first_polygon_index
         return [self._cast_polytope(self[slices + (i,)], self.pdim - 1) for i in range(self.shape[first_polygon_index])]
@@ -152,12 +145,9 @@ class Segment(Polytope):
 
     Segments with one point at infinity represent rays/half-lines in a traditional sense.
 
-    Parameters
-    ----------
-    *args
-        The start and endpoint of the line segment, either as two Point objects or a single coordinate array.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: The start and endpoint of the line segment, either as two Point objects or a single coordinate array.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -194,7 +184,7 @@ class Segment(Polytope):
 
     @property
     def vertices(self) -> list[Point]:
-        """list of Point: The start and endpoint of the line segment."""
+        """The start and endpoint of the line segment."""
         a = Point(self.array[..., 0, :], copy=False)
         b = Point(self.array[..., 1, :], copy=False)
         return [a, b]
@@ -207,19 +197,14 @@ class Segment(Polytope):
     def _edges(self) -> np.ndarray:
         return self.array
 
-    def contains(self, other, tol=EQ_TOL_ABS):
+    def contains(self, other: Point, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests whether a point is contained in the segment.
 
-        Parameters
-        ----------
-        other : Point
-            The point to test.
-        tol : float, optional
-            The accepted tolerance.
+        Args:
+            other: The point to test.
+            tol: The accepted tolerance.
 
-        Returns
-        -------
-        bool
+        Returns:
             True if the point is contained in the segment.
 
         """
@@ -254,14 +239,10 @@ class Segment(Polytope):
     def intersect(self, other: Line | Plane | Segment | Polygon | Polyhedron) -> list[Point]:
         """Intersect the line segment with another object.
 
-        Parameters
-        ----------
-        other : Line, Plane, Segment, Polygon or Polyhedron
-            The object to intersect the line segment with.
+        Args:
+            other: The object to intersect the line segment with.
 
-        Returns
-        -------
-        list of Point
+        Returns:
             The points of intersection.
 
         """
@@ -283,13 +264,13 @@ class Segment(Polytope):
 
     @property
     def midpoint(self) -> Point:
-        """Point: The midpoint of the segment."""
+        """The midpoint of the segment."""
         l = self._line.meet(infty_hyperplane(self.dim))
         return harmonic_set(*self.vertices, l)
 
     @property
-    def length(self) -> float:
-        """float: The length of the segment."""
+    def length(self) -> npt.NDArray[np.float_]:
+        """The length of the segment."""
         return dist(*self.vertices)
 
 
@@ -298,12 +279,9 @@ class Simplex(Polytope):
 
     The simplex determined by k+1 points is given by the convex hull of these points.
 
-    Parameters
-    ----------
-    *args
-        The points that are the vertices of the simplex.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: The points that are the vertices of the simplex.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -321,7 +299,7 @@ class Simplex(Polytope):
 
     @property
     def volume(self) -> float:
-        """float: The volume of the simplex, calculated using the Cayley–Menger determinant."""
+        """The volume of the simplex, calculated using the Cayley–Menger determinant."""
         points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
         points = self._normalize_array(points)
         n, k = points.shape
@@ -346,12 +324,10 @@ class Polygon(Polytope):
 
     The vertices of the polygon must be given either in clockwise or counterclockwise order.
 
-    Parameters
-    ----------
-    *args
-        The coplanar points that are the vertices of the polygon. They will be connected sequentially by line segments.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: The coplanar points that are the vertices of the polygon.
+            They will be connected sequentially by line segments.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -383,7 +359,7 @@ class Polygon(Polytope):
 
     @property
     def edges(self) -> Segment:
-        """Segment: The edges of the polygon."""
+        """The edges of the polygon."""
         return Segment(self._edges, copy=False)
 
     def contains(self, other: Point) -> npt.NDArray[np.bool_]:
@@ -391,19 +367,14 @@ class Polygon(Polytope):
 
         Points on an edge of the polygon are considered True.
 
-        Parameters
-        ----------
-        other : Point
-            The point to test.
+        Args:
+            other: The point to test.
 
-        Returns
-        -------
-        array_like
+        Returns:
             True if the point is contained in the polygon.
 
-        References
-        ----------
-        .. [1] http://paulbourke.net/geometry/polygonmesh/#insidepoly
+        References:
+            .. [1] http://paulbourke.net/geometry/polygonmesh/#insidepoly
 
         """
         if other.shape[0] == 0:
@@ -473,14 +444,10 @@ class Polygon(Polytope):
     def intersect(self, other: Line | Segment) -> list[Point]:
         """Intersect the polygon with another object.
 
-        Parameters
-        ----------
-        other : Line or Segment
-            The object to intersect the polygon with.
+        Args:
+            other: The object to intersect the polygon with.
 
-        Returns
-        -------
-        list of Point
+        Returns:
             The points of intersection.
 
         """
@@ -528,14 +495,14 @@ class Polygon(Polytope):
 
     @property
     def area(self) -> npt.NDArray[np.float_]:
-        """float: The area of the polygon."""
+        """The area of the polygon."""
         points = self._normalized_projection()
         a = sum(det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2] - 1))
         return 1 / 2 * np.abs(a)
 
     @property
     def centroid(self) -> Point:
-        """Point: The centroid (center of mass) of the polygon."""
+        """The centroid (center of mass) of the polygon."""
         points = self.normalized_array
         centroids = [np.average(points[[0, i, i + 1], :-1], axis=0) for i in range(1, points.shape[0] - 1)]
         weights = [det(self._normalized_projection()[[0, i, i + 1]]) / 2 for i in range(1, points.shape[0] - 1)]
@@ -543,7 +510,7 @@ class Polygon(Polytope):
 
     @property
     def angles(self) -> list[float]:
-        """list of float: The interior angles of the polygon."""
+        """The interior angles of the polygon."""
         result = []
         a = self.edges[-1]
         for b in self.edges:
@@ -556,18 +523,12 @@ class Polygon(Polytope):
 class RegularPolygon(Polygon):
     """A class that can be used to construct regular polygon from a radius and a center point.
 
-    Parameters
-    ----------
-    center : Point
-        The center of the polygon.
-    radius : float
-        The distance from the center to the vertices of the polygon.
-    n : int
-        The number of vertices of the regular polygon.
-    axis : Point, optional
-        If constructed in higher-dimensional spaces, an axis vector is required to orient the polygon.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center of the polygon.
+        radius: The distance from the center to the vertices of the polygon.
+        n: The number of vertices of the regular polygon.
+        axis: If constructed in higher-dimensional spaces, an axis vector is required to orient the polygon.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -589,35 +550,37 @@ class RegularPolygon(Polygon):
         super().__init__(*vertices, **kwargs)
 
     @property
-    def radius(self) -> float:
-        """float: The Circumradius of the regular polygon."""
+    def radius(self) -> npt.NDArray[np.float_]:
+        """The circumradius of the regular polygon."""
         return dist(self.center, self.vertices[0])
 
     @property
     def center(self) -> Point:
-        """Point: The center of the polygon."""
+        """The center of the polygon."""
         return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
 
     @property
-    def inradius(self) -> float:
-        """float: The inradius of the regular polygon."""
+    def inradius(self) -> npt.NDArray[np.float_]:
+        """The inradius of the regular polygon."""
         return dist(self.center, self.edges[0].midpoint)
 
 
 class Triangle(Polygon, Simplex):
     """A class representing triangles.
 
-    Parameters
-    ----------
-    a : Point
-    b : Point
-    c : Point
+    Args:
+        *args: The vertices of the triangle.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.shape[-2] == 3, "Unexpected number of vertices."
+
     @property
     def circumcenter(self) -> Point:
-        """Point: The circumcenter of the triangle."""
+        """The circumcenter of the triangle."""
         e1, e2, e3 = self.edges
         bisector1 = e1._line.perpendicular(e1.midpoint, plane=self._plane)
         bisector2 = e2._line.perpendicular(e2.midpoint, plane=self._plane)
@@ -657,16 +620,15 @@ class Triangle(Polygon, Simplex):
 class Rectangle(Polygon):
     """A class representing rectangles.
 
-    Parameters
-    ----------
-    a : Point
-    b : Point
-    c : Point
-    d : Point
+    Args:
+        *args: The vertices of the rectangle.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.shape[-2] == 4, "Unexpected number of vertices."
 
 
 class Polyhedron(Polytope):
@@ -677,31 +639,27 @@ class Polyhedron(Polytope):
 
     @property
     def faces(self) -> Polygon:
-        """PolygonCollection: The faces of the polyhedron."""
+        """The faces of the polyhedron."""
         return Polygon(self.array, copy=False)
 
     @property
     def edges(self) -> list[Segment]:
-        """list of Segment: The edges of the polyhedron."""
+        """The edges of the polyhedron."""
         result = self._edges
         return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(*self.shape[:2])))
 
     @property
     def area(self) -> npt.NDArray[np.float_]:
-        """float: The surface area of the polyhedron."""
+        """The surface area of the polyhedron."""
         return np.sum(self.faces.area)
 
     def intersect(self, other: Line | Segment) -> list[Point]:
         """Intersect the polyhedron with another object.
 
-        Parameters
-        ----------
-        other : Line or Segment
-            The object to intersect the polyhedron with.
+        Args:
+            other: The object to intersect the polyhedron with.
 
-        Returns
-        -------
-        list of Point
+        Returns:
             The points of intersection.
 
         """
@@ -711,18 +669,12 @@ class Polyhedron(Polytope):
 class Cuboid(Polyhedron):
     """A class that can be used to construct a cuboid/box or a cube.
 
-    Parameters
-    ----------
-    a : Point
-        The base point of the cuboid.
-    b : Point
-        The vertex that determines the first direction of the edges.
-    c : Point
-        The vertex that determines the second direction of the edges.
-    d : Point
-        The vertex that determines the third direction of the edges.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        a: The base point of the cuboid.
+        b: The vertex that determines the first direction of the edges.
+        c: The vertex that determines the second direction of the edges.
+        d: The vertex that determines the third direction of the edges.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 

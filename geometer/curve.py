@@ -21,21 +21,15 @@ class Quadric(ProjectiveTensor):
     space. If :math:`A \in \mathbb{R}^{(n+1) \times (n+1)}`, the quadric contains all points
     :math:`x \in \mathbb{R}^{n+1}` such that :math:`x^T A x = 0`.
 
-    Parameters
-    ----------
-    matrix : array_like or Tensor
-        A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
-    is_dual : bool, optional
-        If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
-    normalize_matrix : bool, optional
-        If true, normalize matrix using the (n+1)-th root of the absolute value of its pseudo-determinant.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        matrix: A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
+        is_dual: If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
+        normalize_matrix: If true, normalize matrix using the (n+1)-th root of the absolute value of
+            its pseudo-determinant.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
-    Attributes
-    ----------
-    is_dual : bool
-        True if the quadric is a dual quadric i.e. contains all hyperplanes tangent to the non-dual quadric.
+    Attributes:
+        is_dual: True if the quadric is a dual quadric i.e. contains all hyperplanes tangent to the non-dual quadric.
 
     """
 
@@ -67,14 +61,10 @@ class Quadric(ProjectiveTensor):
     def from_planes(cls, e: Plane, f: Plane) -> Quadric:
         """Construct a degenerate quadric from two hyperplanes.
 
-        Parameters
-        ----------
-        e, f : Plane
-            The two planes the quadric consists of.
+        Args:
+            e, f: The two planes the quadric consists of.
 
-        Returns
-        -------
-        Quadric
+        Returns:
             The resulting quadric.
 
         """
@@ -85,14 +75,10 @@ class Quadric(ProjectiveTensor):
     def tangent(self, at: Point) -> Plane:
         """Returns the hyperplane defining the tangent space at a given point.
 
-        Parameters
-        ----------
-        at : Point
-            A point on the quadric at which the tangent plane is calculated.
+        Args:
+            at: A point on the quadric at which the tangent plane is calculated.
 
-        Returns
-        -------
-        Plane
+        Returns:
             The tangent plane at the given point.
 
         """
@@ -101,14 +87,10 @@ class Quadric(ProjectiveTensor):
     def is_tangent(self, plane: Subspace) -> npt.NDArray[np.bool_]:
         """Tests if a given hyperplane is tangent to the quadric.
 
-        Parameters
-        ----------
-        plane : Subspace
-            The hyperplane to test.
+        Args:
+            plane: The hyperplane to test.
 
-        Returns
-        -------
-        bool
+        Returns:
             True if the given hyperplane is tangent to the quadric.
 
         """
@@ -117,16 +99,11 @@ class Quadric(ProjectiveTensor):
     def contains(self, other: Point | Subspace, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests if a given point lies on the quadric.
 
-        Parameters
-        ----------
-        other : Point or Subspace
-            The point or hyperplane to test.
-        tol : float, optional
-            The accepted tolerance.
+        Args:
+            other: The point or hyperplane to test.
+            tol: The accepted tolerance.
 
-        Returns
-        -------
-        bool
+        Returns:
             True if the quadric contains the point.
 
         """
@@ -138,12 +115,12 @@ class Quadric(ProjectiveTensor):
 
     @property
     def is_degenerate(self) -> npt.NDArray[np.bool_]:
-        """bool: True if the quadric is degenerate."""
+        """True if the quadric is degenerate."""
         return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
     def components(self) -> list[Point | Line | Plane]:
-        """list of ProjectiveTensor: The components of a degenerate quadric."""
+        """The components of a degenerate quadric."""
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
         n = self.shape[-1]
         indices = tuple(np.indices(self.shape[:-2]))
@@ -188,19 +165,14 @@ class Quadric(ProjectiveTensor):
         This method also returns complex points of intersection, even if the quadric and the line do not intersect in
         any real points.
 
-        Parameters
-        ----------
-        other: Line
-            The line to intersect this quadric with.
+        Args:
+            other: The line to intersect this quadric with.
 
-        Returns
-        -------
-        list of Point
+        Returns:
             The points of intersection.
 
-        References
-        ----------
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
+        References:
+            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
         if not isinstance(other, Line):
@@ -245,7 +217,7 @@ class Quadric(ProjectiveTensor):
 
     @property
     def dual(self) -> Quadric:
-        """Quadric: The dual quadric."""
+        """The dual quadric."""
         return Quadric(inv(self.array), is_dual=not self.is_dual, copy=False)
 
 
@@ -256,14 +228,10 @@ class Conic(Quadric):
     def from_points(cls, a: Point, b: Point, c: Point, d: Point, e: Point) -> Conic:
         """Construct a conic through five points.
 
-        Parameters
-        ----------
-        a, b, c, d, e : Point
-            The points lying on the conic.
+        Args:
+            a, b, c, d, e: The points lying on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
         """
@@ -285,14 +253,10 @@ class Conic(Quadric):
     def from_lines(cls, g: Line, h: Line) -> Conic:
         """Construct a degenerate conic from two lines.
 
-        Parameters
-        ----------
-        g, h : Line
-            The two lines the conic consists of.
+        Args:
+            g, h: The two lines the conic consists of.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
         """
@@ -304,15 +268,11 @@ class Conic(Quadric):
     def from_tangent(cls, tangent: Line, a: Point, b: Point, c: Point, d: Point) -> Conic:
         """Construct a conic through four points and tangent to a line.
 
-        Parameters
-        ----------
-        tangent : Line
-        a, b, c, d : Point
-            The points lying on the conic.
+        Args:
+            tangent: The line tangent to the conic.
+            a, b, c, d: The points lying on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
         """
@@ -344,16 +304,11 @@ class Conic(Quadric):
     def from_foci(cls, f1: Point, f2: Point, bound: Point) -> Conic:
         """Construct a conic with the given focal points that passes through the boundary point.
 
-        Parameters
-        ----------
-        f1, f2 : Point
-            The two focal points.
-        bound : Point
-            A boundary point that lies on the conic.
+        Args:
+            f1, f2: The two focal points.
+            bound: A boundary point that lies on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
         """
@@ -374,21 +329,15 @@ class Conic(Quadric):
         cross ratio seen from this point is the same as the cross ratio of four of the other points seen from the fifth
         point.
 
-        Parameters
-        ----------
-        cr : float
-            The crossratio of the other points that defines the conic.
-        a, b, c, d : Point
-            The points lying on the conic.
+        Args:
+            cr: The crossratio of the other points that defines the conic.
+            a, b, c, d: The points lying on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
-        References
-        ----------
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
+        References:
+            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
 
         """
         ac = adjugate([np.ones(3), a.array, c.array])[:, 0]
@@ -404,19 +353,14 @@ class Conic(Quadric):
     def intersect(self, other: Line | Conic) -> list[Point]:
         """Calculates points of intersection with the conic.
 
-        Parameters
-        ----------
-        other: Line or Conic
-            The object to intersect this conic with.
+        Args:
+            other: The object to intersect this conic with.
 
-        Returns
-        -------
-        list of Point
+        Returns:
             The points of intersection.
 
-        References
-        ----------
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
+        References:
+            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
 
         """
         if isinstance(other, Conic):
@@ -444,14 +388,10 @@ class Conic(Quadric):
     def tangent(self, at: Point) -> Line | tuple[Line, Line]:
         """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
 
-        Parameters
-        ----------
-        at : Point
-            The point to calculate the tangent at.
+        Args:
+            at: The point to calculate the tangent at.
 
-        Returns
-        -------
-        Line or tuple of Line
+        Returns:
             The tangent line(s).
 
         """
@@ -463,22 +403,18 @@ class Conic(Quadric):
     def polar(self, pt: Point) -> Line:
         """Calculates the polar line of the conic at a given point.
 
-        Parameters
-        ----------
-        pt : Point
-            The point to calculate the polar at.
+        Args:
+            pt: The point to calculate the polar at.
 
-        Returns
-        -------
-        Line
+        Returns:
             The polar line.
 
         """
         return Line(self.array.dot(pt.array), copy=False)
 
     @property
-    def foci(self) -> tuple[Point, Point]:
-        """tuple of Point: The foci of the conic."""
+    def foci(self) -> tuple[Point, ...]:
+        """The foci of the conic."""
         # Algorithm from Perspectives on Projective Geometry, Section 19.4
         i = self.tangent(at=I)
         j = self.tangent(at=J)
@@ -503,16 +439,11 @@ absolute_conic = Conic(np.eye(3))
 class Ellipse(Conic):
     """Represents an ellipse in 2D.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center of the ellipse, default is Point(0, 0).
-    hradius : float, optional
-        The horizontal radius (along the x-axis), default is 1.
-    vradius : float, optional
-         The vertical radius (along the y-axis), default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center of the ellipse, default is Point(0, 0).
+        hradius: The horizontal radius (along the x-axis), default is 1.
+        vradius: The vertical radius (along the y-axis), default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -539,14 +470,10 @@ class Ellipse(Conic):
 class Circle(Ellipse):
     """A circle in 2D.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center point of the circle, default is Point(0, 0).
-    radius : float, optional
-        The radius of the circle, default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center point of the circle, default is Point(0, 0).
+        radius: The radius of the circle, default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -555,18 +482,18 @@ class Circle(Ellipse):
 
     @property
     def center(self) -> Point:
-        """Point: The center of the circle."""
+        """The center of the circle."""
         return self.foci[0]
 
     @property
     def radius(self) -> float:
-        """float: The radius of the circle."""
+        """The radius of the circle."""
         c = self.array[:2, 2] / self.array[0, 0]
         return np.sqrt(c.dot(c) - self.array[2, 2] / self.array[0, 0])
 
     @property
     def lie_coordinates(self) -> Point:
-        """Point: The Lie coordinates of the circle as point in RP4."""
+        """The Lie coordinates of the circle as point in RP4."""
         m = self.center.normalized_array
         x = m[0] ** 2 + m[1] ** 2 - self.radius ** 2
         return Point([(1 + x) / 2, (1 - x) / 2, m[0], m[1], self.radius])
@@ -574,19 +501,14 @@ class Circle(Ellipse):
     def intersection_angle(self, other: Circle) -> float:
         """Calculates the angle of intersection of two circles using its Lie coordinates.
 
-        Parameters
-        ----------
-        other : Circle
-            The circle to intersect this circle with.
+        Args:
+            other: The circle to intersect this circle with.
 
-        Returns
-        -------
-        float
+        Returns:
             The angle of intersection.
 
-        References
-        ----------
-        .. [1] https://en.wikipedia.org/wiki/Lie_sphere_geometry
+        References:
+            .. [1] https://en.wikipedia.org/wiki/Lie_sphere_geometry
 
         """
         # lorenz coordinates
@@ -597,21 +519,17 @@ class Circle(Ellipse):
 
     @property
     def area(self) -> float:
-        """float: The area of the circle."""
+        """The area of the circle."""
         return 2 * np.pi * self.radius ** 2
 
 
 class Sphere(Quadric):
     """A sphere in any dimension.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center of the sphere, default is Point(0, 0, 0).
-    radius : float, optional
-        The radius of the sphere, default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center of the sphere, default is Point(0, 0, 0).
+        radius: The radius of the sphere, default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -633,28 +551,28 @@ class Sphere(Quadric):
 
     @property
     def center(self) -> Point:
-        """Point: The center of the sphere."""
+        """The center of the sphere."""
         return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=False)
 
     @property
     def radius(self) -> float:
-        """float: The radius of the sphere."""
+        """The radius of the sphere."""
         c = self.array[:-1, -1] / self.array[0, 0]
         return np.sqrt(c.dot(c) - self.array[-1, -1] / self.array[0, 0])
 
     @staticmethod
-    def _alpha(n) -> float:
+    def _alpha(n: int) -> float:
         return math.pi ** (n / 2) / math.gamma(n / 2 + 1)
 
     @property
     def volume(self) -> float:
-        """float: The volume of the sphere."""
+        """The volume of the sphere."""
         n = self.dim
         return self._alpha(n) * self.radius ** n
 
     @property
     def area(self) -> float:
-        """float: The surface area of the sphere."""
+        """The surface area of the sphere."""
         n = self.dim
         return n * self._alpha(n) * self.radius ** (n - 1)
 
@@ -662,16 +580,11 @@ class Sphere(Quadric):
 class Cone(Quadric):
     """A quadric that forms a circular double cone in 3D.
 
-    Parameters
-    ----------
-    vertex : Point, optional
-        The vertex or apex of the cone. Default is (0, 0, 0).
-    base_center : Point, optional
-        The center of the circle that forms the base of the cone. Default is (0, 0, 1)
-    radius : float, optional
-        The radius of the circle forming the base of the cone. Default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        vertex: The vertex or apex of the cone. Default is (0, 0, 0).
+        base_center: The center of the circle that forms the base of the cone. Default is (0, 0, 1)
+        radius: The radius of the circle forming the base of the cone. Default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -722,16 +635,11 @@ class Cone(Quadric):
 class Cylinder(Cone):
     """An infinite circular cylinder in 3D.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center of the cylinder. Default is (0, 0, 0).
-    direction : Point
-        The direction of the axis of the cylinder. Default is (0, 0, 1).
-    radius : float, optional
-        The radius of the cylinder. Default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center of the cylinder. Default is (0, 0, 0).
+        direction: The direction of the axis of the cylinder. Default is (0, 0, 1).
+        radius: The radius of the cylinder. Default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 

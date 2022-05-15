@@ -23,7 +23,12 @@ class IncidenceError(GeometryException, ValueError):
 
 
 class LinearDependenceError(GeometryException, ValueError):
-    """The given values were linearly dependent, making the computation impossible."""
+    """The given values were linearly dependent, making the computation impossible.
+
+    Attributes:
+        dependent_values: The indices of the sets of linearly dependent vectors.
+
+    """
 
     def __init__(self, message: str, dependent_values: npt.ArrayLike = True) -> None:
         super().__init__(message)

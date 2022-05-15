@@ -136,7 +136,7 @@ def _join_meet_duality(
     return Subspace(result, copy=False)
 
 
-def _divide_by_power_of_two(array: np.ndarray, power: int):
+def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
     if array.dtype.kind == "c":
         rm, re = np.frexp(array.real)
         im, ie = np.frexp(array.imag)
@@ -155,14 +155,10 @@ def _divide_by_power_of_two(array: np.ndarray, power: int):
 def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Subspace:
     """Joins a number of objects to form a line, plane or subspace.
 
-    Parameters
-    ----------
-    *args
-        Objects to join, e.g. 2 points, lines, a point and a line or 3 points.
+    Args:
+        *args: Objects to join, e.g. 2 points, lines, a point and a line or 3 points.
 
-    Returns
-    -------
-    Subspace
+    Returns:
         The resulting line, plane or subspace.
 
     """
@@ -187,14 +183,10 @@ def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: boo
 def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Point | Subspace:
     """Intersects a number of given objects.
 
-    Parameters
-    ----------
-    *args
-        Objects to intersect, e.g. two lines, planes, a plane and a line or 3 planes.
+    Args:
+        *args: Objects to intersect, e.g. two lines, planes, a plane and a line or 3 planes.
 
-    Returns
-    -------
-    Point or Subspace
+    Returns:
         The resulting point, line or subspace.
 
     """
@@ -216,15 +208,12 @@ class Point(ProjectiveTensor):
     Addition and subtraction of finite and infinite points will always give a finite result if one of the points
     was finite beforehand.
 
-    Parameters
-    ----------
-    *args
-        A single iterable object or tensor or multiple (affine) coordinates.
-    homogenize : bool, optional
-        If True, and the first argument is an array of points, all points in the array will be converted to homogeneous
-        coordinates, i.e. 1 will be added to the coordinates of each point. By default homogenize is False.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: A single iterable object or tensor or multiple (affine) coordinates.
+        homogenize: If True, and the first argument is an array of points, all points in the array will be converted to
+            homogeneous coordinates, i.e. 1 will be added to the coordinates of each point.
+            By default, homogenize is False.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -303,32 +292,28 @@ class Point(ProjectiveTensor):
         return Point(matvec(m, self.array), copy=False)
 
     @property
-    def normalized_array(self):
-        """numpy.ndarray: The coordinate array of the points with the last coordinates normalized to 1."""
+    def normalized_array(self) -> np.ndarray:
+        """The coordinate array of the points with the last coordinates normalized to 1."""
         return self._normalize_array(self.array)
 
     @property
     def isinf(self) -> npt.NDArray[np.bool_]:
-        """array_like: Boolean array that indicates which points lie at infinity."""
+        """Boolean array that indicates which points lie at infinity."""
         return np.isclose(self.array[..., -1], 0, atol=EQ_TOL_ABS)
 
     @property
     def isreal(self) -> npt.NDArray[np.bool_]:
-        """array_like: Boolean array that indicates which points are real."""
+        """Boolean array that indicates which points are real."""
         return np.all(np.isreal(self.normalized_array), axis=-1)
 
 
 class Subspace(ProjectiveTensor):
     """Represents a general subspace of a projective space. Line and Plane are subclasses.
 
-    Parameters
-    ----------
-    *args
-        The coordinates of the subspace. Instead of separate coordinates, a single iterable can be supplied.
-    tensor_rank : int, optional
-        The rank of the tensors that represent the subspace(s). Default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: The coordinates of the subspace. Instead of separate coordinates, a single iterable can be supplied.
+        tensor_rank: The rank of the tensors that represent the subspace(s). Default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -384,7 +369,7 @@ class Subspace(ProjectiveTensor):
 
     @property
     def general_point(self) -> Point:
-        """Point: Points in general position i.e. not in the subspaces."""
+        """Points in general position i.e. not in the subspaces."""
         n = self.dim + 1
         s = [self.shape[i] for i in self._collection_indices]
         p = Point(np.zeros(s + [n], dtype=int), copy=False)
@@ -396,36 +381,27 @@ class Subspace(ProjectiveTensor):
                 break
         return p
 
-    def parallel(self, through):
+    def parallel(self, through: Point) -> Subspace:
         """Returns the subspaces through given points that are parallel to this collection of subspaces.
 
-        Parameters
-        ----------
-        through : Point or Point
-            The point through which the parallel subspaces are to be constructed.
+        Args:
+            through: The point through which the parallel subspaces are to be constructed.
 
-        Returns
-        -------
-        Subspace
+        Returns:
             The parallel subspaces.
 
         """
         x = self.meet(infty_hyperplane(self.dim))
         return join(x, through)
 
-    def contains(self, other: Point | Subspace, tol=EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+    def contains(self, other: Point | Subspace, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests whether given points or lines lie in the subspaces.
 
-        Parameters
-        ----------
-        other : Point or Line
-            The object(s) to test.
-        tol : float, optional
-            The accepted tolerance.
+        Args:
+            other: The object(s) to test.
+            tol: The accepted tolerance.
 
-        Returns
-        -------
-        array_like
+        Returns:
             Boolean array that indicates which of given points/lines lies in the subspaces.
 
         """
@@ -443,17 +419,13 @@ class Subspace(ProjectiveTensor):
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
 
     def is_parallel(self, other: Subspace) -> npt.NDArray[np.bool_]:
-        """Tests whether given subspaces are parallel to the subspaces.
+        """Tests whether the given subspace is parallel to this subspace.
 
-        Parameters
-        ----------
-        other : Subspace or Subspace
-            The other spaces to test.
+        Args:
+            other: The other space to test.
 
-        Returns
-        -------
-        np.ndarray
-            True, if two subspaces are parallel.
+        Returns:
+            True, if the two subspaces are parallel.
 
         """
         x = self.meet(other)
@@ -463,13 +435,10 @@ class Subspace(ProjectiveTensor):
 class Line(Subspace):
     """Represents a line in a projective space of arbitrary dimension.
 
-    Parameters
-    ----------
-    *args
-        Two points or the coordinates of the line. Instead of all coordinates separately, a single iterable can also
-        be supplied.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: Two points or the coordinates of the line. Instead of all coordinates separately, a single iterable can
+            also be supplied.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -491,7 +460,7 @@ class Line(Subspace):
 
     @property
     def base_point(self) -> Point:
-        """Point: Base points for the lines, arbitrarily chosen."""
+        """Base points for the lines, arbitrarily chosen."""
         if self.dim > 2:
             base = self.basis_matrix
             p, q = base[..., 0, :], base[..., 1, :]
@@ -515,7 +484,7 @@ class Line(Subspace):
 
     @property
     def direction(self) -> Point:
-        """Point: The direction of the lines (not normalized)."""
+        """The direction of the lines (not normalized)."""
         if self.dim > 2:
             base = self.basis_matrix
             p, q = base[..., 0, :], base[..., 1, :]
@@ -540,7 +509,7 @@ class Line(Subspace):
 
     @property
     def basis_matrix(self) -> np.ndarray:
-        """numpy.ndarray: A matrix with orthonormal basis vectors as rows."""
+        """A matrix with orthonormal basis vectors as rows."""
         if self.dim == 2:
             a = self.base_point.array
             b = np.cross(self.array, a)
@@ -550,7 +519,7 @@ class Line(Subspace):
 
     @property
     def covariant_tensor(self) -> Line:
-        """Line: The covariant tensors of lines in 3D."""
+        """The covariant tensors of lines in 3D."""
         if self.dim != 3:
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         if self.tensor_shape[0] > 0:
@@ -561,7 +530,7 @@ class Line(Subspace):
 
     @property
     def contravariant_tensor(self) -> Line:
-        """Line: The contravariant tensors of lines in 3D."""
+        """The contravariant tensors of lines in 3D."""
         if self.dim != 3:
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         if self.tensor_shape[1] > 0:
@@ -573,19 +542,14 @@ class Line(Subspace):
     def is_coplanar(self, other: Line) -> npt.NDArray[np.bool_]:
         """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect.
 
-        Parameters
-        ----------
-        other : Line
-            A line in 3D to test.
+        Args:
+            other: A line in 3D to test.
 
-        Returns
-        -------
-        array_like
+        Returns:
             True if the two lines intersect (i.e. they lie in the same plane).
 
-        References
-        ----------
-        .. [1] Jim Blinn, Lines in Space: Back to the Diagrams, Line Intersections
+        References:
+            .. [1] Jim Blinn, Lines in Space: Back to the Diagrams, Line Intersections
 
         """
         if self.dim == 2:
@@ -598,19 +562,14 @@ class Line(Subspace):
     def mirror(self, pt: Point) -> Point:
         """Construct the reflection of points at the lines.
 
-        Parameters
-        ----------
-        pt : Point
-            The point to reflect.
+        Args:
+            pt: The point to reflect.
 
-        Returns
-        -------
-        Point
+        Returns:
             The mirror points.
 
-        References
-        ----------
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
+        References:
+            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
 
         """
         l = self
@@ -645,17 +604,12 @@ class Line(Subspace):
     def perpendicular(self, through: Point, plane: Subspace | None = None) -> Line:
         """Construct the perpendicular line though a point.
 
-        Parameters
-        ----------
-        through : Point
-            The point through which the perpendicular is constructed.
-        plane : Subspace, optional
-            In three or higher dimensional spaces, the 3-dimensional subspace that the perpendicular line is
-            supposed to lie in, can be specified.
+        Args:
+            through: The point through which the perpendicular is constructed.
+            plane: In three or higher dimensional spaces, the 3-dimensional subspace that the perpendicular line is
+                supposed to lie in, can be specified.
 
-        Returns
-        -------
-        Line
+        Returns:
             The perpendicular line.
 
         """
@@ -702,14 +656,10 @@ class Line(Subspace):
     def project(self, pt: Point) -> Point:
         """The orthogonal projection of points onto the lines.
 
-        Parameters
-        ----------
-        pt : Point
-            The points to project.
+        Args:
+            pt: The points to project.
 
-        Returns
-        -------
-        Point
+        Returns:
             The projected points.
 
         """
@@ -720,13 +670,10 @@ class Line(Subspace):
 class Plane(Subspace):
     """Represents a hyperplane in a projective space of arbitrary dimension.
 
-    Parameters
-    ----------
-    *args
-        The points/lines spanning the plane or the coordinates of the hyperplane. Instead of separate coordinates, a
-        single iterable can be supplied.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        *args: The points/lines spanning the plane or the coordinates of the hyperplane. Instead of separate
+            coordinates, a single iterable can be supplied.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
@@ -757,14 +704,10 @@ class Plane(Subspace):
 
         Only works in 3D.
 
-        Parameters
-        ----------
-        pt : Point
-            The points to reflect.
+        Args:
+            pt: The points to reflect.
 
-        Returns
-        -------
-        Point
+        Returns:
             The mirror points.
 
         """
@@ -798,14 +741,10 @@ class Plane(Subspace):
 
         Only works in 3D.
 
-        Parameters
-        ----------
-        pt : Point
-            The points to project.
+        Args:
+            pt: The points to project.
 
-        Returns
-        -------
-        Point
+        Returns:
             The projected points.
 
         """
@@ -826,14 +765,10 @@ class Plane(Subspace):
 
         Only works in 3D.
 
-        Parameters
-        ----------
-        through : Point or Line
-            The points or lines through which the perpendiculars are constructed.
+        Args:
+            through: The points or lines through which the perpendiculars are constructed.
 
-        Returns
-        -------
-        Line or Plane
+        Returns:
             The perpendicular lines or planes.
 
         """
