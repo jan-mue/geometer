@@ -44,10 +44,6 @@ class Polytope(Point):
             class_name += "Collection"
         return f"{class_name}({', '.join(str(v) for v in self.vertices)})"
 
-    def __apply__(self, transformation: Transformation) -> Polytope:
-        result = super().__apply__(transformation)
-        return cast(Polytope, result)
-
     @property
     def vertices(self) -> list[Point]:
         """The vertices of the polytope."""
@@ -69,29 +65,30 @@ class Polytope(Point):
         v2 = np.roll(v1, -1, axis=-2)
         return np.stack([v1, v2], axis=-2)
 
-    def __eq__(self, other: Tensor | npt.ArrayLike) -> bool | npt.NDArray[np.bool_]:
-        if isinstance(other, Polytope):
+    def __eq__(self, other: Tensor | npt.ArrayLike) -> bool:
+        if not isinstance(other, Polytope):
+            return super().__eq__(other)
 
-            if self.shape != other.shape:
-                return False
-
-            if self.rank > 2:
-                # facets equal up to reordering
-                facets1 = self.facets
-                facets2 = other.facets
-                return all(f in facets2 for f in facets1) and all(f in facets1 for f in facets2)
-
-            # edges equal up to circular reordering
-            edges1 = self._edges
-            edges2 = other._edges
-
-            for i in range(self.shape[0]):
-                if np.all(is_multiple(edges1, np.roll(edges2, i, axis=0), axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)):
-                    return True
-
+        if self.shape != other.shape:
             return False
 
-        return super().__eq__(other)
+        if self.pdim > 2:
+            # facets equal up to reordering
+            facets1 = self.facets
+            facets2 = other.facets
+            return all(f in facets2 for f in facets1) and all(f in facets1 for f in facets2)
+
+        # vertices equal up to circular reordering
+        reversed_array = np.flip(other.array, axis=-2)
+        for i in range(self.shape[-2]):
+            if np.all(is_multiple(self.array, np.roll(other.array, i, axis=-2),
+                                  axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)):
+                return True
+            if np.all(is_multiple(self.array, np.roll(reversed_array, i, axis=-2),
+                                  axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)):
+                return True
+
+        return False
 
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, Point):
@@ -123,7 +120,7 @@ class Polytope(Point):
 
         return Polytope(tensor, copy=False)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.cdim == 0 or result.tensor_shape != (1, 0):
@@ -160,15 +157,14 @@ class Segment(Polytope):
         else:
             super().__init__(*args, pdim=1, **kwargs)
 
-        self._line = join(*self.vertices)
+        self._line = cast(Line, join(*self.vertices))
 
     def __apply__(self, transformation: Transformation) -> Segment:
         result = super().__apply__(transformation)
-        result = cast(Segment, result)
         result._line = transformation.apply(result._line)
         return result
 
-    def __getitem__(self, index: TensorIndex) -> Tensor:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.rank < 2 or result.shape[-2] != 2:
@@ -340,11 +336,10 @@ class Polygon(Polytope):
             kwargs["copy"] = False
             args = (np.stack(args, axis=-2),)
         super().__init__(*args, pdim=2, **kwargs)
-        self._plane = join(*self.vertices[:self.dim]) if self.dim > 2 else None
+        self._plane = cast(Plane, join(*self.vertices[:self.dim])) if self.dim > 2 else None
 
     def __apply__(self, transformation: Transformation) -> Polygon:
         result = super().__apply__(transformation)
-        result = cast(Polygon, result)
         if result.dim > 2:
             result._plane = Plane(*result.vertices[:result.dim])
         return result

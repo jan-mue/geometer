@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, cast, overload
+from typing import TYPE_CHECKING, Sequence, TypeVar, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from .curve import Conic
 
 
-def identity(dim: int, collection_dims: tuple[int] | None = None) -> Transformation:
+def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> Transformation:
     """Returns the identity transformation.
 
     Args:
@@ -110,7 +110,7 @@ def translation(*coordinates: Tensor | npt.ArrayLike) -> Transformation:
     return affine_transform(offset=offset.normalized_array[:-1])
 
 
-def scaling(*factors: npt._ArrayLike[np.dtype[np.integer | np.floating], int | float]) -> Transformation:
+def scaling(*factors: npt.ArrayLike) -> Transformation:
     """Returns a projective transformation that represents general scaling by given factors in each dimension.
 
     Args:
@@ -122,7 +122,7 @@ def scaling(*factors: npt._ArrayLike[np.dtype[np.integer | np.floating], int | f
     """
     if len(factors) == 1:
         return affine_transform(np.diag(factors[0]))
-    return affine_transform(np.diag(factors))
+    return affine_transform(np.diag(factors))  # type: ignore
 
 
 def reflection(axis: Subspace) -> Transformation:
@@ -223,6 +223,12 @@ class Transformation(ProjectiveTensor):
         """
         a1, b1, c1 = points1
         l1, l2 = conic1.tangent(a1), conic1.tangent(b1)
+
+        if not isinstance(l1, Line):
+            raise ValueError(f"Point {a1} does not lie on the conic {conic1}.")
+        if not isinstance(l2, Line):
+            raise ValueError(f"Point {b1} does not lie on the conic {conic1}.")
+
         m = l1.meet(l2).join(c1)
         m = cast(Line, m)
         p, q = conic1.intersect(m)
@@ -230,6 +236,12 @@ class Transformation(ProjectiveTensor):
 
         a2, b2, c2 = points2
         l1, l2 = conic2.tangent(a2), conic2.tangent(b2)
+
+        if not isinstance(l1, Line):
+            raise ValueError(f"Point {a2} does not lie on the conic {conic2}.")
+        if not isinstance(l2, Line):
+            raise ValueError(f"Point {b2} does not lie on the conic {conic2}.")
+
         m = l1.meet(l2).join(c2)
         m = cast(Line, m)
         p, q = conic2.intersect(m)
@@ -237,7 +249,9 @@ class Transformation(ProjectiveTensor):
 
         return Transformation.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
 
-    def apply(self, other: Tensor) -> Tensor:
+    T = TypeVar("T", bound=Tensor)
+
+    def apply(self, other: T) -> T:
         """Apply the transformation to another object.
 
         Args:
@@ -256,12 +270,16 @@ class Transformation(ProjectiveTensor):
         ...
 
     @overload
+    def __mul__(self, other: T) -> T:
+        ...
+
+    @overload
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         ...
 
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         try:
-            return self.apply(other)
+            return self.apply(other)  # type: ignore
         except NotImplementedError:
             return super().__mul__(other)
 
@@ -276,7 +294,7 @@ class Transformation(ProjectiveTensor):
         result = super().__pow__(power, modulo)
         return Transformation(result, copy=False)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):

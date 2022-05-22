@@ -12,6 +12,8 @@ from .exceptions import TensorComputationError
 from .utils import is_multiple, normalize_index, posify_index, sanitize_index
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from .transformation import Transformation
 
 EQ_TOL_REL = 1e-15
@@ -92,7 +94,7 @@ class Tensor(Sized, Iterable):
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - self._collection_indices
 
-    def __apply__(self, transformation: Transformation) -> Tensor:
+    def __apply__(self, transformation: Transformation) -> Self:
         ts = self.tensor_shape
         edges = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
@@ -197,7 +199,7 @@ class Tensor(Sized, Iterable):
         """The transposed tensor, same as ``self.transpose()``."""
         return self.transpose()
 
-    def copy(self) -> Tensor:
+    def copy(self) -> Self:
         cls = self.__class__
         result = cls.__new__(cls)
         result.__dict__.update(self.__dict__)
@@ -210,9 +212,10 @@ class Tensor(Sized, Iterable):
             axis: Position in the new shape where the new axis is placed.
 
         Returns:
-            The tensor collection with an additional index.
+            The tensor with an additional index.
 
         """
+        # TODO: return tensor
         result = self.copy()
         result.array = np.expand_dims(self.array, axis)
 
@@ -265,12 +268,12 @@ class Tensor(Sized, Iterable):
             class_name += "Collection"
         return f"{class_name}({self.array.tolist()})"
 
-    def _get_index_mapping(self, index: TensorIndex) -> list[int]:
-        index = normalize_index(index, self.shape)
+    def _get_index_mapping(self, index: TensorIndex) -> list[int | None]:
+        normalized_index = normalize_index(index, self.shape)
         advanced_indices = []
-        index_mapping = list(range(self.rank))
+        index_mapping: list[int | None] = list(range(self.rank))
         i = 0
-        for ind in index:
+        for ind in normalized_index:
 
             # axis with integer index will be removed
             if isinstance(ind, int):
@@ -286,20 +289,21 @@ class Tensor(Sized, Iterable):
                 advanced_indices.append(i)
 
             i += 1
-        if len(advanced_indices) > 0:
 
-            b = np.broadcast(*[index[i] for i in advanced_indices])
-            a0, a1 = advanced_indices[0], advanced_indices[-1]
+        if len(advanced_indices) == 0:
+            return index_mapping
 
-            if advanced_indices != list(range(a0, a1 + 1)):
-                # create advanced indices in front
-                for i in advanced_indices:
-                    index_mapping.remove(i)
-                index_mapping = [None] * b.ndim + index_mapping
-            else:
-                # replace indices with broadcast shape
-                index_mapping = index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1:]
-        return index_mapping
+        b = np.broadcast(*[normalized_index[i] for i in advanced_indices])
+        a0, a1 = advanced_indices[0], advanced_indices[-1]
+
+        if advanced_indices != list(range(a0, a1 + 1)):
+            # create advanced indices in front
+            for i in advanced_indices:
+                index_mapping.remove(i)
+            return [None] * b.ndim + index_mapping  # type: ignore
+        else:
+            # replace indices with broadcast shape
+            return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1:]  # type: ignore
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = self.array[index]

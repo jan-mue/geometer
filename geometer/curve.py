@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from itertools import combinations
+from typing import Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -55,7 +56,10 @@ class Quadric(ProjectiveTensor):
         return translation(other).apply(self)
 
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        return self + (-other)
+        if not isinstance(other, Point):
+            return super().__add__(other)
+
+        return translation(-other).apply(self)
 
     @classmethod
     def from_planes(cls, e: Plane, f: Plane) -> Quadric:
@@ -133,8 +137,8 @@ class Quadric(ProjectiveTensor):
 
         else:
             ind = np.indices((n, n))
-            ind = [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)]
-            ind = np.stack(ind, axis=1)
+            ind = np.stack([
+                np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)], axis=1)
             minors = det(self.array[..., ind[0], ind[1]])
             p = csqrt(-minors)
 
@@ -159,7 +163,7 @@ class Quadric(ProjectiveTensor):
             return [Line(p, copy=False), Line(q, copy=False)]
         return [Plane(p, copy=False), Plane(q, copy=False)]
 
-    def intersect(self, other: Line) -> list[Point]:
+    def intersect(self, other: Line) -> list[Point] | list[Line]:
         """Calculates points of intersection of a line with the quadric.
 
         This method also returns complex points of intersection, even if the quadric and the line do not intersect in
@@ -177,7 +181,8 @@ class Quadric(ProjectiveTensor):
         """
         if not isinstance(other, Line):
             raise TypeError(f"Expected Line but got {type(other)}")
-        reducible: bool = np.all(self.is_degenerate)
+
+        reducible: bool | np.bool_ = np.all(self.is_degenerate)
         if reducible:
             try:
                 e, f = self.components
@@ -195,10 +200,10 @@ class Quadric(ProjectiveTensor):
                     i = np.any(arr, axis=-1).argmax(-1)
                     m = Plane(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
                 line = other._matrix_transform(m)
-                q = Quadric(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
+                projected_quadric = Quadric(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
                 return [
-                    Point(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False)
-                    for p in q.intersect(line)
+                    Point(np.squeeze(matmul(np.expand_dims(point.array, -2), m), -2), copy=False)
+                    for point in projected_quadric.intersect(line)
                 ]
             else:
                 m = hat_matrix(other.array)
@@ -206,8 +211,10 @@ class Quadric(ProjectiveTensor):
                 p, q = Quadric(b, is_dual=not self.is_dual, copy=False).components
         else:
             if self.is_dual:
-                p, q = e.join(other), f.join(other)
+                e, f = cast(Point, e), cast(Point, f)
+                p, q = cast(Line, e.join(other)), cast(Line, f.join(other))
             else:
+                e, f = cast(Union[Line, Plane], e), cast(Union[Line, Plane], f)
                 p, q = e.meet(other), f.meet(other)
 
         if p.cdim == 0 and p == q:
@@ -398,7 +405,8 @@ class Conic(Quadric):
         if self.contains(at):
             return self.polar(at)
         p, q = self.intersect(self.polar(at))
-        return at.join(p), at.join(q)
+        l, m = at.join(p), at.join(q)
+        return cast(Line, l), cast(Line, m)
 
     def polar(self, pt: Point) -> Line:
         """Calculates the polar line of the conic at a given point.

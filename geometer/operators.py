@@ -35,8 +35,9 @@ def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line
         from_point = a.meet(b)
         a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point
 
-    if isinstance(a, Plane):
+    elif isinstance(a, Plane):
         l = a.meet(b)
+        l = cast(Line, l)
         e = Plane(l.direction.array, copy=False)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix

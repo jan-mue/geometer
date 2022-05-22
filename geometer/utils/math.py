@@ -225,7 +225,7 @@ def inv(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
     return np.linalg.inv(A)
 
 
-def null_space(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray[np.float_]:
+def null_space(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.float_]:
     """Constructs an orthonormal basis for the null space of a A using SVD.
 
     Args:
@@ -236,7 +236,7 @@ def null_space(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray
         (..., N, K) Orthonormal basis for the null space of A (as column vectors in the returned matrix).
 
     """
-    u, s, vh = np.linalg.svd(A, full_matrices=True)
+    u, s, vh = np.linalg.svd(A, full_matrices=True)  # type: ignore
 
     if dim is None:
         A = np.asarray(A)
@@ -250,7 +250,7 @@ def null_space(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray
     return Q
 
 
-def orth(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray[np.float_]:
+def orth(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.float_]:
     """Constructs an orthonormal basis for the range of A using SVD.
 
     Args:
@@ -261,7 +261,7 @@ def orth(A: npt._ArrayLikeFloat_co, dim: int | None = None) -> npt.NDArray[np.fl
         (..., M, K) Orthonormal basis for the range of A (as column vectors in the returned matrix).
 
     """
-    u, s, vh = np.linalg.svd(A, full_matrices=False)
+    u, s, vh = np.linalg.svd(A, full_matrices=False)  # type: ignore
 
     if dim is None:
         A = np.asarray(A)
@@ -398,7 +398,7 @@ def roots(p: npt.ArrayLike) -> npt.NDArray[np.float_ | np.complex_]:
 
 
 def outer(a: npt.ArrayLike, b: npt.ArrayLike,
-          out: np.ndarray | None = None) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
+          out: np.ndarray | None = None) -> np.ndarray:
     """Outer product of two arrays.
 
     Args:
