@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Sequence, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -45,7 +45,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
 
     """
     n = 2
-    dtype: npt.DTypeLike = np.int_
+    dtype = np.int_
 
     if not np.isscalar(offset):
         offset = np.asarray(offset)
@@ -55,7 +55,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
     if matrix is not None:
         matrix = np.asarray(matrix)
         n = matrix.shape[0] + 1
-        dtype = cast(np.dtype, np.find_common_type([dtype, matrix.dtype], []))
+        dtype = np.find_common_type([dtype, matrix.dtype], [])
 
     result = np.eye(n, dtype=dtype)
 
@@ -158,7 +158,7 @@ class Transformation(ProjectiveTensor):
     """Represents a projective transformation in an arbitrary projective space.
 
     The underlying array is the matrix representation of the projective transformation. The matrix must be
-    a nonsingular square matrix of size n+1 when n is the dimension of the projective space.
+    a non-singular square matrix of size n+1 when n is the dimension of the projective space.
     The transformation can be applied to a point or another object by multiplication.
 
     Args:
@@ -230,7 +230,6 @@ class Transformation(ProjectiveTensor):
             raise ValueError(f"Point {b1} does not lie on the conic {conic1}.")
 
         m = l1.meet(l2).join(c1)
-        m = cast(Line, m)
         p, q = conic1.intersect(m)
         d1 = p if q == c1 else q
 
@@ -243,7 +242,6 @@ class Transformation(ProjectiveTensor):
             raise ValueError(f"Point {b2} does not lie on the conic {conic2}.")
 
         m = l1.meet(l2).join(c2)
-        m = cast(Line, m)
         p, q = conic2.intersect(m)
         d2 = p if q == c2 else q
 

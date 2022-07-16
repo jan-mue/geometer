@@ -22,5 +22,3 @@ jobs:
           pipenv run codecov
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
-      - name: Run mypy
-        run: pipenv run mypy

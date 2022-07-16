@@ -13,7 +13,7 @@ from .utils import det, matvec, orth
 
 
 def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line | Plane, d: Point | Line | Plane,
-               from_point: Point | None = None) -> npt.NDArray[np.float_ | np.complex_]:
+               from_point: Point | None = None) -> np.ndarray:
     """Calculates the cross ratio of points or lines.
 
     Args:
@@ -105,7 +105,6 @@ def harmonic_set(a: Point, b: Point, c: Point) -> Point:
         l = join(a, b)
 
     m = join(o, c)
-    m = cast(Line, m)
     p = o + 1 / 2 * m.direction
     result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
 
@@ -118,7 +117,7 @@ def harmonic_set(a: Point, b: Point, c: Point) -> Point:
 def angle(*args: Point | Line | Plane) -> npt.NDArray[np.float_]:
     r"""Calculates the (oriented) angle between given points, lines or planes.
 
-    The function uses the Laguerre formula to calculate angles in two or three dimensional projective space
+    The function uses the Laguerre formula to calculate angles in two or three-dimensional projective space
     using cross ratios. To calculate the angle between two planes, two additional planes tangent to the absolute
     conic are constructed (see [1]).
 
@@ -226,7 +225,7 @@ def angle_bisectors(l: Line, m: Line) -> tuple[Line, Line]:
         r = r._matrix_transform(np.swapaxes(basis, -1, -2))
         s = s._matrix_transform(np.swapaxes(basis, -1, -2))
 
-    return cast(Line, join(o, r)), cast(Line, join(o, s))
+    return join(o, r), join(o, s)
 
 
 def dist(p: Point | Line | Plane, q) -> npt.NDArray[np.float_]:

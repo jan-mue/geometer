@@ -57,7 +57,7 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
     return (nonzero_multiple & zeros_equal) | all_zero
 
 
-def hat_matrix(*args: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
+def hat_matrix(*args: npt.ArrayLike) -> np.ndarray:
     r"""Builds a skew symmetric matrix with the given scalars in the positions shown below.
 
     .. math::
@@ -115,7 +115,7 @@ def _minor_indices(n: int, m: int) -> npt.NDArray[np.int_]:
     return np.stack(minors, axis=1)
 
 
-def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
+def adjugate(A: npt.ArrayLike) -> np.ndarray:
     r"""Calculates the adjugate matrix of A.
 
     The resulting matrix is defined by
@@ -173,7 +173,7 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]
     return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)
 
 
-def det(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
+def det(A: npt.ArrayLike) -> np.ndarray:
     """Computes the determinant of A.
 
     Args:
@@ -200,7 +200,7 @@ def det(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
     return np.linalg.det(A)
 
 
-def inv(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
+def inv(A: npt.ArrayLike) -> np.ndarray:
     """Computes the inverse of A.
 
     Args:
@@ -225,8 +225,8 @@ def inv(A: npt.ArrayLike) -> npt.NDArray[np.int_ | np.float_ | np.complex_]:
     return np.linalg.inv(A)
 
 
-def null_space(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.float_]:
-    """Constructs an orthonormal basis for the null space of a A using SVD.
+def null_space(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
+    """Constructs an orthonormal basis for the null space of a matrix A using SVD.
 
     Args:
         A : (..., M, N) The input matrix.
@@ -250,7 +250,7 @@ def null_space(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.float
     return Q
 
 
-def orth(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.float_]:
+def orth(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
     """Constructs an orthonormal basis for the range of A using SVD.
 
     Args:
@@ -322,7 +322,7 @@ def matvec(a: npt.ArrayLike, b: npt.ArrayLike, transpose_a: bool = False,
     return np.squeeze(result, axis=-1)
 
 
-def roots(p: npt.ArrayLike) -> npt.NDArray[np.float_ | np.complex_]:
+def roots(p: npt.ArrayLike) -> np.ndarray:
     r"""Calculates the roots of a polynomial for the given coefficients.
 
     The polynomial is defined as

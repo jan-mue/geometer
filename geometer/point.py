@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Tuple, Union, cast, overload
+from typing import TYPE_CHECKING, Literal, cast, overload
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import Literal
+
+if TYPE_CHECKING:
+    from typing_extensions import Unpack
 
 from .base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
 from .exceptions import GeometryException, LinearDependenceError, NotCoplanar
@@ -16,6 +18,30 @@ def _join_meet_duality(
         *args: Line,
         intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
 ) -> Point:
+    ...
+
+
+@overload
+def _join_meet_duality(
+        *args: Unpack[tuple[Subspace, Line]],
+        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
+) -> Point:
+    ...
+
+
+@overload
+def _join_meet_duality(
+        *args: Unpack[tuple[Line, Subspace]],
+        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
+) -> Point:
+    ...
+
+
+@overload
+def _join_meet_duality(
+        *args: Unpack[tuple[Point, Point]],
+        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
+) -> Line:
     ...
 
 
@@ -76,7 +102,6 @@ def _join_meet_duality(
                 diagram = TensorDiagram(*[(e, a)] * a.tensor_shape[1], (e, b))
                 array = diagram.calculate().array
 
-                i: tuple[npt.NDArray[np.int_] | np.int_, ...]
                 if np.isscalar(coplanar):
                     i = np.unravel_index(np.abs(array).argmax(), array.shape)
                     if not intersect_lines:
@@ -88,7 +113,6 @@ def _join_meet_duality(
                 else:
                     max_ind = np.abs(array).reshape((np.prod(array.shape[:coplanar.ndim]), -1)).argmax(1)
                     i = np.unravel_index(max_ind, array.shape[coplanar.ndim:])
-                    i = cast(Tuple[npt.NDArray[np.int_]], i)
                     i = tuple(np.reshape(x, array.shape[:coplanar.ndim]) for x in i)
                     indices = tuple(np.indices(array.shape[:coplanar.ndim]))
                     if not intersect_lines:
@@ -152,6 +176,16 @@ def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
     return np.ldexp(mantissa, exponent)
 
 
+@overload
+def join(*args: Unpack[tuple[Point, Point]], _check_dependence: bool = True, _normalize_result: bool = True) -> Line:
+    ...
+
+
+@overload
+def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Subspace:
+    ...
+
+
 def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Subspace:
     """Joins a number of objects to form a line, plane or subspace.
 
@@ -172,6 +206,16 @@ def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_res
 
 @overload
 def meet(*args: Line, _check_dependence: bool = True, _normalize_result: bool = True) -> Point:
+    ...
+
+
+@overload
+def meet(*args: Unpack[tuple[Subspace, Line]], _check_dependence: bool = True, _normalize_result: bool = True) -> Point:
+    ...
+
+
+@overload
+def meet(*args: Unpack[tuple[Line, Subspace]], _check_dependence: bool = True, _normalize_result: bool = True) -> Point:
     ...
 
 
@@ -263,6 +307,14 @@ class Point(ProjectiveTensor):
                 result += " at Infinity"
             return result
         return f"PointCollection({self.normalized_array.tolist()})"
+
+    @overload
+    def join(self, *others: Unpack[tuple[Point]]) -> Line:
+        ...
+
+    @overload
+    def join(self, *others: Point | Subspace) -> Subspace:
+        ...
 
     def join(self, *others: Point | Subspace) -> Subspace:
         return join(self, *others)
@@ -596,7 +648,6 @@ class Line(Subspace):
         m1 = join(p1, J, _normalize_result=False)
         m2 = join(p2, I, _normalize_result=False)
         result = m1.meet(m2)
-        result = cast(Point, result)
         if self.dim >= 3:
             return result._matrix_transform(np.swapaxes(m, -1, -2))
         return result
@@ -619,7 +670,7 @@ class Line(Subspace):
         if np.any(contains):
             l = self
             if self.cdim > 0:
-                l = cast(Line, self[contains])
+                l = self[contains]
 
             if n > 3:
 
@@ -627,7 +678,7 @@ class Line(Subspace):
                     # additional point is required to determine the exact line
                     plane = join(l, l.general_point)
                 elif plane.cdim > 0:
-                    plane = cast(Subspace, plane[contains])
+                    plane = plane[contains]
 
                 basis = plane.basis_matrix
                 line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
@@ -641,11 +692,11 @@ class Line(Subspace):
             if n > 3:
                 q = q._matrix_transform(np.swapaxes(basis, -1, -2))
 
-            result[contains] = join(through if through.cdim == 0 else cast(Point, through[contains]), q)
+            result[contains] = join(through if through.cdim == 0 else through[contains], q)
 
         if np.any(~contains):
             if through.cdim > 0:
-                through = cast(Point, through[~contains])
+                through = through[~contains]
             if self.cdim > 0:
                 result[~contains] = cast(Line, self[~contains]).mirror(through).join(through)
             else:
@@ -680,7 +731,6 @@ class Plane(Subspace):
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
         if all(isinstance(o, (Line, Point)) for o in args):
             kwargs["copy"] = False
-            args = cast(Tuple[Union[Line, Point], ...], args)
             super().__init__(join(*args), **kwargs)
         else:
             super().__init__(*args, **kwargs)
@@ -714,7 +764,6 @@ class Plane(Subspace):
         if self.dim != 3:
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         l = self.meet(infty_plane)
-        l = cast(Line, l)
         basis = l.basis_matrix
         l = Line(np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False)
         p = l.base_point
@@ -732,8 +781,6 @@ class Plane(Subspace):
         q2 = self.meet(l2)
         m1 = q1.join(p2)
         m2 = q2.join(p1)
-        m1 = cast(Line, m1)
-        m2 = cast(Line, m2)
         return m1.meet(m2)
 
     def project(self, pt: Point) -> Point:
@@ -796,7 +843,7 @@ class Plane(Subspace):
                 tangent1, tangent2 = absolute_conic.intersect(polar)
                 q = harmonic_set(tangent1, tangent2, l.meet(polar))
                 q = Point(np.append(q.array, np.zeros(q.shape[:-1] + (1,)), axis=-1), copy=False)
-                return cast(Plane, through.join(q))
+                return through.join(q)
 
             p1 = Point(basis[..., 0, :], copy=False)
             p2 = Point(basis[..., 1, :], copy=False)
@@ -819,7 +866,7 @@ class Plane(Subspace):
 
         if np.any(~contains):
             if through.cdim > 0:
-                through = cast(Point, through[~contains])
+                through = through[~contains]
 
             if not isinstance(through, Point):
                 raise TypeError(f"Expected through to be a Point, but got {type(through)} instead.")

@@ -205,7 +205,7 @@ class Tensor(Sized, Iterable):
         result.__dict__.update(self.__dict__)
         return result
 
-    def expand_dims(self, axis: int) -> Tensor:
+    def expand_dims(self, axis: int) -> Self:
         """Add a new index as collection index.
 
         Args:

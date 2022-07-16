@@ -157,7 +157,7 @@ class Segment(Polytope):
         else:
             super().__init__(*args, pdim=1, **kwargs)
 
-        self._line = cast(Line, join(*self.vertices))
+        self._line = join(*self.vertices)
 
     def __apply__(self, transformation: Transformation) -> Segment:
         result = super().__apply__(transformation)
@@ -174,7 +174,6 @@ class Segment(Polytope):
 
     def expand_dims(self, axis: int) -> Segment:
         result = super().expand_dims(axis)
-        result = cast(Segment, result)
         result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
         return result
 
@@ -336,7 +335,7 @@ class Polygon(Polytope):
             kwargs["copy"] = False
             args = (np.stack(args, axis=-2),)
         super().__init__(*args, pdim=2, **kwargs)
-        self._plane = cast(Plane, join(*self.vertices[:self.dim])) if self.dim > 2 else None
+        self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
 
     def __apply__(self, transformation: Transformation) -> Polygon:
         result = super().__apply__(transformation)
@@ -454,8 +453,8 @@ class Polygon(Polytope):
                 result = self._plane.meet(other._line)
             except LinearDependenceError as e:
                 if isinstance(other, Segment):
-                    other = other[~e.dependent_values]
-                result = self._plane[~e.dependent_values].meet(other._line)
+                    other = cast(Segment, other[~e.dependent_values])
+                result = cast(Plane, self._plane[~e.dependent_values]).meet(other._line)
                 return list(
                     result[Polygon(self[~e.dependent_values], copy=False).contains(result) & other.contains(result)])
             else:
@@ -466,7 +465,7 @@ class Polygon(Polytope):
         except LinearDependenceError as e:
             if other.cdim > 0:
                 other = other[~e.dependent_values]
-            result = self._plane[~e.dependent_values].meet(other)
+            result = cast(Plane, self._plane[~e.dependent_values]).meet(other)
             return list(result[Polygon(self[~e.dependent_values], copy=False).contains(result)])
         else:
             return list(result[self.contains(result)])
@@ -479,7 +478,7 @@ class Polygon(Polytope):
             o = Point(*[0] * self.dim)
             if e.cdim > 0:
                 ind = ~e.contains(o)
-                e[ind] = e[ind].parallel(o)
+                e[ind] = cast(Plane, e[ind]).parallel(o)
             elif not e.contains(o):
                 # use parallel hyperplane for projection to avoid rescaling
                 e = e.parallel(o)
@@ -504,11 +503,12 @@ class Polygon(Polytope):
         return Point(*np.average(centroids, weights=weights, axis=0))
 
     @property
-    def angles(self) -> list[float]:
+    def angles(self) -> list[npt.NDArray[np.float_]]:
         """The interior angles of the polygon."""
         result = []
-        a = self.edges[-1]
+        a = cast(Segment, self.edges[-1])
         for b in self.edges:
+            b = cast(Segment, b)
             result.append(angle(a.vertices[1], a.vertices[0], b.vertices[1]))
             a = b
 
@@ -557,7 +557,7 @@ class RegularPolygon(Polygon):
     @property
     def inradius(self) -> npt.NDArray[np.float_]:
         """The inradius of the regular polygon."""
-        return dist(self.center, self.edges[0].midpoint)
+        return dist(self.center, cast(Segment, self.edges[0]).midpoint)
 
 
 class Triangle(Polygon, Simplex):

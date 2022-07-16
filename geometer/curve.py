@@ -212,7 +212,7 @@ class Quadric(ProjectiveTensor):
         else:
             if self.is_dual:
                 e, f = cast(Point, e), cast(Point, f)
-                p, q = cast(Line, e.join(other)), cast(Line, f.join(other))
+                p, q = e.join(other), f.join(other)
             else:
                 e, f = cast(Union[Line, Plane], e), cast(Union[Line, Plane], f)
                 p, q = e.meet(other), f.meet(other)
@@ -405,8 +405,7 @@ class Conic(Quadric):
         if self.contains(at):
             return self.polar(at)
         p, q = self.intersect(self.polar(at))
-        l, m = at.join(p), at.join(q)
-        return cast(Line, l), cast(Line, m)
+        return at.join(p), at.join(q)
 
     def polar(self, pt: Point) -> Line:
         """Calculates the polar line of the conic at a given point.
