@@ -146,9 +146,6 @@ def adjugate(A: npt.ArrayLike) -> np.ndarray:
     _assert_square_matrix(A)
     n = A.shape[-1]
 
-    if n <= 1:
-        return A
-
     if n == 2:
         result = A[..., [[1, 0], [1, 0]], [[1, 1], [0, 0]]]
         result[..., [0, 1], [1, 0]] *= -1

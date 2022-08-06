@@ -8,7 +8,7 @@ Changelog
 New Features
 ------------
 
-- Use mypy for type checking
+- Add type hints to code base
 - Muted warnings for invalid values in crossratio and other functions
 - NumPy 1.20+ required
 - Dropped support for Python 3.5 and 3.6
