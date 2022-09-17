@@ -18,8 +18,16 @@ class NotCoplanar(GeometryException, ValueError):
     """The given values are not coplanar."""
 
 
+class NotConcurrent(GeometryException, ValueError):
+    """The given values are not concurrent."""
+
+
+class NoIncidence(GeometryException, ValueError):
+    """The given point is not incident with the subspace."""
+
+
 class IncidenceError(GeometryException, ValueError):
-    """The given objects were not incident to each other."""
+    """The given point is incident with the subspace."""
 
 
 class LinearDependenceError(GeometryException, ValueError):

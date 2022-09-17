@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .base import LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
+from .exceptions import NoIncidence
 from .point import Line, Point, Subspace, infty_hyperplane
 from .utils import inv, matmul, outer
 
@@ -122,7 +123,7 @@ def scaling(*factors: npt.ArrayLike) -> Transformation:
     """
     if len(factors) == 1:
         return affine_transform(np.diag(factors[0]))
-    return affine_transform(np.diag(factors))  # type: ignore
+    return affine_transform(np.diag(factors))
 
 
 def reflection(axis: Subspace) -> Transformation:
@@ -225,9 +226,9 @@ class Transformation(ProjectiveTensor):
         l1, l2 = conic1.tangent(a1), conic1.tangent(b1)
 
         if not isinstance(l1, Line):
-            raise ValueError(f"Point {a1} does not lie on the conic {conic1}.")
+            raise NoIncidence(f"Point {a1} does not lie on the conic {conic1}.")
         if not isinstance(l2, Line):
-            raise ValueError(f"Point {b1} does not lie on the conic {conic1}.")
+            raise NoIncidence(f"Point {b1} does not lie on the conic {conic1}.")
 
         m = l1.meet(l2).join(c1)
         p, q = conic1.intersect(m)
@@ -237,9 +238,9 @@ class Transformation(ProjectiveTensor):
         l1, l2 = conic2.tangent(a2), conic2.tangent(b2)
 
         if not isinstance(l1, Line):
-            raise ValueError(f"Point {a2} does not lie on the conic {conic2}.")
+            raise NoIncidence(f"Point {a2} does not lie on the conic {conic2}.")
         if not isinstance(l2, Line):
-            raise ValueError(f"Point {b2} does not lie on the conic {conic2}.")
+            raise NoIncidence(f"Point {b2} does not lie on the conic {conic2}.")
 
         m = l1.meet(l2).join(c2)
         p, q = conic2.intersect(m)
@@ -277,7 +278,7 @@ class Transformation(ProjectiveTensor):
 
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         try:
-            return self.apply(other)  # type: ignore
+            return self.apply(other)
         except NotImplementedError:
             return super().__mul__(other)
 

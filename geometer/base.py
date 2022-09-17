@@ -303,10 +303,10 @@ class Tensor(Sized, Iterable):
             # create advanced indices in front
             for i in advanced_indices:
                 index_mapping.remove(i)
-            return [None] * b.ndim + index_mapping  # type: ignore
+            return [None] * b.ndim + index_mapping
         else:
             # replace indices with broadcast shape
-            return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1:]  # type: ignore
+            return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1:]
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = self.array[index]
@@ -405,7 +405,7 @@ class Tensor(Sized, Iterable):
         if isinstance(other, Tensor):
             other = other.array
         try:
-            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)  # type: ignore
+            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
         except TypeError:
             return NotImplemented
 
@@ -572,6 +572,9 @@ class TensorDiagram:
             source: The source tensor of the edge in the diagram.
             target: The target tensor of the edge in the diagram.
 
+        Raises:
+            TensorComputationError: If the tensors have no free indices or the dimensions do not match.
+
         """
 
         # First step: Find nodes if they are already in the diagram
@@ -643,7 +646,7 @@ class TensorDiagram:
             s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
             args.append(indices[s])
 
-        result = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])  # type: ignore
+        result = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
 
         n_col = len(result_indices[0])
         n_cov = len(result_indices[1])
@@ -672,7 +675,7 @@ class ProjectiveTensor(Tensor, ABC):
 
         if not isinstance(other, Tensor):
             try:
-                other = Tensor(other)  # type: ignore
+                other = Tensor(other)
             except TypeError:
                 return NotImplemented
 
@@ -681,7 +684,7 @@ class ProjectiveTensor(Tensor, ABC):
 
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
         try:
-            is_multi = is_multiple(self.array, other.array, axis=axes, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)  # type: ignore
+            is_multi = is_multiple(self.array, other.array, axis=axes, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
             return bool(np.all(is_multi))
         except TypeError:
             return NotImplemented

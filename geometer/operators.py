@@ -7,7 +7,7 @@ import numpy.typing as npt
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL, LeviCivitaTensor, TensorDiagram
 from .curve import absolute_conic
-from .exceptions import IncidenceError, NotCollinear
+from .exceptions import NotCollinear, NotConcurrent
 from .point import I, J, Line, Plane, Point, infty, infty_plane, join, meet
 from .utils import det, matvec, orth
 
@@ -23,6 +23,10 @@ def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line
     Returns:
         The cross ratio(s) of the given objects.
 
+    Raises:
+        NotConcurrent: If four lines are supplied that are not concurrent.
+        NotCollinear: If four points are supplied that are not collinear.
+
     """
 
     if a == b:
@@ -30,7 +34,7 @@ def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line
 
     if isinstance(a, Line):
         if not np.all(is_concurrent(a, b, c, d)):
-            raise IncidenceError("The lines are not concurrent: " + str([a, b, c, d]))
+            raise NotConcurrent("The lines are not concurrent: " + str([a, b, c, d]))
 
         from_point = a.meet(b)
         a, b, c, d = a.base_point, b.base_point, c.base_point, d.base_point

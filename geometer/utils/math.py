@@ -252,7 +252,7 @@ def null_space(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
         (..., N, K) Orthonormal basis for the null space of A (as column vectors in the returned matrix).
 
     """
-    u, s, vh = np.linalg.svd(A, full_matrices=True)  # type: ignore
+    u, s, vh = np.linalg.svd(A, full_matrices=True)
 
     if dim is None:
         A = np.asarray(A)
@@ -277,7 +277,7 @@ def orth(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
         (..., M, K) Orthonormal basis for the range of A (as column vectors in the returned matrix).
 
     """
-    u, s, vh = np.linalg.svd(A, full_matrices=False)  # type: ignore
+    u, s, vh = np.linalg.svd(A, full_matrices=False)
 
     if dim is None:
         A = np.asarray(A)

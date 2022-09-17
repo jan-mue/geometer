@@ -9,7 +9,7 @@ import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
 from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveTensor, Tensor, TensorDiagram
-from .exceptions import NotReducible
+from .exceptions import IncidenceError, NotReducible
 from .point import I, J, Line, Plane, Point, Subspace, infty_plane, join
 from .transformation import rotation, translation
 from .utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
@@ -282,9 +282,12 @@ class Conic(Quadric):
         Returns:
             The resulting conic.
 
+        Raises:
+            IncidenceError: If one of the points lies on the tangent.
+
         """
         if any(tangent.contains(p) for p in [a, b, c, d]):
-            raise ValueError("The supplied points cannot lie on the supplied tangent!")
+            raise IncidenceError("The supplied points cannot lie on the supplied tangent!")
 
         a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
         b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array

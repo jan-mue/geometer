@@ -195,6 +195,10 @@ def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_res
     Returns:
         The resulting line, plane or subspace.
 
+    Raises:
+        LinearDependenceError: If two objects coincide.
+        NotCoplanar: For two skew lines in 3D.
+
     """
     return _join_meet_duality(
         *args,
@@ -232,6 +236,10 @@ def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: boo
 
     Returns:
         The resulting point, line or subspace.
+
+    Raises:
+        LinearDependenceError: If two subspaces coincide.
+        NotCoplanar: If two lines are not coplanar.
 
     """
     return _join_meet_duality(
