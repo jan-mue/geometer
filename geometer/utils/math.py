@@ -7,6 +7,20 @@ import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
 
+def is_numeric_dtype(dtype: npt.DTypeLike) -> bool:
+    """Checks whether a dtype is a numeric dtype i.e. a number or a bool.
+
+    Args:
+        dtype: The dtype to check.
+
+    Returns:
+        True if the dtype is a numeric dtype
+
+    """
+    dtype = np.dtype(dtype)
+    return np.issubdtype(dtype, np.number) or np.issubdtype(dtype, np.bool_)
+
+
 def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] | None = None,
                 rtol: float = 1.0e-5, atol: float = 1.0e-8) -> np.bool_ | npt.NDArray[np.bool_]:
     """Returns a boolean array where two arrays are scalar multiples of each other along a given axis.
@@ -14,7 +28,7 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
     For documentation of the tolerance parameters see :func:`numpy.isclose`.
 
     Args:
-        a, b: Numerical input arrays to compare.
+        a, b: Numeric input arrays to compare.
         axis: The axis or axes along which the two arrays are compared.
             The default axis=None will compare the whole arrays and return only a single boolean value.
         rtol: The relative tolerance parameter.
@@ -26,6 +40,9 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
 
     """
     a, b = np.broadcast_arrays(a, b)
+
+    if not is_numeric_dtype(a.dtype) or not is_numeric_dtype(b.dtype):
+        raise TypeError("The input arrays have a dtype that is not numeric.")
 
     if axis is None:
         a = a.ravel()
@@ -102,11 +119,13 @@ def hat_matrix(*args: npt.ArrayLike) -> np.ndarray:
 
 
 def _assert_square_matrix(A: np.ndarray) -> None:
+    if not is_numeric_dtype(A.dtype):
+        raise TypeError(f"The input array must have a numeric dtype not {A.dtype.name}")
     if A.ndim < 2:
         raise np.linalg.LinAlgError(f"{A.ndim}-dimensional array given. Array must be at least two-dimensional")
     m, n = A.shape[-2:]
     if m != n:
-        raise np.linalg.LinAlgError("Last 2 dimensions of the array must be square")
+        raise np.linalg.LinAlgError(f"Last 2 dimensions of the array must be square not ({m},{n})")
 
 
 def _minor_indices(n: int, m: int) -> npt.NDArray[np.int_]:
@@ -336,6 +355,8 @@ def roots(p: npt.ArrayLike) -> np.ndarray:
 
     """
     p = np.asarray(p)
+    if not is_numeric_dtype(p.dtype):
+        raise TypeError(f"The input array must have a numeric dtype not {p.dtype.name}")
     if len(p) == 4:
         a, b, c, d = p
     elif len(p) == 3:

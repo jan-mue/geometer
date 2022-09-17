@@ -1,8 +1,8 @@
 from typing import Generator, Iterable, TypeVar
 
 from .indexing import normalize_index, posify_index, sanitize_index  # noqa: F401
-from .math import (adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, null_space, orth, outer,  # noqa: F401
-                   roots)
+from .math import (adjugate, det, hat_matrix, inv, is_multiple, is_numeric_dtype, matmul, matvec,  # noqa: F401
+                   null_space, orth, outer, roots)
 
 T = TypeVar("T")
 

@@ -3,13 +3,13 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Iterable, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Generator, Iterator, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Iterator, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 
 from .exceptions import TensorComputationError
-from .utils import is_multiple, normalize_index, posify_index, sanitize_index
+from .utils import is_multiple, is_numeric_dtype, normalize_index, posify_index, sanitize_index
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -31,12 +31,12 @@ class Tensor(Sized, Iterable):
     of a tensor (see [1]).
 
     Args:
-        *args: Either a single iterable or multiple coordinate numbers.
-        covariant: If False, all indices are contravariant. If a list of indices indices is supplied, the specified
+        *args: A single iterable, numpy array, tensor or multiple coordinate numbers, arrays, tensors.
+        covariant: If False, all indices are contravariant. If a list of indices is supplied, the specified
             indices of the array will be covariant indices and all others contravariant indices.
-            By default, all indices are covariant.
-        tensor_rank: If the object contains multiple tensors, this parameter specifies the rank of the tensors contained
-            in the collection. By default, only a single tensor is contained in a Tensor object.
+            By default, all indices are covariant. If the first argument is a tensor then its indices are copied.
+        tensor_rank: If the Tensor object contains multiple tensors, this parameter specifies the rank of the tensors
+            contained in the collection. By default, only a single tensor is contained in a Tensor object.
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes:
@@ -67,6 +67,9 @@ class Tensor(Sized, Iterable):
                 self.array = np.array(args[0], **kwargs)
         else:
             self.array = np.array(args, **kwargs)
+
+        if not is_numeric_dtype(self.dtype):
+            raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
 
         if tensor_rank is None:
             tensor_rank = self.rank
@@ -424,16 +427,6 @@ class Tensor(Sized, Iterable):
     def size(self) -> npt.NDArray[np.int_]:
         """The number of tensors in the tensor, i.e. the product of the size of all collection axes."""
         return np.prod([self.shape[i] for i in self._collection_indices], dtype=int)
-
-    @property
-    def flat(self) -> Generator[Tensor, None, None]:
-        """A flat iterator of the collection that yields Tensor objects."""
-        if self.cdim == 0:
-            # TODO: flatten all other indices as well
-            raise TypeError("A Tensor without collection indices is not iterable.")
-        covariant = {i - self.cdim for i in self._covariant_indices}
-        for idx in np.ndindex(*self.shape[:self.cdim]):
-            yield Tensor(self.array[idx], covariant=covariant, copy=False)
 
 
 class LeviCivitaTensor(Tensor):

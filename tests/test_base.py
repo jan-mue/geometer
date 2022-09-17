@@ -90,12 +90,6 @@ class TestTensorCollection:
         assert len(a) == 2
         assert a.size == 2
 
-    def test_flat(self):
-        a = [Tensor([[1, 2], [3, 4]]), Tensor([[5, 6], [7, 8]])]
-        b = Tensor([a], tensor_rank=2)
-
-        assert list(b.flat) == a
-
     def test_getitem(self):
         a = Tensor([[1, 2],
                     [3, 4]])
