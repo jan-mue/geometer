@@ -28,7 +28,7 @@ class Tensor(Sized, Iterable):
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
     Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
-    of a tensor (see [1]).
+    of a tensor.
 
     Args:
         *args: A single iterable, numpy array, tensor or multiple coordinate numbers, arrays, tensors.
@@ -42,7 +42,9 @@ class Tensor(Sized, Iterable):
     Attributes:
         array: The underlying numpy array.
 
-    .. [1] https://en.wikipedia.org/wiki/Ricci_calculus#Upper_and_lower_indices
+    References:
+      - `Ricci calculus, Upper and lower indices, Wikipedia <https://en.wikipedia.org/wiki/
+        Ricci_calculus#Upper_and_lower_indices>`_
 
     """
 
@@ -430,7 +432,7 @@ class Tensor(Sized, Iterable):
 
 
 class LeviCivitaTensor(Tensor):
-    r"""This class can be used to construct a tensor representing the Levi-Civita symbol ([1]).
+    r"""This class can be used to construct a tensor representing the Levi-Civita symbol.
 
     The Levi-Civita symbol is also called :math:`\varepsilon`-Tensor and is defined as follows:
 
@@ -447,7 +449,9 @@ class LeviCivitaTensor(Tensor):
         size: The number of indices of the tensor.
         covariant: If true, the tensor will only have covariant indices. Default: True
 
-    .. [1] https://en.wikipedia.org/wiki/Levi-Civita_symbol#Generalization_to_n_dimensions
+    References:
+      - `Levi-Civita symbol, Wikipedia <https://en.wikipedia.org/wiki/
+        Levi-Civita_symbol#Generalization_to_n_dimensions>`_
 
     """
 
@@ -469,7 +473,7 @@ class LeviCivitaTensor(Tensor):
 
 
 class KroneckerDelta(Tensor):
-    r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor ([1]).
+    r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
 
     The following generalized definition of the Kronecker delta is used:
 
@@ -486,7 +490,8 @@ class KroneckerDelta(Tensor):
         n: The dimension of the tensor.
         p: The number of covariant and contravariant indices of the tensor, default is 1.
 
-    .. [1] https://en.wikipedia.org/wiki/Kronecker_delta#Generalizations
+    References:
+      - `Kronecker delta, Wikipedia <https://en.wikipedia.org/wiki/Kronecker_delta#Generalizations>`_
 
     """
 
@@ -533,8 +538,8 @@ class TensorDiagram:
 
 
     References:
-        https://www-m10.ma.tum.de/foswiki/pub/Lehrstuhl/PublikationenJRG/52_TensorDiagrams.pdf
-        J. Richter-Gebert: Perspectives on Projective Geometry, Chapters 13-14
+      - https://www-m10.ma.tum.de/foswiki/pub/Lehrstuhl/PublikationenJRG/52_TensorDiagrams.pdf
+      - J. Richter-Gebert: Perspectives on Projective Geometry, Chapters 13-14
 
     """
 

@@ -176,7 +176,7 @@ class Quadric(ProjectiveTensor):
             The points of intersection.
 
         References:
-            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
         if not isinstance(other, Line):
@@ -347,7 +347,7 @@ class Conic(Quadric):
             The resulting conic.
 
         References:
-            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
 
         """
         ac = adjugate([np.ones(3), a.array, c.array])[:, 0]
@@ -370,7 +370,7 @@ class Conic(Quadric):
             The points of intersection.
 
         References:
-            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
 
         """
         if isinstance(other, Conic):
@@ -518,7 +518,7 @@ class Circle(Ellipse):
             The angle of intersection.
 
         References:
-            .. [1] https://en.wikipedia.org/wiki/Lie_sphere_geometry
+          - `Lie sphere geometry, Wikipedia <https://en.wikipedia.org/wiki/Lie_sphere_geometry>`_
 
         """
         # lorenz coordinates

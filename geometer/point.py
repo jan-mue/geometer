@@ -609,7 +609,7 @@ class Line(Subspace):
             True if the two lines intersect (i.e. they lie in the same plane).
 
         References:
-            .. [1] Jim Blinn, Lines in Space: Back to the Diagrams, Line Intersections
+          - Jim Blinn, Lines in Space: Back to the Diagrams, Line Intersections
 
         """
         if self.dim == 2:
@@ -629,7 +629,7 @@ class Line(Subspace):
             The mirror points.
 
         References:
-            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Section 19.1
 
         """
         l = self

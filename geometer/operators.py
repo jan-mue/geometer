@@ -123,7 +123,7 @@ def angle(*args: Point | Line | Plane) -> npt.NDArray[np.float_]:
 
     The function uses the Laguerre formula to calculate angles in two or three-dimensional projective space
     using cross ratios. To calculate the angle between two planes, two additional planes tangent to the absolute
-    conic are constructed (see [1]).
+    conic are constructed.
 
     Since the Laguerre formula uses the complex logarithm (which gives values between :math:`-\pi i` and :math:`\pi i`)
     and multiplies it with :math:`1/2i`, this function can only calculate angles between :math:`-\pi / 2` and
@@ -140,7 +140,7 @@ def angle(*args: Point | Line | Plane) -> npt.NDArray[np.float_]:
         The oriented angle(s) between the given objects.
 
     References:
-        .. [1] Olivier Faugeras, Three-dimensional Computer Vision, Page 30
+      - Olivier Faugeras, Three-dimensional Computer Vision, Page 30
 
     """
     if len(args) == 3:
@@ -248,7 +248,7 @@ def dist(p: Point | Line | Plane, q) -> npt.NDArray[np.float_]:
         The distance between the given objects.
 
     References:
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 18.8
+      - J. Richter-Gebert: Perspectives on Projective Geometry, Section 18.8
 
     """
     if p == q:

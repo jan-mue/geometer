@@ -368,7 +368,7 @@ class Polygon(Polytope):
             True if the point is contained in the polygon.
 
         References:
-            .. [1] http://paulbourke.net/geometry/polygonmesh/#insidepoly
+          - http://paulbourke.net/geometry/polygonmesh/#insidepoly
 
         """
         if other.shape[0] == 0:

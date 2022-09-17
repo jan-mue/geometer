@@ -78,7 +78,8 @@ def rotation(angle: float, axis: Point | None = None) -> Transformation:
         The rotation.
 
     References:
-        .. [1] https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle
+      - `Rotation matrix, Wikipedia <https://en.wikipedia.org/wiki/
+        Rotation_matrix#Rotation_matrix_from_axis_and_angle>`_
 
     """
     if axis is None:
@@ -136,7 +137,7 @@ def reflection(axis: Subspace) -> Transformation:
         The reflection.
 
     References:
-        .. [1] https://en.wikipedia.org/wiki/Householder_transformation
+      - `Householder transformation, Wikipedia <https://en.wikipedia.org/wiki/Householder_transformation>`_
 
     """
     if axis == infty_hyperplane(axis.dim):
@@ -190,7 +191,7 @@ class Transformation(ProjectiveTensor):
             The transformation mapping each of the given points to the specified points.
 
         References:
-            .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Proof of Theorem 3.4
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Proof of Theorem 3.4
 
         """
         a = [x.array for x, y in args]
@@ -219,7 +220,7 @@ class Transformation(ProjectiveTensor):
             The transformation that maps the points to each other and the conic to the other conic.
 
         References:
-            .. [1] https://math.stackexchange.com/questions/654275/homography-between-ellipses
+          - https://math.stackexchange.com/questions/654275/homography-between-ellipses
 
         """
         a1, b1, c1 = points1
