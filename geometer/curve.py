@@ -30,7 +30,8 @@ class Quadric(ProjectiveTensor):
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes:
-        is_dual: True if the quadric is a dual quadric i.e. contains all hyperplanes tangent to the non-dual quadric.
+        is_dual (bool): True if the quadric is a dual quadric
+            i.e. contains all hyperplanes tangent to the non-dual quadric.
 
     """
 

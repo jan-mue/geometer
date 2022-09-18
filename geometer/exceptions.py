@@ -34,7 +34,7 @@ class LinearDependenceError(GeometryException, ValueError):
     """The given values were linearly dependent, making the computation impossible.
 
     Attributes:
-        dependent_values: The indices of the sets of linearly dependent vectors.
+        dependent_values (numpy.ndarray): The indices of the sets of linearly dependent vectors.
 
     """
 

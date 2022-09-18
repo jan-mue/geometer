@@ -122,8 +122,6 @@ def scaling(*factors: npt.ArrayLike) -> Transformation:
         The scaling transformation.
 
     """
-    if len(factors) == 1:
-        return affine_transform(np.diag(factors[0]))
     return affine_transform(np.diag(factors))
 
 

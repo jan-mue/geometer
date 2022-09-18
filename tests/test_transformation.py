@@ -1,7 +1,9 @@
 import numpy as np
+import pytest
 
 from geometer import (Circle, Line, Point, Transformation, TransformationCollection, angle, reflection, rotation,
                       scaling, translation)
+from geometer.exceptions import NoIncidence
 
 
 class TestTransformation:
@@ -89,6 +91,15 @@ class TestTransformation:
         assert t * p2 == q2
         assert t * p2 == q2
         assert t.apply(c1) == c2
+
+        with pytest.raises(NoIncidence, match=r".*Point\(42, 0\).*"):
+            Transformation.from_points_and_conics([Point(42, 0), p2, p3], [q1, q2, q3], c1, c2)
+        with pytest.raises(NoIncidence, match=r".*Point\(42, 0\).*"):
+            Transformation.from_points_and_conics([p1, p2, p3], [Point(42, 0), q2, q3], c1, c2)
+        with pytest.raises(NoIncidence, match=r".*Point\(42, 0\).*"):
+            Transformation.from_points_and_conics([p1, Point(42, 0), p3], [q1, q2, q3], c1, c2)
+        with pytest.raises(NoIncidence, match=r".*Point\(42, 0\).*"):
+            Transformation.from_points_and_conics([p1, p2, p3], [q1, Point(42, 0), q3], c1, c2)
 
 
 class TestTransformationCollection:

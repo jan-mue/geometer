@@ -40,7 +40,7 @@ class Tensor(Sized, Iterable):
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes:
-        array: The underlying numpy array.
+        array (numpy.ndarray): The underlying numpy array.
 
     References:
       - `Ricci calculus, Upper and lower indices, Wikipedia <https://en.wikipedia.org/wiki/
@@ -50,11 +50,6 @@ class Tensor(Sized, Iterable):
 
     def __init__(self, *args: Tensor | npt.ArrayLike, covariant: bool | Iterable[int] = True,
                  tensor_rank: int | None = None, **kwargs) -> None:
-        self.array: np.ndarray
-        self._collection_indices: set[int]
-        self._covariant_indices: set[int]
-        self._contravariant_indices: set[int]
-
         if len(args) == 0:
             raise TypeError("At least one argument is required.")
 

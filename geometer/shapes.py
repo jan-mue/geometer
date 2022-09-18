@@ -29,8 +29,8 @@ class Polytope(Point):
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes:
-        array: The underlying numpy array.
-        pdim: The dimension of the polytope.
+        array (numpy.ndarray): The underlying numpy array.
+        pdim (int): The dimension of the polytope.
 
     """
 
