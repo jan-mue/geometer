@@ -8,7 +8,7 @@ numpy = ">=1.20,<1.23"
 
 [dev-packages]
 twine = "==4.0.1"
-pytest = "==7.1.2"
+pytest = "==7.2.0"
 codecov = "==2.1.12"
 sphinx = "==5.1.1"
 sphinx-rtd-theme = "==1.0.0"
