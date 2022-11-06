@@ -745,17 +745,18 @@ class Plane(Subspace):
 
     @property
     def basis_matrix(self) -> np.ndarray:
-        if self.cdim == 0:
-            n = self.dim + 1
-            i = self.array.nonzero()[0][0]
-            result = np.zeros((n, n - 1), dtype=self.dtype)
-            a = [j for j in range(n) if j != i]
-            result[i, :] = self.array[a]
-            result[a, range(n - 1)] = -self.array[i]
-            q, r = np.linalg.qr(result)
-            return q.T
-        # TODO: vectorize this
-        return np.stack([cast(Plane, e).basis_matrix for e in self], axis=0)
+        n = self.dim + 1
+        i = np.argmax(np.abs(self.array) > EQ_TOL_ABS, axis=-1, keepdims=True)
+        result = np.zeros(self.shape[:-1] + (n, n - 1), dtype=self.dtype)
+        ind = np.indices(self.shape)
+        ind_short = np.indices(self.shape[:-1], sparse=True)
+        s = ind.shape
+        a = tuple(np.delete(ind, np.ravel_multi_index(tuple(np.indices(s)[:-1]) + (i,), s)).reshape(s[:-1] + (-1,)))
+        result[ind_short + (i.squeeze(),)] = self.array[a]
+        b = np.arange(n - 1).reshape((1,) * (len(self.shape) - 1) + (n - 1,))
+        result[a + (b,)] = -self.array[ind_short + (i.squeeze(), None)]
+        q, r = np.linalg.qr(result)
+        return np.swapaxes(q, -1, -2)
 
     def mirror(self, pt: Point) -> Point:
         """Construct the reflections of a point at the plane.

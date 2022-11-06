@@ -257,11 +257,11 @@
         },
         "keyring": {
             "hashes": [
-                "sha256:373e29a1bda7f42247c0db0fa13026c770fa8ff995a7475769357e48743761df",
-                "sha256:6f457494bb207053c97443656e92ebcc4e2957c5c529028d9eaf4daf40a94483"
+                "sha256:3dd30011d555f1345dec2c262f0153f2f0ca6bca041fb1dc4588349bb4c0ac1e",
+                "sha256:ad192263e2cdd5f12875dedc2da13534359a7e760e77f8d04b50968a821c2361"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==23.10.0"
+            "version": "==23.11.0"
         },
         "markupsafe": {
             "hashes": [

@@ -10,8 +10,8 @@ New Features
 
 - Add type hints to code base
 - Muted warnings for invalid values in crossratio and other functions
-- NumPy 1.20+ required
-- Dropped support for Python 3.5 and 3.6
+- NumPy 1.22+ required
+- Dropped support for Python 3.5, 3.6 and 3.7
 
 0.3.4 - released (17.4.2022)
 ----------------------------
