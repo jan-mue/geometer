@@ -25,10 +25,6 @@ is represented by a four-dimensional vector. This has the following advantages:
 
 Most of the computation in the library is done via tensor diagrams (using numpy.einsum).
 
-Geometer was originally built as a learning exercise and is based on two graduate courses taught at the
-Technical University Munich. After investing a lot of time in the project, it is now reasonably well tested
-and the API should be stable.
-
 The source code of the package can be found on [GitHub](https://github.com/jan-mue/geometer)
 and the documentation on [Read the Docs](https://geometer.readthedocs.io).
 

@@ -61,7 +61,7 @@ def sanitize_index(ind):
     elif np.issubdtype(index_array.dtype, np.integer):
         return index_array
     elif np.issubdtype(index_array.dtype, np.floating):
-        int_index = index_array.astype(np.intp)
+        int_index = index_array.astype(np.int_)
         if np.allclose(index_array, int_index):
             return int_index
         else:

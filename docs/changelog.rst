@@ -8,15 +8,31 @@ Changelog
 New Features
 ------------
 
-- More tolerance parameters in the shapes module
+- Add type hints to code base
 - Muted warnings for invalid values in crossratio and other functions
-- NumPy 1.20+ required
-- Dropped support for Python 3.5 and 3.6
+- NumPy 1.22+ required
+- Dropped support for Python 3.5, 3.6 and 3.7
+
+0.3.4 - released (17.4.2022)
+----------------------------
+
+New Features
+------------
+- Point.normalized_array and PointCollection.normalized_array will return the original array if normalization is not required
 
 Bug fixes
 ---------
 
-- Lower tolerance for contains method of line segments (#55)
+- Avoid introducing numerical errors in join/meet by normalizing arrays only by a power of two (#55)
+- Simplify code in Segment.contains to avoid integer overflow when normalized_array is an integer array
+
+0.3.3 - released (16.4.2022)
+----------------------------
+
+Bug fixes
+---------
+
+- Avoid division in Segment.contains for better numerical stability (#55)
 
 0.3.2 - released (22.1.2022)
 ----------------------------

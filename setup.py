@@ -12,11 +12,11 @@ DESCRIPTION = "Python geometry package based on projective geometry and numpy."
 URL = "https://github.com/jan-mue/geometer"
 EMAIL = ""
 AUTHOR = "Jan Müller"
-REQUIRES_PYTHON = ">=3.7.0"
+REQUIRES_PYTHON = ">=3.8.0"
 VERSION = None
 
 # What packages are required for this module to be executed?
-REQUIRED = ["numpy>=1.20,<1.23"]
+REQUIRED = ["numpy>=1.22,<1.25"]
 
 # What packages are optional?
 EXTRAS = {

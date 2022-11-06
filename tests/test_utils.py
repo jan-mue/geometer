@@ -1,6 +1,6 @@
 import numpy as np
 
-from geometer.utils import adjugate, det, inv, is_multiple, null_space, roots
+from geometer.utils import adjugate, det, inv, is_multiple, null_space, orth, roots
 
 
 def test_is_multiple():
@@ -59,6 +59,11 @@ def test_inv():
     assert np.allclose(np.linalg.inv(matrices), inv(matrices))
 
 
+def test_orth():
+    a = np.eye(3)
+    assert np.allclose(orth(a), a)
+
+
 def test_null_space():
     a = np.array([[2, 3, 4, 3],
                   [5, 1, 7, 6],
@@ -74,3 +79,6 @@ def test_roots():
         sol = roots(p)
         for x in sol:
             assert np.isclose(np.polyval(p, x), 0)
+
+    assert roots([1, 0, -4]).tolist() == [2, -2]
+    assert roots([1, -2]).tolist() == [2]

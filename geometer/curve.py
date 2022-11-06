@@ -1,165 +1,160 @@
+from __future__ import annotations
+
 import math
 from itertools import combinations
+from typing import Union, cast
 
 import numpy as np
+import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveCollection, ProjectiveElement, Tensor, TensorDiagram
-from .exceptions import NotReducible
-from .point import I, J, Line, LineCollection, Plane, PlaneCollection, Point, PointCollection, infty_plane, join
+from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveTensor, Tensor, TensorDiagram
+from .exceptions import IncidenceError, NotReducible
+from .point import I, J, Line, Plane, Point, Subspace, infty_plane, join
 from .transformation import rotation, translation
-from .utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, roots
+from .utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
 
 
-class Quadric(ProjectiveElement):
+class Quadric(ProjectiveTensor):
     r"""Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
     The quadric is defined by a symmetric matrix of size :math:`n+1` where :math:`n` is the dimension of the projective
     space. If :math:`A \in \mathbb{R}^{(n+1) \times (n+1)}`, the quadric contains all points
     :math:`x \in \mathbb{R}^{n+1}` such that :math:`x^T A x = 0`.
 
-    Parameters
-    ----------
-    matrix : array_like or Tensor
-        A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
-    is_dual : bool, optional
-        If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
-    normalize_matrix : bool, optional
-        If true, normalize matrix using the (n+1)-th root of the absolute value of its pseudo-determinant.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        matrix: A two-dimensional array defining the (n+1)x(n+1) symmetric matrix of the quadric.
+        is_dual: If true, the quadric represents a dual quadric, i.e. all hyperplanes tangent to the non-dual quadric.
+        normalize_matrix: If true, normalize matrix using the (n+1)-th root of the absolute value of
+            its pseudo-determinant.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
-    Attributes
-    ----------
-    is_dual : bool
-        True if the quadric is a dual quadric i.e. contains all hyperplanes tangent to the non-dual quadric.
+    Attributes:
+        is_dual (bool): True if the quadric is a dual quadric
+            i.e. contains all hyperplanes tangent to the non-dual quadric.
 
     """
 
-    def __init__(self, matrix, is_dual=False, normalize_matrix=False, **kwargs):
+    def __init__(self, matrix: Tensor | npt.ArrayLike, is_dual: bool = False,
+                 normalize_matrix: bool = False, **kwargs) -> None:
         self.is_dual = is_dual
 
         if normalize_matrix is True:
             matrix = matrix.array if isinstance(matrix, Tensor) else np.asarray(matrix)
             w = np.abs(np.linalg.eigvalsh(matrix))
-            matrix = matrix / np.prod(w[w > EQ_TOL_ABS]) ** (1 / matrix.shape[-1])
+            pseudo_det = np.prod(np.where(w > EQ_TOL_ABS, w, 1), axis=-1, keepdims=True)
+            matrix = matrix / (pseudo_det ** (1 / matrix.shape[-1]))
             kwargs["copy"] = False
 
-        kwargs.setdefault("covariant", False)
-        super().__init__(matrix, **kwargs)
+        if not is_dual:
+            kwargs.setdefault("covariant", False)
+        super().__init__(matrix, tensor_rank=2, **kwargs)
 
-    def __add__(self, other):
+    def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, Point):
             return super().__add__(other)
 
         return translation(other).apply(self)
 
-    def __sub__(self, other):
-        return self + (-other)
+    def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        if not isinstance(other, Point):
+            return super().__add__(other)
+
+        return translation(-other).apply(self)
 
     @classmethod
-    def from_planes(cls, e, f):
+    def from_planes(cls, e: Plane, f: Plane) -> Quadric:
         """Construct a degenerate quadric from two hyperplanes.
 
-        Parameters
-        ----------
-        e, f : Plane
-            The two planes the quadric consists of.
+        Args:
+            e, f: The two planes the quadric consists of.
 
-        Returns
-        -------
-        Quadric
+        Returns:
             The resulting quadric.
 
         """
-        m = np.outer(e.array, f.array)
-        return Quadric(m + m.T, normalize_matrix=True)
+        m = outer(e.array, f.array)
+        m += m.T
+        return Quadric(m, normalize_matrix=True)
 
-    def tangent(self, at):
+    def tangent(self, at: Point) -> Plane:
         """Returns the hyperplane defining the tangent space at a given point.
 
-        Parameters
-        ----------
-        at : Point
-            A point on the quadric at which the tangent plane is calculated.
+        Args:
+            at: A point on the quadric at which the tangent plane is calculated.
 
-        Returns
-        -------
-        Plane
+        Returns:
             The tangent plane at the given point.
 
         """
-        return Plane(self.array.dot(at.array), copy=False)
+        return Plane(matvec(self.array, at.array), copy=False)
 
-    def is_tangent(self, plane):
+    def is_tangent(self, plane: Subspace) -> npt.NDArray[np.bool_]:
         """Tests if a given hyperplane is tangent to the quadric.
 
-        Parameters
-        ----------
-        plane : Subspace
-            The hyperplane to test.
+        Args:
+            plane: The hyperplane to test.
 
-        Returns
-        -------
-        bool
+        Returns:
             True if the given hyperplane is tangent to the quadric.
 
         """
         return self.dual.contains(plane)
 
-    def contains(self, other, tol=EQ_TOL_ABS):
+    def contains(self, other: Point | Subspace, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests if a given point lies on the quadric.
 
-        Parameters
-        ----------
-        other : Point or Subspace
-            The point or hyperplane to test.
-        tol : float, optional
-            The accepted tolerance.
+        Args:
+            other: The point or hyperplane to test.
+            tol: The accepted tolerance.
 
-        Returns
-        -------
-        bool
+        Returns:
             True if the quadric contains the point.
 
         """
-        return np.isclose(other.array.dot(self.array.dot(other.array)), 0, atol=tol)
+        if self.is_dual:
+            d = TensorDiagram((self, other), (self, other.copy()))
+        else:
+            d = TensorDiagram((other, self), (other.copy(), self))
+        return np.isclose(d.calculate().array, 0, atol=tol)
 
     @property
-    def is_degenerate(self):
-        """bool: True if the quadric is degenerate."""
+    def is_degenerate(self) -> npt.NDArray[np.bool_]:
+        """True if the quadric is degenerate."""
         return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
-    def components(self):
-        """list of ProjectiveElement: The components of a degenerate quadric."""
+    def components(self) -> list[Point | Line | Plane]:
+        """The components of a degenerate quadric."""
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
-        n = self.shape[0]
+        n = self.shape[-1]
+        indices = tuple(np.indices(self.shape[:-2]))
 
         if n == 3:
             b = adjugate(self.array)
-            i = np.argmax(np.abs(np.diag(b)))
-            beta = csqrt(-b[i, i])
-            p = -b[:, i] / beta if beta != 0 else b[:, i]
+            i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
+            beta = csqrt(-b[indices + (i, i)])
+            p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
 
         else:
-            p = []
-            for ind in combinations(range(n), n - 2):
-                # calculate all principal minors of order 2
-                row_ind = [[j] for j in range(n) if j not in ind]
-                col_ind = [j for j in range(n) if j not in ind]
-                p.append(csqrt(-det(self.array[row_ind, col_ind])))
+            ind = np.indices((n, n))
+            ind = np.stack([
+                np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)], axis=1)
+            minors = det(self.array[..., ind[0], ind[1]])
+            p = csqrt(-minors)
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
         m = hat_matrix(p)
         t = self.array + m
 
         # components are in the non-zero rows and columns (up to scalar multiple)
-        i = np.unravel_index(np.abs(t).argmax(), t.shape)
-        p, q = t[i[0]], t[:, i[1]]
+        i = np.unravel_index(np.abs(t).reshape(t.shape[:-2] + (-1,)).argmax(axis=-1), t.shape[-2:])
+        p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
 
-        if self.dim > 2 and not is_multiple(np.outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS):
+        if self.dim > 2 and not np.all(is_multiple(outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, axis=(-2, -1))):
             raise NotReducible("Quadric has no decomposition in 2 components.")
+
+        # TODO: make order of components reproducible
 
         p, q = np.real_if_close(p), np.real_if_close(q)
 
@@ -169,94 +164,82 @@ class Quadric(ProjectiveElement):
             return [Line(p, copy=False), Line(q, copy=False)]
         return [Plane(p, copy=False), Plane(q, copy=False)]
 
-    def intersect(self, other):
+    def intersect(self, other: Line) -> list[Point] | list[Line]:
         """Calculates points of intersection of a line with the quadric.
 
         This method also returns complex points of intersection, even if the quadric and the line do not intersect in
         any real points.
 
-        Parameters
-        ----------
-        other: Line or LineCollection
-            The line to intersect this quadric with.
+        Args:
+            other: The line to intersect this quadric with.
 
-        Returns
-        -------
-        list of Point or list of PointCollection
+        Returns:
             The points of intersection.
 
-        References
-        ----------
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
+        References:
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
-        if isinstance(other, (Line, LineCollection)):
-            reducible = self.is_degenerate
-            if reducible:
-                try:
-                    e, f = self.components
-                except NotReducible:
-                    reducible = False
+        if not isinstance(other, Line):
+            raise TypeError(f"Expected Line but got {type(other)}")
 
-            if not reducible:
-                if self.dim > 2:
-                    arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
+        reducible: bool | np.bool_ = np.all(self.is_degenerate)
+        if reducible:
+            try:
+                e, f = self.components
+            except NotReducible:
+                reducible = False
 
-                    if isinstance(other, Line):
-                        i = arr.nonzero()[0][0]
-                        m = Plane(arr[i], copy=False).basis_matrix
-                        q = Quadric(m.dot(self.array).dot(m.T), copy=False)
-                        line = other._matrix_transform(m)
-                        return [Point(m.T.dot(p.array), copy=False) for p in q.intersect(line)]
-                    else:
-                        i = np.any(arr, axis=-1).argmax(-1)
-                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
-                        line = other._matrix_transform(m)
-                        q = QuadricCollection(matmul(m.dot(self.array), m, transpose_b=True), copy=False)
-                        return [
-                            PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False)
-                            for p in q.intersect(line)
-                        ]
+        if not reducible:
+            if self.dim > 2:
+                arr = other.array.reshape(other.shape[:-other.tensor_shape[1]] + (-1, self.dim + 1))
+
+                if other.cdim == 0:
+                    i = arr.nonzero()[0][0]
+                    m = Plane(arr[i], copy=False).basis_matrix
                 else:
-                    m = hat_matrix(other.array)
-                    b = matmul(np.swapaxes(m, -1, -2).dot(self.array), m)
-
-                    if isinstance(other, Line):
-                        p, q = Conic(b, is_dual=not self.is_dual, copy=False).components
-                    else:
-                        p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
+                    i = np.any(arr, axis=-1).argmax(-1)
+                    m = Plane(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
+                line = other._matrix_transform(m)
+                projected_quadric = Quadric(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
+                return [
+                    Point(np.squeeze(matmul(np.expand_dims(point.array, -2), m), -2), copy=False)
+                    for point in projected_quadric.intersect(line)
+                ]
             else:
-                if self.is_dual:
-                    p, q = e.join(other), f.join(other)
-                else:
-                    p, q = e.meet(other), f.meet(other)
+                m = hat_matrix(other.array)
+                b = matmul(matmul(m, self.array, transpose_a=True), m)
+                p, q = Quadric(b, is_dual=not self.is_dual, copy=False).components
+        else:
+            if self.is_dual:
+                e, f = cast(Point, e), cast(Point, f)
+                p, q = e.join(other), f.join(other)
+            else:
+                e, f = cast(Union[Line, Plane], e), cast(Union[Line, Plane], f)
+                p, q = e.meet(other), f.meet(other)
 
-            if p == q:
-                return [p]
+        if p.cdim == 0 and p == q:
+            return [p]
 
-            return [p, q]
+        return [p, q]
 
     @property
-    def dual(self):
-        """Quadric: The dual quadric."""
-        return Quadric(np.linalg.inv(self.array), is_dual=not self.is_dual, copy=False)
+    def dual(self) -> Quadric:
+        """The dual quadric."""
+        return Quadric(inv(self.array), is_dual=not self.is_dual, copy=False)
 
 
 class Conic(Quadric):
     """A two-dimensional conic."""
 
     @classmethod
-    def from_points(cls, a, b, c, d, e):
+    def from_points(cls, a: Point, b: Point, c: Point, d: Point, e: Point) -> Conic:
         """Construct a conic through five points.
 
-        Parameters
-        ----------
-        a, b, c, d, e : Point
-            The points lying on the conic.
+        Args:
+            a, b, c, d, e: The points lying on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
         """
@@ -271,45 +254,41 @@ class Conic(Quadric):
         bde = det([b, d, e])
         ade = det([a, d, e])
         bce = det([b, c, e])
-        m = ace * bde * np.outer(np.cross(a, d), np.cross(b, c)) - ade * bce * np.outer(np.cross(a, c), np.cross(b, d))
+        m = ace * bde * outer(np.cross(a, d), np.cross(b, c)) - ade * bce * outer(np.cross(a, c), np.cross(b, d))
         return Conic(np.real_if_close(m + m.T), normalize_matrix=True)
 
     @classmethod
-    def from_lines(cls, g, h):
+    def from_lines(cls, g: Line, h: Line) -> Conic:
         """Construct a degenerate conic from two lines.
 
-        Parameters
-        ----------
-        g, h : Line
-            The two lines the conic consists of.
+        Args:
+            g, h: The two lines the conic consists of.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
         """
-        m = np.outer(g.array, h.array)
-        return Conic(m + m.T, normalize_matrix=True)
+        m = outer(g.array, h.array)
+        m += m.T
+        return Conic(m, normalize_matrix=True)
 
     @classmethod
-    def from_tangent(cls, tangent, a, b, c, d):
+    def from_tangent(cls, tangent: Line, a: Point, b: Point, c: Point, d: Point) -> Conic:
         """Construct a conic through four points and tangent to a line.
 
-        Parameters
-        ----------
-        tangent : Line
-        a, b, c, d : Point
-            The points lying on the conic.
+        Args:
+            tangent: The line tangent to the conic.
+            a, b, c, d: The points lying on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
+
+        Raises:
+            IncidenceError: If one of the points lies on the tangent.
 
         """
         if any(tangent.contains(p) for p in [a, b, c, d]):
-            raise ValueError("The supplied points cannot lie on the supplied tangent!")
+            raise IncidenceError("The supplied points cannot lie on the supplied tangent!")
 
         a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
         b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array
@@ -333,19 +312,14 @@ class Conic(Quadric):
         return cls.from_points(a, b, c, d, y)
 
     @classmethod
-    def from_foci(cls, f1, f2, bound):
+    def from_foci(cls, f1: Point, f2: Point, bound: Point) -> Conic:
         """Construct a conic with the given focal points that passes through the boundary point.
 
-        Parameters
-        ----------
-        f1, f2 : Point
-            The two focal points.
-        bound : Point
-            A boundary point that lies on the conic.
+        Args:
+            f1, f2: The two focal points.
+            bound: A boundary point that lies on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
         """
@@ -359,28 +333,22 @@ class Conic(Quadric):
         return Conic(np.linalg.inv(c.array), copy=False)
 
     @classmethod
-    def from_crossratio(cls, cr, a, b, c, d):
+    def from_crossratio(cls, cr: float, a: Point, b: Point, c: Point, d: Point) -> Conic:
         """Construct a conic from a cross ratio and four other points.
 
         This method relies on the fact that a point lies on a conic with five other points, if and only of the
         cross ratio seen from this point is the same as the cross ratio of four of the other points seen from the fifth
         point.
 
-        Parameters
-        ----------
-        cr : float
-            The crossratio of the other points that defines the conic.
-        a, b, c, d : Point
-            The points lying on the conic.
+        Args:
+            cr: The crossratio of the other points that defines the conic.
+            a, b, c, d: The points lying on the conic.
 
-        Returns
-        -------
-        Conic
+        Returns:
             The resulting conic.
 
-        References
-        ----------
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
+        References:
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Section 10.2
 
         """
         ac = adjugate([np.ones(3), a.array, c.array])[:, 0]
@@ -388,26 +356,22 @@ class Conic(Quadric):
         ad = adjugate([np.ones(3), a.array, d.array])[:, 0]
         bc = adjugate([np.ones(3), b.array, c.array])[:, 0]
 
-        matrix = np.outer(ac, bd) - cr * np.outer(ad, bc)
+        matrix = outer(ac, bd) - cr * outer(ad, bc)
+        matrix += matrix.T
 
-        return cls(matrix + matrix.T, normalize_matrix=True)
+        return cls(matrix, normalize_matrix=True)
 
-    def intersect(self, other):
+    def intersect(self, other: Line | Conic) -> list[Point]:
         """Calculates points of intersection with the conic.
 
-        Parameters
-        ----------
-        other: Line, LineCollection or Conic
-            The object to intersect this conic with.
+        Args:
+            other: The object to intersect this conic with.
 
-        Returns
-        -------
-        list of Point or list of PointCollection
+        Returns:
             The points of intersection.
 
-        References
-        ----------
-        .. [1] J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
+        References:
+          - J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.4
 
         """
         if isinstance(other, Conic):
@@ -432,17 +396,13 @@ class Conic(Quadric):
 
         return super().intersect(other)
 
-    def tangent(self, at):
+    def tangent(self, at: Point) -> Line | tuple[Line, Line]:
         """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
 
-        Parameters
-        ----------
-        at : Point
-            The point to calculate the tangent at.
+        Args:
+            at: The point to calculate the tangent at.
 
-        Returns
-        -------
-        Line or tuple of Line
+        Returns:
             The tangent line(s).
 
         """
@@ -451,25 +411,21 @@ class Conic(Quadric):
         p, q = self.intersect(self.polar(at))
         return at.join(p), at.join(q)
 
-    def polar(self, pt):
+    def polar(self, pt: Point) -> Line:
         """Calculates the polar line of the conic at a given point.
 
-        Parameters
-        ----------
-        pt : Point
-            The point to calculate the polar at.
+        Args:
+            pt: The point to calculate the polar at.
 
-        Returns
-        -------
-        Line
+        Returns:
             The polar line.
 
         """
         return Line(self.array.dot(pt.array), copy=False)
 
     @property
-    def foci(self):
-        """tuple of Point: The foci of the conic."""
+    def foci(self) -> tuple[Point, ...]:
+        """The foci of the conic."""
         # Algorithm from Perspectives on Projective Geometry, Section 19.4
         i = self.tangent(at=I)
         j = self.tangent(at=J)
@@ -494,20 +450,15 @@ absolute_conic = Conic(np.eye(3))
 class Ellipse(Conic):
     """Represents an ellipse in 2D.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center of the ellipse, default is Point(0, 0).
-    hradius : float, optional
-        The horizontal radius (along the x-axis), default is 1.
-    vradius : float, optional
-         The vertical radius (along the y-axis), default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center of the ellipse, default is Point(0, 0).
+        hradius: The horizontal radius (along the x-axis), default is 1.
+        vradius: The vertical radius (along the y-axis), default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
-    def __init__(self, center=Point(0, 0), hradius=1, vradius=1, **kwargs):
+    def __init__(self, center: Point = Point(0, 0), hradius: float = 1, vradius: float = 1, **kwargs) -> None:
         if hradius == vradius == 0:
             raise ValueError("hradius and vradius can not both be zero.")
 
@@ -530,54 +481,45 @@ class Ellipse(Conic):
 class Circle(Ellipse):
     """A circle in 2D.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center point of the circle, default is Point(0, 0).
-    radius : float, optional
-        The radius of the circle, default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center point of the circle, default is Point(0, 0).
+        radius: The radius of the circle, default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
-    def __init__(self, center=Point(0, 0), radius=1, **kwargs):
+    def __init__(self, center: Point = Point(0, 0), radius: float = 1, **kwargs) -> None:
         super().__init__(center, radius, radius, **kwargs)
 
     @property
-    def center(self):
-        """Point: The center of the circle."""
+    def center(self) -> Point:
+        """The center of the circle."""
         return self.foci[0]
 
     @property
-    def radius(self):
-        """float: The radius of the circle."""
+    def radius(self) -> float:
+        """The radius of the circle."""
         c = self.array[:2, 2] / self.array[0, 0]
         return np.sqrt(c.dot(c) - self.array[2, 2] / self.array[0, 0])
 
     @property
-    def lie_coordinates(self):
-        """Point: The Lie coordinates of the circle as point in RP4."""
+    def lie_coordinates(self) -> Point:
+        """The Lie coordinates of the circle as point in RP4."""
         m = self.center.normalized_array
         x = m[0] ** 2 + m[1] ** 2 - self.radius ** 2
         return Point([(1 + x) / 2, (1 - x) / 2, m[0], m[1], self.radius])
 
-    def intersection_angle(self, other):
+    def intersection_angle(self, other: Circle) -> float:
         """Calculates the angle of intersection of two circles using its Lie coordinates.
 
-        Parameters
-        ----------
-        other : Circle
-            The circle to intersect this circle with.
+        Args:
+            other: The circle to intersect this circle with.
 
-        Returns
-        -------
-        float
+        Returns:
             The angle of intersection.
 
-        References
-        ----------
-        .. [1] https://en.wikipedia.org/wiki/Lie_sphere_geometry
+        References:
+          - `Lie sphere geometry, Wikipedia <https://en.wikipedia.org/wiki/Lie_sphere_geometry>`_
 
         """
         # lorenz coordinates
@@ -587,26 +529,22 @@ class Circle(Ellipse):
         return np.arccos(np.vdot(p1, p2))
 
     @property
-    def area(self):
-        """float: The area of the circle."""
+    def area(self) -> float:
+        """The area of the circle."""
         return 2 * np.pi * self.radius ** 2
 
 
 class Sphere(Quadric):
     """A sphere in any dimension.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center of the sphere, default is Point(0, 0, 0).
-    radius : float, optional
-        The radius of the sphere, default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center of the sphere, default is Point(0, 0, 0).
+        radius: The radius of the sphere, default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), radius=1, **kwargs):
+    def __init__(self, center: Point = Point(0, 0, 0), radius: float = 1, **kwargs) -> None:
         if radius == 0:
             raise ValueError("Sphere radius cannot be 0.")
 
@@ -623,29 +561,29 @@ class Sphere(Quadric):
         super().__init__(m, **kwargs)
 
     @property
-    def center(self):
-        """Point: The center of the sphere."""
+    def center(self) -> Point:
+        """The center of the sphere."""
         return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=False)
 
     @property
-    def radius(self):
-        """float: The radius of the sphere."""
+    def radius(self) -> float:
+        """The radius of the sphere."""
         c = self.array[:-1, -1] / self.array[0, 0]
         return np.sqrt(c.dot(c) - self.array[-1, -1] / self.array[0, 0])
 
     @staticmethod
-    def _alpha(n):
+    def _alpha(n: int) -> float:
         return math.pi ** (n / 2) / math.gamma(n / 2 + 1)
 
     @property
-    def volume(self):
-        """float: The volume of the sphere."""
+    def volume(self) -> float:
+        """The volume of the sphere."""
         n = self.dim
         return self._alpha(n) * self.radius ** n
 
     @property
-    def area(self):
-        """float: The surface area of the sphere."""
+    def area(self) -> float:
+        """The surface area of the sphere."""
         n = self.dim
         return n * self._alpha(n) * self.radius ** (n - 1)
 
@@ -653,20 +591,16 @@ class Sphere(Quadric):
 class Cone(Quadric):
     """A quadric that forms a circular double cone in 3D.
 
-    Parameters
-    ----------
-    vertex : Point, optional
-        The vertex or apex of the cone. Default is (0, 0, 0).
-    base_center : Point, optional
-        The center of the circle that forms the base of the cone. Default is (0, 0, 1)
-    radius : float, optional
-        The radius of the circle forming the base of the cone. Default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        vertex: The vertex or apex of the cone. Default is (0, 0, 0).
+        base_center: The center of the circle that forms the base of the cone. Default is (0, 0, 1)
+        radius: The radius of the circle forming the base of the cone. Default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
-    def __init__(self, vertex=Point(0, 0, 0), base_center=Point(0, 0, 1), radius=1, **kwargs):
+    def __init__(self, vertex: Point = Point(0, 0, 0), base_center: Point = Point(0, 0, 1),
+                 radius: float = 1, **kwargs) -> None:
         if radius == 0:
             raise ValueError("The radius of a cone can not be zero.")
 
@@ -712,194 +646,15 @@ class Cone(Quadric):
 class Cylinder(Cone):
     """An infinite circular cylinder in 3D.
 
-    Parameters
-    ----------
-    center : Point, optional
-        The center of the cylinder. Default is (0, 0, 0).
-    direction : Point
-        The direction of the axis of the cylinder. Default is (0, 0, 1).
-    radius : float, optional
-        The radius of the cylinder. Default is 1.
-    **kwargs
-        Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+    Args:
+        center: The center of the cylinder. Default is (0, 0, 0).
+        direction: The direction of the axis of the cylinder. Default is (0, 0, 1).
+        radius: The radius of the cylinder. Default is 1.
+        **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     """
 
-    def __init__(self, center=Point(0, 0, 0), direction=Point(0, 0, 1), radius=1, **kwargs):
+    def __init__(self, center: Point = Point(0, 0, 0), direction: Point = Point(0, 0, 1),
+                 radius: float = 1, **kwargs) -> None:
         vertex = infty_plane.meet(Line(center, center + direction))
         super().__init__(vertex, center, radius, **kwargs)
-
-
-class QuadricCollection(ProjectiveCollection):
-    """A collection of quadrics or conics."""
-
-    def __init__(self, matrices, is_dual=False, **kwargs):
-        self.is_dual = is_dual
-
-        if not is_dual:
-            kwargs.setdefault("covariant", False)
-        super().__init__(matrices, tensor_rank=2, **kwargs)
-
-    def tangent(self, at):
-        """Returns the hyperplanes defining the tangent spaces at given points.
-
-        Parameters
-        ----------
-        at : Point or PointCollection
-            A point on the quadric at which the tangent plane is calculated.
-
-        Returns
-        -------
-        PlaneCollection
-            The tangent planes at the given points.
-
-        """
-        return PlaneCollection(self * at, copy=False)
-
-    def is_tangent(self, planes):
-        """Tests if a given hyperplane is tangent to the quadrics.
-
-        Parameters
-        ----------
-        planes : Subspace or SubspaceCollection
-            The hyperplane to test.
-
-        Returns
-        -------
-        numpy.ndarray
-            Returns a boolean array of which hyperplanes are tangent to the quadrics.
-
-        """
-        return self.dual.contains(planes)
-
-    def contains(self, other, tol=EQ_TOL_ABS):
-        """Tests if a given point lies on the quadrics.
-
-        Parameters
-        ----------
-        other : Point, PointCollection, Subspace or SubspaceCollection
-            The points to test.
-        tol : float, optional
-            The accepted tolerance.
-
-        Returns
-        -------
-        numpy.ndarray
-            Returns a boolean array of which quadrics contain the points.
-
-        """
-        if self.is_dual:
-            d = TensorDiagram((self, other), (self, other.copy()))
-        else:
-            d = TensorDiagram((other, self), (other.copy(), self))
-        return np.isclose(d.calculate().array, 0, atol=tol)
-
-    @property
-    def is_degenerate(self):
-        """numpy.ndarray: Boolean array of which quadrics are degenerate in the collection."""
-        return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
-
-    @property
-    def components(self):
-        """list of ProjectiveCollection: The components of the degenerate quadrics."""
-        n = self.shape[-1]
-        indices = tuple(np.indices(self.shape[:-2]))
-
-        if n == 3:
-            b = adjugate(self.array)
-            i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
-            beta = csqrt(-b[indices + (i, i)])
-            p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
-
-        else:
-            ind = np.indices((n, n))
-            ind = [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)]
-            ind = np.stack(ind, axis=1)
-            minors = det(self.array[..., ind[0], ind[1]])
-            p = csqrt(-minors)
-
-        # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
-        m = hat_matrix(p)
-        t = self.array + m
-
-        # components are in the non-zero rows and columns (up to scalar multiple)
-        i = np.unravel_index(np.abs(t).reshape(t.shape[:-2] + (-1,)).argmax(axis=-1), t.shape[-2:])
-        p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
-
-        if self.dim > 2 and not np.all(
-            is_multiple(
-                q[..., None] * p[..., None, :],
-                t,
-                rtol=EQ_TOL_REL,
-                atol=EQ_TOL_ABS,
-                axis=(-2, -1),
-            )
-        ):
-            raise NotReducible("Quadric has no decomposition in 2 components.")
-
-        # TODO: make order of components reproducible
-
-        p, q = np.real_if_close(p), np.real_if_close(q)
-
-        if self.is_dual:
-            return [PointCollection(p, copy=False), PointCollection(q, copy=False)]
-        elif n == 3:
-            return [LineCollection(p, copy=False), LineCollection(q, copy=False)]
-        return [PlaneCollection(p, copy=False), PlaneCollection(q, copy=False)]
-
-    def intersect(self, other):
-        """Calculates points of intersection of a line or a collection of lines with the quadrics.
-
-        Parameters
-        ----------
-        other: Line or LineCollection
-            The line or lines to intersect the quadrics with.
-
-        Returns
-        -------
-        list of PointCollection
-            The points of intersection
-
-        """
-        if isinstance(other, (Line, LineCollection)):
-            reducible = np.all(self.is_degenerate)
-            if reducible:
-                try:
-                    e, f = self.components
-                except NotReducible:
-                    reducible = False
-
-            if not reducible:
-                if self.dim > 2:
-                    arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
-
-                    if isinstance(other, Line):
-                        i = arr.nonzero()[0][0]
-                        m = Plane(arr[i], copy=False).basis_matrix
-                    else:
-                        i = np.any(arr, axis=-1).argmax(-1)
-                        m = PlaneCollection(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
-
-                    line = other._matrix_transform(m)
-
-                    q = QuadricCollection(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
-                    return [
-                        PointCollection(np.squeeze(matmul(np.expand_dims(p.array, -2), m), -2), copy=False)
-                        for p in q.intersect(line)
-                    ]
-                else:
-                    m = hat_matrix(other.array)
-                    b = matmul(matmul(m, self.array, transpose_a=True), m)
-                    p, q = QuadricCollection(b, is_dual=not self.is_dual, copy=False).components
-            else:
-                if self.is_dual:
-                    p, q = e.join(other), f.join(other)
-                else:
-                    p, q = e.meet(other), f.meet(other)
-
-            return [p, q]
-
-    @property
-    def dual(self):
-        """QuadricCollection: The dual quadrics of the quadrics in the collection."""
-        return QuadricCollection(inv(self.array), is_dual=not self.is_dual, copy=False)

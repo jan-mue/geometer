@@ -99,8 +99,12 @@ class TestPolygon:
 
         p1 = Polygon(points)
         p2 = Polygon(*[Point(p) for p in points])
+        p3 = Polygon(np.roll(points, 42, axis=0))
+        p4 = Polygon(np.flip(points, axis=0))
 
         assert p1 == p2
+        assert p1 == p3
+        assert p1 == p4
 
     def test_intersect(self):
         a = Point(0, 0)
@@ -436,7 +440,7 @@ class TestSegmentCollection:
         s2 = SegmentCollection(b, d)
 
         assert s1.intersect(s2) == PointCollection([(1, 1), (2, 2)], homogenize=True)
-        assert s1.intersect(Line(Point(0, 0), Point(1, 1))).size == 0
+        assert s1.intersect(Line(Point(0, 0), Point(1, 1))) == []
 
 
 class TestPolygonCollection:
