@@ -665,7 +665,7 @@ class Line(Subspace):
 
         Args:
             through: The point through which the perpendicular is constructed.
-            plane: In three or higher dimensional spaces, the 3-dimensional subspace that the perpendicular line is
+            plane: In three or higher dimensional spaces, the 2-dimensional subspace that the perpendicular line is
                 supposed to lie in, can be specified.
 
         Returns:
@@ -692,15 +692,12 @@ class Line(Subspace):
                 line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
                 l = Line(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]), copy=False)
 
-            from .operators import harmonic_set
-
-            p = l.meet(infty)
-            q = harmonic_set(I, J, p)
+            p = Point(np.append(l.array[..., :-1], np.zeros(l.shape[:-1] + (1,), dtype=l.dtype), axis=-1), copy=False)
 
             if n > 3:
-                q = q._matrix_transform(np.swapaxes(basis, -1, -2))
+                p = p._matrix_transform(np.swapaxes(basis, -1, -2))
 
-            result[contains] = join(through if through.cdim == 0 else through[contains], q)
+            result[contains] = join(through if through.cdim == 0 else through[contains], p)
 
         if np.any(~contains):
             if through.cdim > 0:
@@ -795,8 +792,6 @@ class Plane(Subspace):
     def project(self, pt: Point) -> Point:
         """The orthogonal projection of points onto the planes.
 
-        Only works in 3D.
-
         Args:
             pt: The points to project.
 
@@ -819,7 +814,7 @@ class Plane(Subspace):
         """Construct the perpendicular lines though the given points
         or the perpendicular planes through the given lines.
 
-        Only works in 3D.
+        Only works for lines in 3D.
 
         Args:
             through: The points or lines through which the perpendiculars are constructed.
@@ -828,64 +823,33 @@ class Plane(Subspace):
             The perpendicular lines or planes.
 
         """
+        if isinstance(through, Point):
+            p = self.array[..., :-1]
+            p = Point(np.append(p, np.zeros(p.shape[:-1] + (1,), dtype=p.dtype), axis=-1), copy=False)
+            return through.join(p)
+
         if self.dim != 3:
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
-        contains = self.contains(through)
-        result = Line(np.empty(contains.shape + (4, 4), dtype=np.complex128), copy=False)
-        if np.any(contains):
-            from .curve import absolute_conic
-            from .operators import harmonic_set
 
-            if self.cdim > 0:
-                l = cast(Plane, self[contains]).meet(infty_plane)
-            else:
-                l = self.meet(infty_plane)
-            basis = cast(Line, l).basis_matrix[..., :-1]
-            l = Line(np.cross(basis[..., 0, :], basis[..., 1, :]), copy=False)
-
-            if isinstance(through, Line):
-                if not np.all(contains):
-                    raise ValueError("All lines must lie in the planes.")
-
-                p = through.meet(infty_plane)
-                polar = Line(p.array[..., :-1], copy=False)
-                tangent1, tangent2 = absolute_conic.intersect(polar)
-                q = harmonic_set(tangent1, tangent2, l.meet(polar))
-                q = Point(np.append(q.array, np.zeros(q.shape[:-1] + (1,)), axis=-1), copy=False)
-                return through.join(q)
-
-            p1 = Point(basis[..., 0, :], copy=False)
-            p2 = Point(basis[..., 1, :], copy=False)
-            polar1 = Line(p1.array, copy=False)
-            polar2 = Line(p2.array, copy=False)
-
-            tangent1, tangent2 = absolute_conic.intersect(polar1)
-            tangent3, tangent4 = absolute_conic.intersect(polar2)
-
-            q1 = harmonic_set(tangent1, tangent2, l.meet(polar1))
-            q2 = harmonic_set(tangent3, tangent4, l.meet(polar2))
-            m1, m2 = Line(p1, q1), Line(p2, q2)
-
-            p = m1.meet(m2)
-            p = Point(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
-
-            result[contains] = (through if through.cdim == 0 else cast(Point, through[contains])).join(p)
-        elif isinstance(through, Line):
+        if not np.all(self.contains(through)):
             raise ValueError("All lines must lie in the planes.")
 
-        if np.any(~contains):
-            if through.cdim > 0:
-                through = through[~contains]
+        from .curve import absolute_conic
+        from .operators import harmonic_set
 
-            if not isinstance(through, Point):
-                raise TypeError(f"Expected through to be a Point, but got {type(through)} instead.")
+        if self.cdim > 0:
+            l = self.meet(infty_plane)
+        else:
+            l = self.meet(infty_plane)
+        basis = cast(Line, l).basis_matrix[..., :-1]
+        l = Line(np.cross(basis[..., 0, :], basis[..., 1, :]), copy=False)
 
-            if self.cdim > 0:
-                result[~contains] = cast(Plane, self[~contains]).mirror(through).join(through)
-            else:
-                result[~contains] = self.mirror(through).join(through)
-
-        return Line(np.real_if_close(result.array), copy=False)
+        p = through.meet(infty_plane)
+        polar = Line(p.array[..., :-1], copy=False)
+        tangent1, tangent2 = absolute_conic.intersect(polar)
+        q = harmonic_set(tangent1, tangent2, l.meet(polar))
+        q = Point(np.append(q.array, np.zeros(q.shape[:-1] + (1,)), axis=-1), copy=False)
+        return through.join(q)
 
 
 I = Point([-1j, 1, 0])
