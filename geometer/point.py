@@ -815,33 +815,12 @@ class Plane(Subspace):
             The perpendicular lines or planes.
 
         """
-        if isinstance(through, Point):
-            p = self.array[..., :-1]
-            p = Point(np.append(p, np.zeros(p.shape[:-1] + (1,), dtype=p.dtype), axis=-1), copy=False)
-            return through.join(p)
-
-        if self.dim != 3:
+        if self.dim != 3 and isinstance(through, Line):
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
 
-        if not np.all(self.contains(through)):
-            raise ValueError("All lines must lie in the planes.")
-
-        from .curve import absolute_conic
-        from .operators import harmonic_set
-
-        if self.cdim > 0:
-            l = self.meet(infty_plane)
-        else:
-            l = self.meet(infty_plane)
-        basis = cast(Line, l).basis_matrix[..., :-1]
-        l = Line(np.cross(basis[..., 0, :], basis[..., 1, :]), copy=False)
-
-        p = through.meet(infty_plane)
-        polar = Line(p.array[..., :-1], copy=False)
-        tangent1, tangent2 = absolute_conic.intersect(polar)
-        q = harmonic_set(tangent1, tangent2, l.meet(polar))
-        q = Point(np.append(q.array, np.zeros(q.shape[:-1] + (1,)), axis=-1), copy=False)
-        return through.join(q)
+        p = self.array[..., :-1]
+        p = Point(np.append(p, np.zeros(p.shape[:-1] + (1,), dtype=p.dtype), axis=-1), copy=False)
+        return through.join(p)
 
 
 I = Point([-1j, 1, 0])
