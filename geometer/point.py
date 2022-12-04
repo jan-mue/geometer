@@ -546,15 +546,7 @@ class Line(Subspace):
     def direction(self) -> Point:
         """The direction of the lines (not normalized)."""
         if self.dim > 2:
-            base = self.basis_matrix
-            p, q = base[..., 0, :], base[..., 1, :]
-            p_isinf = np.isclose(p[..., -1, None], 0, atol=EQ_TOL_ABS)
-            q_isinf = np.isclose(q[..., -1, None], 0, atol=EQ_TOL_ABS)
-            result = np.where(p_isinf, p, q)
-            p_normalized = np.divide(p, p[..., -1, None], where=~p_isinf)
-            q_normalized = np.divide(q, q[..., -1, None], where=~q_isinf)
-            result = np.where(~(p_isinf | q_isinf), p_normalized - q_normalized, result)
-            return Point(result, copy=False)
+            return meet(self, infty_hyperplane(self.dim), _normalize_result=False)
 
         x_zero = np.isclose(self.array[..., 0], 0, atol=EQ_TOL_ABS)
         y_zero = np.isclose(self.array[..., 1], 0, atol=EQ_TOL_ABS)
