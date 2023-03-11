@@ -2,6 +2,15 @@
 Changelog
 =========
 
+0.3.5 - released (11.3.2023)
+----------------------------
+
+Bug fixes
+---------
+
+- Removed upper bound for numpy version (#117)
+
+
 0.3.4 - released (17.4.2022)
 ----------------------------
 
