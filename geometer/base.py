@@ -87,7 +87,7 @@ class Tensor(Sized, Iterable):
             self._covariant_indices = set()
             for idx in covariant:
                 if not -tensor_rank <= idx < tensor_rank:
-                    raise IndexError("Index out of range")
+                    raise IndexError(f"Index {idx} out of range [{-tensor_rank}, {tensor_rank})")
                 idx = sanitize_index(idx)
                 idx = posify_index(tensor_rank, idx)
                 self._covariant_indices.add(n_col + idx)
