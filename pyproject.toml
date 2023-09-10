@@ -35,7 +35,7 @@ Source = "https://github.com/jan-mue/geometer"
 path = "geometer/__version__.py"
 
 [tool.hatch.envs.default]
-python = "3.9"
+python = ">=3.9"
 dependencies = [
     "pytest",
     "codecov",
