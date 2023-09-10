@@ -20,7 +20,7 @@ The elementary objects of projective geometry, points and lines can be created u
     m = Line(0, 1, 0)
 
 Here we specified a line once by two base points and once using the homogeneous coordinates of the line.
-The two elementary operations :obj:`~point.meet` and :obj:`~point.join` can also be called called exactly as
+The two elementary operations :obj:`~point.meet` and :obj:`~point.join` can also be called exactly as
 one would expect:
 
 .. code-block:: python
