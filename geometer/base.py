@@ -1,30 +1,40 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Iterable, Sized
+from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Iterator, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, Union
 
 import numpy as np
 import numpy.typing as npt
 
-from .exceptions import TensorComputationError
-from .utils import is_multiple, is_numeric_dtype, normalize_index, posify_index, sanitize_index
+from geometer.exceptions import TensorComputationError
+from geometer.utils import is_multiple, is_numeric_dtype, normalize_index, posify_index, sanitize_index
+from geometer.utils.math import NumericDType, PrecisionT
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from typing_extensions import Self, TypeAlias, Unpack
 
-    from .transformation import Transformation
+    from geometer.transformation import Transformation
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
 
-IntegerIndex1D = Union[int, np.integer, slice, Sequence[int], Sequence[np.integer], npt.NDArray[np.integer]]
-BooleanIndex1D = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
-TensorIndex = Union[IntegerIndex1D, BooleanIndex1D, Tuple[IntegerIndex1D, ...], Tuple[BooleanIndex1D, ...]]
+IntegerIndex1D: TypeAlias = Union[int, np.int_, slice, Sequence[int], Sequence[np.int_], npt.NDArray[np.int_]]
+BooleanIndex1D: TypeAlias = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
+TensorIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
 
 
-class Tensor(Sized, Iterable):
+class NDArrayParameters(TypedDict, total=False):
+    dtype: npt.DTypeLike
+    copy: bool
+    order: Literal["K", "A", "C", "F"]
+    subok: bool
+    ndim: int
+    like: npt.ArrayLike
+
+
+class Tensor(Sized, Iterable["Tensor"]):
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
     Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
@@ -40,7 +50,7 @@ class Tensor(Sized, Iterable):
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes:
-        array (numpy.ndarray): The underlying numpy array.
+        array: The underlying numpy array.
 
     References:
       - `Ricci calculus, Upper and lower indices, Wikipedia <https://en.wikipedia.org/wiki/
@@ -48,8 +58,18 @@ class Tensor(Sized, Iterable):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, covariant: bool | Iterable[int] = True,
-                 tensor_rank: int | None = None, **kwargs) -> None:
+    array: npt.NDArray[NumericDType[PrecisionT]]
+    _collection_indices: set[int]
+    _covariant_indices: set[int]
+    _contravariant_indices: set[int]
+
+    def __init__(
+        self,
+        *args: Tensor | npt.ArrayLike,
+        covariant: bool | Iterable[int] = True,
+        tensor_rank: int | None = None,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
         if len(args) == 0:
             raise TypeError("At least one argument is required.")
 
@@ -96,7 +116,7 @@ class Tensor(Sized, Iterable):
 
     def __apply__(self, transformation: Transformation) -> Self:
         ts = self.tensor_shape
-        edges = [(self, transformation.copy()) for _ in range(ts[0])]
+        edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
             inv = transformation.inverse()
             edges.extend((inv.copy(), self) for _ in range(ts[1]))
@@ -111,7 +131,7 @@ class Tensor(Sized, Iterable):
         return self.array.shape
 
     @property
-    def dtype(self) -> np.dtype:
+    def dtype(self) -> np.dtype[NumericDType[PrecisionT]]:
         """The dtype of the underlying numpy array, same as ``self.array.dtype``."""
         return self.array.dtype
 
@@ -274,7 +294,6 @@ class Tensor(Sized, Iterable):
         index_mapping: list[int | None] = list(range(self.rank))
         i = 0
         for ind in normalized_index:
-
             # axis with integer index will be removed
             if isinstance(ind, int):
                 index_mapping.pop(i)
@@ -303,7 +322,7 @@ class Tensor(Sized, Iterable):
             return [None] * b.ndim + index_mapping
         else:
             # replace indices with broadcast shape
-            return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1:]
+            return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = self.array[index]
@@ -450,7 +469,7 @@ class LeviCivitaTensor(Tensor):
 
     """
 
-    _cache: dict[int, np.ndarray] = {}
+    _cache: ClassVar[dict[int, np.ndarray]] = {}
 
     def __init__(self, size: int, covariant: bool = True) -> None:
         if size in self._cache:
@@ -490,7 +509,7 @@ class KroneckerDelta(Tensor):
 
     """
 
-    _cache: dict[tuple[int, int], np.ndarray] = {}
+    _cache: ClassVar[dict[tuple[int, int], np.ndarray]] = {}
 
     def __init__(self, n: int, p: int = 1) -> None:
         if p == 1:
@@ -506,7 +525,7 @@ class KroneckerDelta(Tensor):
             d1 = KroneckerDelta(n)
             d2 = KroneckerDelta(n, p - 1)
 
-            def calc(*args):
+            def calc(*args: int) -> int:
                 return sum(
                     (-1) ** (p + k + 1)
                     * d1.array[args[k], args[-1]]
@@ -635,10 +654,10 @@ class TensorDiagram:
         for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
             if len(node._collection_indices) > 0:
                 col_ind = sorted(node._collection_indices, reverse=True)
-                for j, k in enumerate(col_ind[:len(result_indices[0])]):
+                for j, k in enumerate(col_ind[: len(result_indices[0])]):
                     indices[offset + k] = result_indices[0][-j - 1]
                 if len(node._collection_indices) > len(result_indices[0]):
-                    for k in col_ind[len(result_indices[0]):]:
+                    for k in col_ind[len(result_indices[0]) :]:
                         result_indices[0].insert(0, offset + k)
             result_indices[1].extend(offset + x for x in ind[0])
             result_indices[2].extend(offset + x for x in ind[1])

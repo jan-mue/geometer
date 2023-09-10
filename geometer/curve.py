@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import math
 from itertools import combinations
-from typing import Union, cast
+from typing import TYPE_CHECKING, Union, cast
 
 import numpy as np
 import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL, ProjectiveTensor, Tensor, TensorDiagram
-from .exceptions import IncidenceError, NotReducible
-from .point import I, J, Line, Plane, Point, Subspace, infty_plane, join
-from .transformation import rotation, translation
-from .utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, NDArrayParameters, ProjectiveTensor, Tensor, TensorDiagram
+from geometer.exceptions import IncidenceError, NotReducible
+from geometer.point import I, J, Line, Plane, Point, Subspace, infty_plane, join
+from geometer.transformation import rotation, translation
+from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
+
+if TYPE_CHECKING:
+    from typing_extensions import Unpack
 
 
 class Quadric(ProjectiveTensor):
@@ -35,8 +38,13 @@ class Quadric(ProjectiveTensor):
 
     """
 
-    def __init__(self, matrix: Tensor | npt.ArrayLike, is_dual: bool = False,
-                 normalize_matrix: bool = False, **kwargs) -> None:
+    def __init__(
+        self,
+        matrix: Tensor | npt.ArrayLike,
+        is_dual: bool = False,
+        normalize_matrix: bool = False,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
         self.is_dual = is_dual
 
         if normalize_matrix is True:
@@ -133,13 +141,14 @@ class Quadric(ProjectiveTensor):
         if n == 3:
             b = adjugate(self.array)
             i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
-            beta = csqrt(-b[indices + (i, i)])
-            p = -b[indices + (slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
+            beta = csqrt(-b[(*indices, i, i)])
+            p = -b[(*indices, slice(None), i)] / np.where(beta != 0, beta, -1)[..., None]
 
         else:
             ind = np.indices((n, n))
-            ind = np.stack([
-                np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)], axis=1)
+            ind = np.stack(
+                [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)], axis=1
+            )
             minors = det(self.array[..., ind[0], ind[1]])
             p = csqrt(-minors)
 
@@ -149,7 +158,7 @@ class Quadric(ProjectiveTensor):
 
         # components are in the non-zero rows and columns (up to scalar multiple)
         i = np.unravel_index(np.abs(t).reshape(t.shape[:-2] + (-1,)).argmax(axis=-1), t.shape[-2:])
-        p, q = t[indices + i[:1]], t[indices + (slice(None), i[1])]
+        p, q = t[indices + i[:1]], t[(*indices, slice(None), i[1])]
 
         if self.dim > 2 and not np.all(is_multiple(outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, axis=(-2, -1))):
             raise NotReducible("Quadric has no decomposition in 2 components.")
@@ -192,14 +201,14 @@ class Quadric(ProjectiveTensor):
 
         if not reducible:
             if self.dim > 2:
-                arr = other.array.reshape(other.shape[:-other.tensor_shape[1]] + (-1, self.dim + 1))
+                arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
 
                 if other.cdim == 0:
                     i = arr.nonzero()[0][0]
                     m = Plane(arr[i], copy=False).basis_matrix
                 else:
                     i = np.any(arr, axis=-1).argmax(-1)
-                    m = Plane(arr[tuple(np.indices(i.shape)) + (i,)], copy=False).basis_matrix
+                    m = Plane(arr[(*tuple(np.indices(i.shape)), i)], copy=False).basis_matrix
                 line = other._matrix_transform(m)
                 projected_quadric = Quadric(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
                 return [
@@ -462,7 +471,7 @@ class Ellipse(Conic):
         if hradius == vradius == 0:
             raise ValueError("hradius and vradius can not both be zero.")
 
-        r = np.array([vradius ** 2, hradius ** 2, 1])
+        r = np.array([vradius**2, hradius**2, 1])
         c = -center.normalized_array
         d = c * r
         m = np.eye(3, dtype=d.dtype)
@@ -506,7 +515,7 @@ class Circle(Ellipse):
     def lie_coordinates(self) -> Point:
         """The Lie coordinates of the circle as point in RP4."""
         m = self.center.normalized_array
-        x = m[0] ** 2 + m[1] ** 2 - self.radius ** 2
+        x = m[0] ** 2 + m[1] ** 2 - self.radius**2
         return Point([(1 + x) / 2, (1 - x) / 2, m[0], m[1], self.radius])
 
     def intersection_angle(self, other: Circle) -> float:
@@ -531,7 +540,7 @@ class Circle(Ellipse):
     @property
     def area(self) -> float:
         """The area of the circle."""
-        return 2 * np.pi * self.radius ** 2
+        return 2 * np.pi * self.radius**2
 
 
 class Sphere(Quadric):
@@ -544,15 +553,15 @@ class Sphere(Quadric):
 
     """
 
-    def __init__(self, center: Point = Point(0, 0, 0), radius: float = 1, **kwargs) -> None:
+    def __init__(self, center: Point = Point(0, 0, 0), radius: float = 1, **kwargs: Unpack[NDArrayParameters]) -> None:
         if radius == 0:
             raise ValueError("Sphere radius cannot be 0.")
 
         c = -center.normalized_array
-        m = np.eye(center.shape[0], dtype=np.find_common_type([c.dtype, type(radius)], []))
+        m = np.eye(center.shape[0], dtype=np.promote_types(c.dtype, type(radius)))
         m[-1, :] = c
         m[:, -1] = c
-        m[-1, -1] = c[:-1].dot(c[:-1]) - radius ** 2
+        m[-1, -1] = c[:-1].dot(c[:-1]) - radius**2
 
         # normalize with abs(det(m))
         m = m / radius ** (2 / 3)
@@ -579,7 +588,7 @@ class Sphere(Quadric):
     def volume(self) -> float:
         """The volume of the sphere."""
         n = self.dim
-        return self._alpha(n) * self.radius ** n
+        return self._alpha(n) * self.radius**n
 
     @property
     def area(self) -> float:
@@ -599,12 +608,17 @@ class Cone(Quadric):
 
     """
 
-    def __init__(self, vertex: Point = Point(0, 0, 0), base_center: Point = Point(0, 0, 1),
-                 radius: float = 1, **kwargs) -> None:
+    def __init__(
+        self,
+        vertex: Point = Point(0, 0, 0),
+        base_center: Point = Point(0, 0, 1),
+        radius: float = 1,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
         if radius == 0:
             raise ValueError("The radius of a cone can not be zero.")
 
-        from .operators import angle, dist
+        from geometer.operators import angle, dist
 
         h = dist(vertex, base_center)
         c = (radius / h) ** 2
@@ -616,16 +630,16 @@ class Cone(Quadric):
             v = vertex.normalized_array
 
         # first build a cone with axis parallel to the z-axis
-        m = np.eye(4, dtype=np.find_common_type([v.dtype, type(c)], []))
+        m = np.eye(4, dtype=np.promote_types(v.dtype, type(c)))
         m[-1, :] = -v
         m[:, -1] = -v
 
         if np.isinf(c):
             # if h == 0 the quadric becomes a circle
-            m[3, 3] = v[:3].dot(v[:3]) - radius ** 2
+            m[3, 3] = v[:3].dot(v[:3]) - radius**2
         else:
             m[2:, 2:] *= -c
-            m[3, 3] = v[:2].dot(v[:2]) - (radius ** 2 if np.isinf(h) else v[2] ** 2 * c)
+            m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2] ** 2 * c)
 
         # rotate the axis of the cone
         v = Point(v, copy=False)
@@ -654,7 +668,12 @@ class Cylinder(Cone):
 
     """
 
-    def __init__(self, center: Point = Point(0, 0, 0), direction: Point = Point(0, 0, 1),
-                 radius: float = 1, **kwargs) -> None:
+    def __init__(
+        self,
+        center: Point = Point(0, 0, 0),
+        direction: Point = Point(0, 0, 1),
+        radius: float = 1,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
         vertex = infty_plane.meet(Line(center, center + direction))
         super().__init__(vertex, center, radius, **kwargs)

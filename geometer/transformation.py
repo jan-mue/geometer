@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, TypeVar, overload
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
 
-from .base import LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
-from .exceptions import NoIncidence
-from .point import Line, Point, Subspace, infty_hyperplane
-from .utils import inv, matmul, outer
+from geometer.base import LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
+from geometer.exceptions import NoIncidence
+from geometer.point import Line, Point, Subspace, infty_hyperplane
+from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
-    from .curve import Conic
+    from geometer.curve import Conic
 
 
 def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> Transformation:
@@ -29,7 +30,7 @@ def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> Transf
     if collection_dims is not None:
         e = np.eye(dim + 1)
         e = e.reshape((1,) * len(collection_dims) + e.shape)
-        e = np.tile(e, collection_dims + (1, 1))
+        e = np.tile(e, (*collection_dims, 1, 1))
         return Transformation(e, copy=False)
     return Transformation(np.eye(dim + 1), copy=False)
 
@@ -56,7 +57,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
     if matrix is not None:
         matrix = np.asarray(matrix)
         n = matrix.shape[0] + 1
-        dtype = np.find_common_type([dtype, matrix.dtype], [])
+        dtype = np.promote_types(dtype, matrix.dtype)
 
     result = np.eye(n, dtype=dtype)
 
@@ -83,8 +84,7 @@ def rotation(angle: float, axis: Point | None = None) -> Transformation:
 
     """
     if axis is None:
-        return affine_transform([[np.cos(angle), -np.sin(angle)],
-                                 [np.sin(angle), np.cos(angle)]])
+        return affine_transform([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
 
     dimension = axis.dim
     e = LeviCivitaTensor(dimension, False)
@@ -204,8 +204,9 @@ class Transformation(ProjectiveTensor):
         return Transformation(t2.dot(np.linalg.inv(t1)))
 
     @classmethod
-    def from_points_and_conics(cls, points1: Sequence[Point], points2: Sequence[Point],
-                               conic1: Conic, conic2: Conic) -> Transformation:
+    def from_points_and_conics(
+        cls, points1: Sequence[Point], points2: Sequence[Point], conic1: Conic, conic2: Conic
+    ) -> Transformation:
         """Constructs a projective transformation from two conics and the image of pairs of 3 points on the conics.
 
         Args:
@@ -285,7 +286,7 @@ class Transformation(ProjectiveTensor):
         if power == 0:
             if self.cdim == 0:
                 return identity(self.dim)
-            return identity(self.dim, self.shape[:self.cdim])
+            return identity(self.dim, self.shape[: self.cdim])
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 

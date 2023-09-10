@@ -6,64 +6,62 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack, Literal
+    from typing_extensions import Literal, Unpack
 
-from .base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
-from .exceptions import GeometryException, LinearDependenceError, NotCoplanar
-from .utils import matmul, matvec, null_space
+from geometer.base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
+from geometer.exceptions import GeometryException, LinearDependenceError, NotCoplanar
+from geometer.utils import matmul, matvec, null_space
 
 
 @overload
 def _join_meet_duality(
-        *args: Line,
-        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
+    *args: Line, intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
 ) -> Point:
     ...
 
 
 @overload
 def _join_meet_duality(
-        *args: Unpack[tuple[Subspace, Line]],
-        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
+    *args: Unpack[tuple[Subspace, Line]],
+    intersect_lines: Literal[True],
+    check_dependence: bool = True,
+    normalize_result: bool = True,
 ) -> Point:
     ...
 
 
 @overload
 def _join_meet_duality(
-        *args: Unpack[tuple[Line, Subspace]],
-        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
+    *args: Unpack[tuple[Line, Subspace]],
+    intersect_lines: Literal[True],
+    check_dependence: bool = True,
+    normalize_result: bool = True,
 ) -> Point:
     ...
 
 
 @overload
 def _join_meet_duality(
-        *args: Unpack[tuple[Point, Point]],
-        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
+    *args: Unpack[tuple[Point, Point]],
+    intersect_lines: Literal[True],
+    check_dependence: bool = True,
+    normalize_result: bool = True,
 ) -> Line:
     ...
 
 
 @overload
 def _join_meet_duality(
-        *args: Subspace,
-        intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
-) -> Point | Subspace:
-    ...
-
-
-@overload
-def _join_meet_duality(
-        *args: Point | Subspace,
-        intersect_lines: Literal[False], check_dependence: bool = True, normalize_result: bool = True
+    *args: Point | Subspace,
+    intersect_lines: Literal[False],
+    check_dependence: bool = True,
+    normalize_result: bool = True,
 ) -> Subspace:
     ...
 
 
 def _join_meet_duality(
-        *args: Point | Subspace,
-        intersect_lines: bool = True, check_dependence: bool = True, normalize_result: bool = True
+    *args: Point | Subspace, intersect_lines: bool = True, check_dependence: bool = True, normalize_result: bool = True
 ) -> Point | Subspace:
     if len(args) < 2:
         raise ValueError(f"Expected at least 2 arguments, got {len(args)}.")
@@ -81,8 +79,7 @@ def _join_meet_duality(
     # two lines/planes
     elif len(args) == 2:
         a, b = args
-        if isinstance(a, Line) and isinstance(b, Plane) \
-                or isinstance(b, Line) and isinstance(a, Plane):
+        if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
             e = LeviCivitaTensor(n)
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
         elif isinstance(a, Subspace) and isinstance(b, Point):
@@ -111,12 +108,12 @@ def _join_meet_duality(
                         # extract the point of intersection
                         result = Tensor(array[(slice(None),) + i[1:]], copy=False)
                 else:
-                    max_ind = np.abs(array).reshape((np.prod(array.shape[:coplanar.ndim]), -1)).argmax(1)
-                    i = np.unravel_index(max_ind, array.shape[coplanar.ndim:])
-                    i = tuple(np.reshape(x, array.shape[:coplanar.ndim]) for x in i)
-                    indices = tuple(np.indices(array.shape[:coplanar.ndim]))
+                    max_ind = np.abs(array).reshape((np.prod(array.shape[: coplanar.ndim]), -1)).argmax(1)
+                    i = np.unravel_index(max_ind, array.shape[coplanar.ndim :])
+                    i = tuple(np.reshape(x, array.shape[: coplanar.ndim]) for x in i)
+                    indices = tuple(np.indices(array.shape[: coplanar.ndim]))
                     if not intersect_lines:
-                        result_array = array[indices + (i[0], Ellipsis)]
+                        result_array = array[(*indices, i[0], Ellipsis)]
                         result_rank = result_array.ndim - coplanar.ndim
                         result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=False)
                     else:
@@ -201,10 +198,7 @@ def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_res
 
     """
     return _join_meet_duality(
-        *args,
-        intersect_lines=False,
-        check_dependence=_check_dependence,
-        normalize_result=_normalize_result
+        *args, intersect_lines=False, check_dependence=_check_dependence, normalize_result=_normalize_result
     )
 
 
@@ -223,11 +217,6 @@ def meet(*args: Unpack[tuple[Line, Subspace]], _check_dependence: bool = True, _
     ...
 
 
-@overload
-def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Point | Subspace:
-    ...
-
-
 def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Point | Subspace:
     """Intersects a number of given objects.
 
@@ -243,10 +232,7 @@ def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: boo
 
     """
     return _join_meet_duality(
-        *args,
-        intersect_lines=True,
-        check_dependence=_check_dependence,
-        normalize_result=_normalize_result
+        *args, intersect_lines=True, check_dependence=_check_dependence, normalize_result=_normalize_result
     )
 
 
@@ -317,11 +303,11 @@ class Point(ProjectiveTensor):
         return f"PointCollection({self.normalized_array.tolist()})"
 
     @overload
-    def join(self, *others: Unpack[tuple[Point]]) -> Line:
+    def join(self, *others: Unpack[tuple[Point, Point]]) -> Line:
         ...
 
     @overload
-    def join(self, *others: Point | Subspace) -> Subspace:
+    def join(self, *others: Unpack[tuple[Point, Subspace]] | Unpack[tuple[Subspace, Point]]) -> Subspace:
         ...
 
     def join(self, *others: Point | Subspace) -> Subspace:
@@ -341,7 +327,7 @@ class Point(ProjectiveTensor):
         isinf = np.isclose(z, 0, atol=EQ_TOL_ABS)
         if np.all(isinf | (z == 1)):
             return array
-        dtype = np.find_common_type([np.float64, array.dtype], [])
+        dtype = np.promote_types(np.float64, array.dtype)
         result = array.astype(dtype)
         np.divide(result, z, where=~isinf, out=result)
         return np.real_if_close(result)
@@ -407,7 +393,7 @@ class Subspace(ProjectiveTensor):
         if not isinstance(other, Point):
             return super().__add__(other)
 
-        from .transformation import translation
+        from geometer.transformation import translation
 
         return translation(other).apply(self)
 
@@ -432,7 +418,7 @@ class Subspace(ProjectiveTensor):
         """Points in general position i.e. not in the subspaces."""
         n = self.dim + 1
         s = [self.shape[i] for i in self._collection_indices]
-        p = Point(np.zeros(s + [n], dtype=int), copy=False)
+        p = Point(np.zeros([*s, n], dtype=int), copy=False)
         ind = np.ones(s, dtype=bool)
         for i in range(n):
             p[ind, -i - 1] = 1
@@ -605,7 +591,7 @@ class Line(Subspace):
 
         """
         if self.dim == 2:
-            return np.ones(self.shape[:self.cdim], dtype=bool)
+            return np.ones(self.shape[: self.cdim], dtype=bool)
 
         e = LeviCivitaTensor(self.dim + 1)
         d = TensorDiagram(*[(e, self)] * (self.dim - 1), *[(e, other)] * (self.dim - 1))
@@ -638,8 +624,8 @@ class Line(Subspace):
             arr = matvec(m, pt.array)
             arr_sort = np.argsort(np.abs(arr), axis=-1)
             arr_ind = tuple(np.indices(arr.shape)[:-1])
-            m = m[arr_ind + (arr_sort, slice(None))]
-            pt = Point(arr[arr_ind + (arr_sort,)], copy=False)
+            m = m[(*arr_ind, arr_sort, slice(None))]
+            pt = Point(arr[(*arr_ind, arr_sort)], copy=False)
             l = self._matrix_transform(m)
         l1 = join(I, pt, _normalize_result=False)
         l2 = join(J, pt, _normalize_result=False)
@@ -673,7 +659,6 @@ class Line(Subspace):
                 l = self[contains]
 
             if n > 3:
-
                 if plane is None:
                     # additional point is required to determine the exact line
                     plane = join(l, l.general_point)
@@ -740,10 +725,10 @@ class Plane(Subspace):
         ind = np.indices(self.shape)
         ind_short = np.indices(self.shape[:-1], sparse=True)
         s = ind.shape
-        a = tuple(np.delete(ind, np.ravel_multi_index(tuple(np.indices(s)[:-1]) + (i,), s)).reshape(s[:-1] + (-1,)))
-        result[ind_short + (i.squeeze(),)] = self.array[a]
+        a = tuple(np.delete(ind, np.ravel_multi_index((*tuple(np.indices(s)[:-1]), i), s)).reshape(s[:-1] + (-1,)))
+        result[(*ind_short, i.squeeze())] = self.array[a]
         b = np.arange(n - 1).reshape((1,) * (len(self.shape) - 1) + (n - 1,))
-        result[a + (b,)] = -self.array[ind_short + (i.squeeze(), None)]
+        result[(*a, b)] = -self.array[(*ind_short, i.squeeze(), None)]
         q, r = np.linalg.qr(result)
         return np.swapaxes(q, -1, -2)
 
@@ -767,7 +752,7 @@ class Plane(Subspace):
         p = l.base_point
         polars = Line(p.array, copy=False)
 
-        from .curve import absolute_conic
+        from geometer.curve import absolute_conic
 
         p1, p2 = absolute_conic.intersect(polars)
         p1 = Point(np.append(p1.array, np.zeros(p1.shape[:-1] + (1,)), axis=-1), copy=False)

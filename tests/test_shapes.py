@@ -1,7 +1,22 @@
 import numpy as np
 
-from geometer import (Cuboid, Line, Point, PointCollection, Polygon, PolygonCollection, Rectangle, RegularPolygon,
-                      Segment, SegmentCollection, Simplex, Triangle, dist, rotation, translation)
+from geometer import (
+    Cuboid,
+    Line,
+    Point,
+    PointCollection,
+    Polygon,
+    PolygonCollection,
+    Rectangle,
+    RegularPolygon,
+    Segment,
+    SegmentCollection,
+    Simplex,
+    Triangle,
+    dist,
+    rotation,
+    translation,
+)
 
 
 class TestSegment:
@@ -94,8 +109,8 @@ class TestSegment:
 
 
 class TestPolygon:
-    def test_equal(self):
-        points = np.random.rand(50, 3)
+    def test_equal(self, rng):
+        points = rng.random((50, 3))
 
         p1 = Polygon(points)
         p2 = Polygon(*[Point(p) for p in points])
@@ -444,8 +459,8 @@ class TestSegmentCollection:
 
 
 class TestPolygonCollection:
-    def test_equal(self):
-        points = np.random.rand(60, 50, 3)
+    def test_equal(self, rng):
+        points = rng.random((60, 50, 3))
 
         p1 = PolygonCollection(points)
         p2 = PolygonCollection([Polygon(*[Point(p) for p in poly]) for poly in points])

@@ -4,16 +4,15 @@ repos:
     hooks:
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
--   repo: https://github.com/pycqa/flake8
-    rev: 4.0.1
+    -   id: check-added-large-files
+    -   id: check-toml
+    -   id: check-yaml
+-   repo: https://github.com/psf/black
+    rev: 23.7.0
     hooks:
-    -   id: flake8
--   repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+    -   id: black
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.287
     hooks:
-    -   id: isort
--   repo: https://github.com/asottile/pyupgrade
-    rev: v2.31.0
-    hooks:
-    -   id: pyupgrade
-        args: [--py37-plus]
+    -   id: ruff
+        args: [--fix, --exit-non-zero-on-fix]

@@ -20,8 +20,7 @@ class TestTensor:
         assert a / 6 == Tensor(1 / 3, 0.5)
 
     def test_transpose(self):
-        a = Tensor([[1, 2],
-                    [3, 4]], covariant=[0])
+        a = Tensor([[1, 2], [3, 4]], covariant=[0])
 
         assert a.transpose() == Tensor([[1, 3], [2, 4]])
         assert a.T._covariant_indices == {1}
@@ -44,8 +43,7 @@ class TestTensor:
         assert a.dtype == np.complex64
 
     def test_expand_dims(self):
-        a = Tensor([[1, 2],
-                    [3, 4]], covariant=[0])
+        a = Tensor([[1, 2], [3, 4]], covariant=[0])
         b = a.expand_dims(0)
 
         assert b.shape == (1, 2, 2)
@@ -91,10 +89,8 @@ class TestTensorCollection:
         assert a.size == 2
 
     def test_getitem(self):
-        a = Tensor([[1, 2],
-                    [3, 4]])
-        b = Tensor([[5, 6],
-                    [7, 8]])
+        a = Tensor([[1, 2], [3, 4]])
+        b = Tensor([[5, 6], [7, 8]])
         c = Tensor([a, b], tensor_rank=1)
 
         assert c[0] == a
@@ -107,10 +103,15 @@ class TestTensorCollection:
 class TestTensorDiagram:
     def test_add_edge(self):
         a = Tensor([1, 0, 0, 0])
-        b = Tensor([[42, 0, 0, 0],
-                    [0, 0, 0, 0],
-                    [0, 0, 0, 0],
-                    [0, 0, 0, 0]], covariant=False)
+        b = Tensor(
+            [
+                [42, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+            ],
+            covariant=False,
+        )
         diagram = TensorDiagram((a, b))
         assert diagram.calculate() == Tensor([42, 0, 0, 0])
         diagram.add_edge(a.copy(), b)

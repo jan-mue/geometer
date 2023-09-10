@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING, Literal, TypedDict, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias, TypeGuard, Unpack
 
-def is_numeric_dtype(dtype: npt.DTypeLike) -> bool:
+ScalarType = TypeVar("ScalarType", bound=np.generic, covariant=True)
+PrecisionT = TypeVar("PrecisionT", bound=npt.NBitBase)
+NumericDType: TypeAlias = Union[np.number[PrecisionT], np.bool_]
+
+
+def is_numeric_dtype(dtype: npt.DTypeLike) -> TypeGuard[NumericDType[PrecisionT]]:
     """Checks whether a dtype is a numeric dtype i.e. a number or a bool.
 
     Args:
@@ -21,8 +29,13 @@ def is_numeric_dtype(dtype: npt.DTypeLike) -> bool:
     return np.issubdtype(dtype, np.number) or np.issubdtype(dtype, np.bool_)
 
 
-def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] | None = None,
-                rtol: float = 1.0e-5, atol: float = 1.0e-8) -> np.bool_ | npt.NDArray[np.bool_]:
+def is_multiple(
+    a: npt.ArrayLike,
+    b: npt.ArrayLike,
+    axis: int | tuple[int, ...] | None = None,
+    rtol: float = 1.0e-5,
+    atol: float = 1.0e-8,
+) -> np.bool_ | npt.NDArray[np.bool_]:
     """Returns a boolean array where two arrays are scalar multiples of each other along a given axis.
 
     For documentation of the tolerance parameters see :func:`numpy.isclose`.
@@ -40,9 +53,8 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
 
     """
     a, b = np.broadcast_arrays(a, b)
-
-    if not is_numeric_dtype(a.dtype) or not is_numeric_dtype(b.dtype):
-        raise TypeError("The input arrays have a dtype that is not numeric.")
+    _assert_numeric_array(a)
+    _assert_numeric_array(b)
 
     if axis is None:
         a = a.ravel()
@@ -53,7 +65,7 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
         new_axes = tuple(range(-1, -len(axis) - 1, -1))
         a = np.moveaxis(a, axis, new_axes)
         b = np.moveaxis(b, axis, new_axes)
-        new_shape = a.shape[:-len(axis)] + (-1,)
+        new_shape = a.shape[: -len(axis)] + (-1,)
         a = np.reshape(a, new_shape)
         b = np.reshape(b, new_shape)
         axis = -1
@@ -62,7 +74,7 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
 
     a_zero = np.isclose(a, 0, rtol=rtol, atol=atol)
     b_zero = np.isclose(b, 0, rtol=rtol, atol=atol)
-    dtype = np.find_common_type([a.dtype, b.dtype, np.float64], [])
+    dtype = np.common_type(a, b)
     a_zero_or_b_zero = a_zero | b_zero
     quotient = np.divide(a, b, out=np.zeros(a.shape, dtype), where=~a_zero_or_b_zero)
 
@@ -74,7 +86,7 @@ def is_multiple(a: npt.ArrayLike, b: npt.ArrayLike, axis: int | tuple[int, ...] 
     return (nonzero_multiple & zeros_equal) | all_zero
 
 
-def hat_matrix(*args: npt.ArrayLike) -> np.ndarray:
+def hat_matrix(*args: npt.ArrayLike) -> npt.NDArray[ScalarType]:
     r"""Builds a skew symmetric matrix with the given scalars in the positions shown below.
 
     .. math::
@@ -118,12 +130,16 @@ def hat_matrix(*args: npt.ArrayLike) -> np.ndarray:
     return result
 
 
-def _assert_square_matrix(A: np.ndarray) -> None:
-    if not is_numeric_dtype(A.dtype):
-        raise TypeError(f"The input array must have a numeric dtype not {A.dtype.name}")
-    if A.ndim < 2:
-        raise np.linalg.LinAlgError(f"{A.ndim}-dimensional array given. Array must be at least two-dimensional")
-    m, n = A.shape[-2:]
+def _assert_numeric_array(a: npt.NDArray[ScalarType]) -> None:
+    if not is_numeric_dtype(a.dtype):
+        raise TypeError(f"The input array must have a numeric dtype not {a.dtype.name}")
+
+
+def _assert_square_matrix(a: npt.NDArray[ScalarType]) -> None:
+    _assert_numeric_array(a)
+    if a.ndim < 2:
+        raise np.linalg.LinAlgError(f"{a.ndim}-dimensional array given. Array must be at least two-dimensional")
+    m, n = a.shape[-2:]
     if m != n:
         raise np.linalg.LinAlgError(f"Last 2 dimensions of the array must be square not ({m},{n})")
 
@@ -134,7 +150,7 @@ def _minor_indices(n: int, m: int) -> npt.NDArray[np.int_]:
     return np.stack(minors, axis=1)
 
 
-def adjugate(A: npt.ArrayLike) -> np.ndarray:
+def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number[PrecisionT]]:
     r"""Calculates the adjugate matrix of A.
 
     The resulting matrix is defined by
@@ -179,7 +195,7 @@ def adjugate(A: npt.ArrayLike) -> np.ndarray:
         result[..., ::2, 1::2] *= -1
         return result
 
-    from ..base import LeviCivitaTensor, Tensor, TensorDiagram
+    from geometer.base import LeviCivitaTensor, Tensor, TensorDiagram
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
@@ -189,7 +205,7 @@ def adjugate(A: npt.ArrayLike) -> np.ndarray:
     return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)
 
 
-def det(A: npt.ArrayLike) -> np.ndarray:
+def det(A: npt.ArrayLike) -> npt.NDArray[np.number[PrecisionT]]:
     """Computes the determinant of A.
 
     Args:
@@ -208,15 +224,18 @@ def det(A: npt.ArrayLike) -> np.ndarray:
 
     if n == 3 and A.size >= 9 * 64:
         return (
-            A[..., 0, 0] * A[..., 1, 1] * A[..., 2, 2] + A[..., 0, 1] * A[..., 1, 2] * A[..., 2, 0]
-            + A[..., 0, 2] * A[..., 1, 0] * A[..., 2, 1] - A[..., 2, 0] * A[..., 1, 1] * A[..., 0, 2]
-            - A[..., 2, 1] * A[..., 1, 2] * A[..., 0, 0] - A[..., 2, 2] * A[..., 1, 0] * A[..., 0, 1]
+            A[..., 0, 0] * A[..., 1, 1] * A[..., 2, 2]
+            + A[..., 0, 1] * A[..., 1, 2] * A[..., 2, 0]
+            + A[..., 0, 2] * A[..., 1, 0] * A[..., 2, 1]
+            - A[..., 2, 0] * A[..., 1, 1] * A[..., 0, 2]
+            - A[..., 2, 1] * A[..., 1, 2] * A[..., 0, 0]
+            - A[..., 2, 2] * A[..., 1, 0] * A[..., 0, 1]
         )
 
     return np.linalg.det(A)
 
 
-def inv(A: npt.ArrayLike) -> np.ndarray:
+def inv(A: npt.ArrayLike) -> npt.NDArray[np.number[PrecisionT]]:
     """Computes the inverse of A.
 
     Args:
@@ -241,7 +260,7 @@ def inv(A: npt.ArrayLike) -> np.ndarray:
     return np.linalg.inv(A)
 
 
-def null_space(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
+def null_space(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.number[PrecisionT]]:
     """Constructs an orthonormal basis for the null space of a matrix A using SVD.
 
     Args:
@@ -252,10 +271,12 @@ def null_space(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
         (..., N, K) Orthonormal basis for the null space of A (as column vectors in the returned matrix).
 
     """
+    A = np.asarray(A)
+    _assert_numeric_array(A)
+
     u, s, vh = np.linalg.svd(A, full_matrices=True)
 
     if dim is None:
-        A = np.asarray(A)
         tol = max(A.shape[-2:]) * np.spacing(np.max(s, axis=-1, keepdims=True))
         dims = np.sum(s > tol, axis=-1, dtype=int)
         if not np.all(dims == dims.flat[0]):
@@ -266,7 +287,7 @@ def null_space(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
     return Q
 
 
-def orth(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
+def orth(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.number[PrecisionT]]:
     """Constructs an orthonormal basis for the range of A using SVD.
 
     Args:
@@ -277,6 +298,9 @@ def orth(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
         (..., M, K) Orthonormal basis for the range of A (as column vectors in the returned matrix).
 
     """
+    A = np.asarray(A)
+    _assert_numeric_array(A)
+
     u, s, vh = np.linalg.svd(A, full_matrices=False)
 
     if dim is None:
@@ -287,12 +311,30 @@ def orth(A: npt.ArrayLike, dim: int | None = None) -> np.ndarray:
             raise ValueError("Cannot calculate the image spaces of matrices when the spaces have different dimensions.")
         dim = dims.flat[0]
 
-    Q = u[..., :dim]
-    return Q
+    return u[..., :dim]
 
 
-def matmul(a: npt.ArrayLike, b: npt.ArrayLike, transpose_a: bool = False, transpose_b: bool = False,
-           adjoint_a: bool = False, adjoint_b: bool = False, **kwargs) -> np.ndarray:
+class UFuncParameters(TypedDict, total=False):
+    where: npt.NDArray[np.bool_]
+    axes: list[tuple[int]]
+    axis: int
+    keepdims: bool
+    casting: Literal["no", "equiv", "safe", "same_kind", "unsafe"]
+    order: Literal["K", "A", "C", "F"]
+    dtype: npt.DTypeLike
+    subok: bool
+
+
+def matmul(
+    a: npt.ArrayLike,
+    b: npt.ArrayLike,
+    transpose_a: bool = False,
+    transpose_b: bool = False,
+    adjoint_a: bool = False,
+    adjoint_b: bool = False,
+    out: npt.NDArray[ScalarType] | None = None,
+    **kwargs: Unpack[UFuncParameters],
+) -> npt.NDArray[np.number[PrecisionT]]:
     """Matrix product of two arrays.
 
     Args:
@@ -301,6 +343,7 @@ def matmul(a: npt.ArrayLike, b: npt.ArrayLike, transpose_a: bool = False, transp
         transpose_b: If true, `b` is transposed before multiplication.
         adjoint_a: If true, `a` is conjugated and transposed before multiplication.
         adjoint_b: If true, `b` is conjugated and transposed before multiplication.
+        out: Output array.
         **kwargs: Additional keyword arguments for `numpy.matmul`.
 
     Returns:
@@ -317,28 +360,35 @@ def matmul(a: npt.ArrayLike, b: npt.ArrayLike, transpose_a: bool = False, transp
         a = np.swapaxes(a, -1, -2)
     if transpose_b:
         b = np.swapaxes(b, -1, -2)
-    return np.matmul(a, b, **kwargs)
+    return np.matmul(a, b, out=out, **kwargs)
 
 
-def matvec(a: npt.ArrayLike, b: npt.ArrayLike, transpose_a: bool = False,
-           adjoint_a: bool = False, **kwargs) -> np.ndarray:
+def matvec(
+    a: npt.ArrayLike,
+    b: npt.ArrayLike,
+    transpose_a: bool = False,
+    adjoint_a: bool = False,
+    out: npt.NDArray[ScalarType] | None = None,
+    **kwargs: Unpack[UFuncParameters],
+) -> npt.NDArray[np.number[PrecisionT]]:
     """Matrix-vector product of two arrays.
 
     Args:
         a, b: Input arrays, scalars not allowed.
         transpose_a: If true, `a` is transposed before multiplication.
         adjoint_a: If true, `a` is conjugated and transposed before multiplication.
+        out: Output array.
         **kwargs: Additional keyword arguments for `numpy.matmul`.
 
     Returns:
         The matrix-vector product of the inputs.
 
     """
-    result = matmul(a, np.expand_dims(b, axis=-1), transpose_a=transpose_a, adjoint_a=adjoint_a, **kwargs)
+    result = matmul(a, np.expand_dims(b, axis=-1), transpose_a=transpose_a, adjoint_a=adjoint_a, out=out, **kwargs)
     return np.squeeze(result, axis=-1)
 
 
-def roots(p: npt.ArrayLike) -> np.ndarray:
+def roots(p: npt.ArrayLike) -> npt.NDArray[np.number[PrecisionT]]:
     r"""Calculates the roots of a polynomial for the given coefficients.
 
     The polynomial is defined as
@@ -355,8 +405,7 @@ def roots(p: npt.ArrayLike) -> np.ndarray:
 
     """
     p = np.asarray(p)
-    if not is_numeric_dtype(p.dtype):
-        raise TypeError(f"The input array must have a numeric dtype not {p.dtype.name}")
+    _assert_numeric_array(p)
     if len(p) == 4:
         a, b, c, d = p
     elif len(p) == 3:
@@ -372,23 +421,22 @@ def roots(p: npt.ArrayLike) -> np.ndarray:
         return np.array([-d / c])
 
     if a == 0:  # Quadratic equation
-        D = c ** 2 - 4 * b * d
+        D = c**2 - 4 * b * d
         D = csqrt(D)
         x1 = (-c + D) / (2 * b)
         x2 = (-c - D) / (2 * b)
         return np.array([x1, x2])
 
-    f = ((3 * c / a) - ((b ** 2) / (a ** 2))) / 3
-    g = (((2 * (b ** 3)) / (a ** 3)) - ((9 * b * c) / (a ** 2)) + (27 * d / a)) / 27
-    h = (g ** 2) / 4 + (f ** 3) / 27
+    f = ((3 * c / a) - ((b**2) / (a**2))) / 3
+    g = (((2 * (b**3)) / (a**3)) - ((9 * b * c) / (a**2)) + (27 * d / a)) / 27
+    h = (g**2) / 4 + (f**3) / 27
 
     if f == 0 and g == 0 and h == 0:  # All 3 roots are real and equal
         x = np.cbrt(d / a)
         return np.array([x])
 
     if h <= 0:  # All 3 roots are real
-
-        i = np.sqrt(((g ** 2) / 4) - h)
+        i = np.sqrt(((g**2) / 4) - h)
         j = np.cbrt(i)
         k = np.arccos(-(g / (2 * i)))
         L = j * -1
@@ -415,8 +463,9 @@ def roots(p: npt.ArrayLike) -> np.ndarray:
         return np.array([x1, x2, x3])
 
 
-def outer(a: npt.ArrayLike, b: npt.ArrayLike,
-          out: np.ndarray | None = None) -> np.ndarray:
+def outer(
+    a: npt.ArrayLike, b: npt.ArrayLike, out: npt.NDArray[ScalarType] | None = None, **kwargs: Unpack[UFuncParameters]
+) -> npt.NDArray[np.number[PrecisionT]]:
     """Outer product of two arrays.
 
     Args:
@@ -429,4 +478,4 @@ def outer(a: npt.ArrayLike, b: npt.ArrayLike,
 
     """
     a, b = np.asarray(a), np.asarray(b)
-    return np.multiply(a[..., None], b[..., None, :], out=out)
+    return np.multiply(a[..., None], b[..., None, :], out=out, **kwargs)

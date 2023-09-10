@@ -61,7 +61,7 @@ def sanitize_index(ind):
     elif np.issubdtype(index_array.dtype, np.integer):
         return index_array
     elif np.issubdtype(index_array.dtype, np.floating):
-        int_index = index_array.astype(np.int_)
+        int_index = index_array.astype(np.intp)
         if np.allclose(index_array, int_index):
             return int_index
         else:
@@ -81,6 +81,7 @@ def posify_index(shape, ind):
     7
     >>> posify_index(10, [3, -3])
     array([3, 7])
+
     >>> posify_index((10, 20), (3, -3))
     (3, 17)
     >>> posify_index((10, 20), (3, [3, 4, -3]))  # doctest: +NORMALIZE_WHITESPACE
@@ -101,8 +102,10 @@ def posify_index(shape, ind):
 
 def replace_ellipsis(n, index):
     """Replace ... with slices, :, : ,:
+
     >>> replace_ellipsis(4, (3, Ellipsis, 2))
     (3, slice(None, None, None), slice(None, None, None), 2)
+
     >>> replace_ellipsis(2, (Ellipsis, None))
     (slice(None, None, None), slice(None, None, None), None)
     """
@@ -113,7 +116,7 @@ def replace_ellipsis(n, index):
     else:
         loc = isellipsis[0]
     extra_dimensions = n - (len(index) - sum(i is None for i in index) - 1)
-    return index[:loc] + (slice(None, None, None),) * extra_dimensions + index[loc + 1:]
+    return index[:loc] + (slice(None, None, None),) * extra_dimensions + index[loc + 1 :]
 
 
 def normalize_index(idx, shape):
@@ -140,6 +143,7 @@ def normalize_index(idx, shape):
             continue
         else:
             n_sliced_dims += 1
+
     idx = idx + (slice(None),) * (len(shape) - n_sliced_dims)
     if len([i for i in idx if i is not None]) > len(shape):
         raise IndexError("Too many indices for array")

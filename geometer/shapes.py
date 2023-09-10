@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import math
 from itertools import combinations
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL, Tensor, TensorIndex
-from .exceptions import LinearDependenceError, NotCoplanar
-from .operators import angle, dist, harmonic_set
-from .point import Line, Plane, Point, infty_hyperplane, join, meet
-from .transformation import Transformation, rotation, translation
-from .utils import det, distinct, is_multiple, matmul, matvec
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, NDArrayParameters, Tensor, TensorIndex
+from geometer.exceptions import LinearDependenceError, NotCoplanar
+from geometer.operators import angle, dist, harmonic_set
+from geometer.point import Line, Plane, Point, infty_hyperplane, join, meet
+from geometer.transformation import Transformation, rotation, translation
+from geometer.utils import det, distinct, is_multiple, matmul, matvec
+
+if TYPE_CHECKING:
+    from typing_extensions import Unpack
 
 
 class Polytope(Point):
@@ -34,7 +37,9 @@ class Polytope(Point):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, pdim: int = 0, **kwargs) -> None:
+    pdim: int
+
+    def __init__(self, *args: Tensor | npt.ArrayLike, pdim: int = 0, **kwargs: Unpack[NDArrayParameters]) -> None:
         self.pdim = pdim
         super().__init__(*args, **kwargs)
 
@@ -57,7 +62,7 @@ class Polytope(Point):
         """The facets of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         slices = (slice(None),) * first_polygon_index
-        return [self._cast_polytope(self[slices + (i,)], self.pdim - 1) for i in range(self.shape[first_polygon_index])]
+        return [self._cast_polytope(self[(*slices, i)], self.pdim - 1) for i in range(self.shape[first_polygon_index])]
 
     @property
     def _edges(self) -> np.ndarray:
@@ -81,11 +86,13 @@ class Polytope(Point):
         # vertices equal up to circular reordering
         reversed_array = np.flip(other.array, axis=-2)
         for i in range(self.shape[-2]):
-            if np.all(is_multiple(self.array, np.roll(other.array, i, axis=-2),
-                                  axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)):
+            if np.all(
+                is_multiple(self.array, np.roll(other.array, i, axis=-2), axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+            ):
                 return True
-            if np.all(is_multiple(self.array, np.roll(reversed_array, i, axis=-2),
-                                  axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)):
+            if np.all(
+                is_multiple(self.array, np.roll(reversed_array, i, axis=-2), axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+            ):
                 return True
 
         return False
@@ -148,7 +155,9 @@ class Segment(Polytope):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
+    _line: Line
+
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if len(args) == 2:
             a, b = args
             a, b = np.broadcast_arrays(a.array, b.array)
@@ -226,7 +235,7 @@ class Segment(Polytope):
         z_r, z_i = np.real(z), np.imag(z)
         w_r, w_i = np.real(w), np.imag(w)
         x = z_r * w_r + z_i * w_i
-        y = w_r ** 2 + w_i ** 2
+        y = w_r**2 + w_i**2
         x_zero = np.isclose(x, 0, atol=EQ_TOL_ABS)
         y_zero = np.isclose(y, 0, atol=EQ_TOL_ABS)
         return result & (~x_zero | ~y_zero) & (0 <= x + tol) & (x <= y + tol)
@@ -280,13 +289,14 @@ class Simplex(Polytope):
 
     """
 
-    def __new__(cls, *args: Point, **kwargs) -> Polytope:
+    # TODO: return only instances of type Simplex
+    def __new__(cls, *args: Point, **kwargs: Unpack[NDArrayParameters]) -> Polytope:
         if len(args) == 2:
             return Segment(*args, **kwargs)
 
         return super(Polytope, cls).__new__(cls)
 
-    def __init__(self, *args: Point, **kwargs) -> None:
+    def __init__(self, *args: Point, **kwargs: Unpack[NDArrayParameters]) -> None:
         kwargs.setdefault("pdim", len(args) - 1)
         if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args) - 1)]
@@ -294,7 +304,7 @@ class Simplex(Polytope):
 
     @property
     def volume(self) -> float:
-        """The volume of the simplex, calculated using the Cayley–Menger determinant."""
+        """The volume of the simplex, calculated using the Cayley-Menger determinant."""
         points = np.concatenate([v.array.reshape((1, v.shape[0])) for v in self.vertices], axis=0)
         points = self._normalize_array(points)
         n, k = points.shape
@@ -304,7 +314,7 @@ class Simplex(Polytope):
 
         indices = np.triu_indices(n)
         distances = points[indices[0]] - points[indices[1]]
-        distances = np.sum(distances ** 2, axis=1)
+        distances = np.sum(distances**2, axis=1)
         m = np.zeros((n + 1, n + 1), dtype=distances.dtype)
         m[indices] = distances
         m += m.T
@@ -326,7 +336,9 @@ class Polygon(Polytope):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
+    _plane: Plane
+
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if all(isinstance(x, Segment) for x in args):
             args = tuple(s.array[..., 0, :] for s in args)
         if len(args) > 1:
@@ -335,12 +347,12 @@ class Polygon(Polytope):
             kwargs["copy"] = False
             args = (np.stack(args, axis=-2),)
         super().__init__(*args, pdim=2, **kwargs)
-        self._plane = Plane(*self.vertices[:self.dim]) if self.dim > 2 else None
+        self._plane = Plane(*self.vertices[: self.dim]) if self.dim > 2 else None
 
     def __apply__(self, transformation: Transformation) -> Polygon:
         result = super().__apply__(transformation)
         if result.dim > 2:
-            result._plane = Plane(*result.vertices[:result.dim])
+            result._plane = Plane(*result.vertices[: result.dim])
         return result
 
     @property
@@ -387,14 +399,15 @@ class Polygon(Polytope):
             i = np.where(isinf, self.dim, i)
             i = np.expand_dims(i, -1)
             s = self.array.shape
-            arr = np.delete(self.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s)).reshape(
-                s[:-1] + (-1,))
+            arr = np.delete(self.array, np.ravel_multi_index((*tuple(np.indices(s[:-1])), i), s)).reshape(
+                s[:-1] + (-1,)
+            )
 
             if other.cdim == 0 and i.ndim == 1:
                 other = Point(np.delete(other.array, i), copy=False)
             else:
                 s = other.shape[:-1] + (1, other.shape[-1])
-                other = np.delete(other.array, np.ravel_multi_index(tuple(np.indices(s[:-1])) + (i,), s))
+                other = np.delete(other.array, np.ravel_multi_index((*tuple(np.indices(s[:-1])), i), s))
                 other = Point(other.reshape(s[:-2] + (-1,)), copy=False)
 
             # TODO: only test coplanar points
@@ -422,10 +435,12 @@ class Polygon(Polytope):
         # ignore intersections of downward edges that end on the ray
         v1 = edges.array[..., 0, :]
         v2 = edges.array[..., 1, :]
-        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(intersections.array, v1, atol=EQ_TOL_ABS,
-                                                                    rtol=EQ_TOL_REL, axis=-1)
-        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(intersections.array, v2, atol=EQ_TOL_ABS,
-                                                                    rtol=EQ_TOL_REL, axis=-1)
+        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(
+            intersections.array, v1, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1
+        )
+        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(
+            intersections.array, v2, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1
+        )
 
         result = edges.contains(intersections)
         result &= rays.contains(intersections)
@@ -456,7 +471,8 @@ class Polygon(Polytope):
                     other = cast(Segment, other[~e.dependent_values])
                 result = cast(Plane, self._plane[~e.dependent_values]).meet(other._line)
                 return list(
-                    result[Polygon(self[~e.dependent_values], copy=False).contains(result) & other.contains(result)])
+                    result[Polygon(self[~e.dependent_values], copy=False).contains(result) & other.contains(result)]
+                )
             else:
                 return list(result[self.contains(result) & other.contains(result)])
 
@@ -621,7 +637,7 @@ class Rectangle(Polygon):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         super().__init__(*args, **kwargs)
         assert self.shape[-2] == 4, "Unexpected number of vertices."
 
@@ -629,7 +645,7 @@ class Rectangle(Polygon):
 class Polyhedron(Polytope):
     """A class representing polyhedra (3-polytopes)."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         super().__init__(*args, pdim=3, **kwargs)
 
     @property
@@ -644,7 +660,7 @@ class Polyhedron(Polytope):
         return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(*self.shape[:2])))
 
     @property
-    def area(self) -> npt.NDArray[np.float_]:
+    def area(self) -> npt.NDArray[np.float_] | np.float_:
         """The surface area of the polyhedron."""
         return np.sum(self.faces.area)
 
@@ -673,7 +689,7 @@ class Cuboid(Polyhedron):
 
     """
 
-    def __init__(self, a: Point, b: Point, c: Point, d: Point, **kwargs) -> None:
+    def __init__(self, a: Point, b: Point, c: Point, d: Point, **kwargs: Unpack[NDArrayParameters]) -> None:
         x, y, z = b - a, c - a, d - a
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)

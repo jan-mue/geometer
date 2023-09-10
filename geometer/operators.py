@@ -5,15 +5,20 @@ from typing import cast
 import numpy as np
 import numpy.typing as npt
 
-from .base import EQ_TOL_ABS, EQ_TOL_REL, LeviCivitaTensor, TensorDiagram
-from .curve import absolute_conic
-from .exceptions import NotCollinear, NotConcurrent
-from .point import I, J, Line, Plane, Point, infty, infty_plane, join, meet
-from .utils import det, matvec, orth
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, LeviCivitaTensor, TensorDiagram
+from geometer.curve import absolute_conic
+from geometer.exceptions import NotCollinear, NotConcurrent
+from geometer.point import I, J, Line, Plane, Point, infty, infty_plane, join, meet
+from geometer.utils import det, matvec, orth
 
 
-def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line | Plane, d: Point | Line | Plane,
-               from_point: Point | None = None) -> np.ndarray:
+def crossratio(
+    a: Point | Line | Plane,
+    b: Point | Line | Plane,
+    c: Point | Line | Plane,
+    d: Point | Line | Plane,
+    from_point: Point | None = None,
+) -> np.ndarray:
     """Calculates the cross ratio of points or lines.
 
     Args:
@@ -30,7 +35,7 @@ def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line
     """
 
     if a == b:
-        return np.ones(a.shape[:a.cdim])
+        return np.ones(a.shape[: a.cdim])
 
     if isinstance(a, Line):
         if not np.all(is_concurrent(a, b, c, d)):
@@ -53,7 +58,6 @@ def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line
         d = (p + d.direction)._matrix_transform(m)
 
     if a.dim > 2 or (from_point is None and a.dim == 2):
-
         if not np.all(is_collinear(a, b, c, d)):
             raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
 
@@ -71,10 +75,10 @@ def crossratio(a: Point | Line | Plane, b: Point | Line | Plane, c: Point | Line
         a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
         o = []
 
-    ac = det(np.stack(o + [a, c], axis=-2))
-    bd = det(np.stack(o + [b, d], axis=-2))
-    ad = det(np.stack(o + [a, d], axis=-2))
-    bc = det(np.stack(o + [b, c], axis=-2))
+    ac = det(np.stack([*o, a, c], axis=-2))
+    bd = det(np.stack([*o, b, d], axis=-2))
+    ad = det(np.stack([*o, a, d], axis=-2))
+    bc = det(np.stack([*o, b, c], axis=-2))
 
     with np.errstate(divide="ignore", invalid="ignore"):
         return ac * bd / (ad * bc)
@@ -161,8 +165,7 @@ def angle(*args: Point | Line | Plane) -> npt.NDArray[np.float_]:
             polar = Line(p.array[..., :-1], copy=False)
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [
-                Point(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
-                for p in tangent_points
+                Point(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False) for p in tangent_points
             ]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
@@ -232,7 +235,7 @@ def angle_bisectors(l: Line, m: Line) -> tuple[Line, Line]:
     return join(o, r), join(o, s)
 
 
-def dist(p: Point | Line | Plane, q) -> npt.NDArray[np.float_]:
+def dist(p: Point | Line | Plane, q: Point | Line | Plane) -> npt.NDArray[np.float_]:
     r"""Calculates the (euclidean) distance between two objects.
 
     Instead of the usual formula for the euclidean distance this function uses
@@ -252,7 +255,7 @@ def dist(p: Point | Line | Plane, q) -> npt.NDArray[np.float_]:
 
     """
     if p == q:
-        return np.zeros(p.shape[:p.cdim])
+        return np.zeros(p.shape[: p.cdim])
 
     subspace_types = (Line, Plane)
 
@@ -265,7 +268,7 @@ def dist(p: Point | Line | Plane, q) -> npt.NDArray[np.float_]:
     if isinstance(q, Plane) and isinstance(p, Line):
         return dist(q, p.base_point)
 
-    from .shapes import Polygon, Polyhedron, Segment
+    from geometer.shapes import Polygon, Polyhedron, Segment
 
     if isinstance(p, Point) and isinstance(q, Polygon):
         return dist(q, p)
@@ -309,8 +312,9 @@ def dist(p: Point | Line | Plane, q) -> npt.NDArray[np.float_]:
         return 4 * np.abs(np.sqrt(pqi * pqj) / (pij * qij))
 
 
-def is_cocircular(a: Point, b: Point, c: Point, d: Point,
-                  rtol: float = EQ_TOL_REL, atol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+def is_cocircular(
+    a: Point, b: Point, c: Point, d: Point, rtol: float = EQ_TOL_REL, atol: float = EQ_TOL_ABS
+) -> npt.NDArray[np.bool_]:
     """Tests whether four points lie on a circle.
 
     Args:
@@ -338,8 +342,9 @@ def is_cocircular(a: Point, b: Point, c: Point, d: Point,
     return np.isclose(i, j, rtol, atol)
 
 
-def is_perpendicular(l: Line | Plane, m: Line | Plane,
-                     rtol: float = EQ_TOL_REL, atol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+def is_perpendicular(
+    l: Line | Plane, m: Line | Plane, rtol: float = EQ_TOL_REL, atol: float = EQ_TOL_ABS
+) -> npt.NDArray[np.bool_]:
     """Tests whether two lines/planes are perpendicular.
 
     Args:
@@ -367,8 +372,7 @@ def is_perpendicular(l: Line | Plane, m: Line | Plane,
         polar = Line(p.array[..., :-1], copy=False)
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [
-            Point(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
-            for p in tangent_points
+            Point(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False) for p in tangent_points
         ]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
@@ -399,7 +403,7 @@ def is_coplanar(*args: Point | Line, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.
         return result
     covariant = args[0].tensor_shape[1] > 0
     e = LeviCivitaTensor(n, covariant=covariant)
-    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[:n - 1]])
+    diagram = TensorDiagram(*[(e, a) if covariant else (a, e) for a in args[: n - 1]])
     tensor = diagram.calculate()
     for t in args[n:]:
         x = t * tensor if covariant else tensor * t
