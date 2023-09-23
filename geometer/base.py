@@ -3,14 +3,21 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, ClassVar, Literal, TypedDict, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypedDict, Union
 
 import numpy as np
 import numpy.typing as npt
 
 from geometer.exceptions import TensorComputationError
-from geometer.utils import is_multiple, is_numeric_dtype, normalize_index, posify_index, sanitize_index
-from geometer.utils.math import NumericDType, PrecisionT
+from geometer.utils import (
+    is_multiple,
+    is_numerical_dtype,
+    is_numerical_scalar,
+    normalize_index,
+    posify_index,
+    sanitize_index,
+)
+from geometer.utils.math import NumericalDType
 
 if TYPE_CHECKING:
     from typing_extensions import Self, TypeAlias, Unpack
@@ -23,6 +30,7 @@ EQ_TOL_ABS = 1e-8
 IntegerIndex1D: TypeAlias = Union[int, np.int_, slice, Sequence[int], Sequence[np.int_], npt.NDArray[np.int_]]
 BooleanIndex1D: TypeAlias = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
 TensorIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
+Shape: TypeAlias = tuple[int, ...]
 
 
 class NDArrayParameters(TypedDict, total=False):
@@ -58,7 +66,7 @@ class Tensor(Sized, Iterable["Tensor"]):
 
     """
 
-    array: npt.NDArray[NumericDType[PrecisionT]]
+    array: npt.NDArray[NumericalDType]
     _collection_indices: set[int]
     _covariant_indices: set[int]
     _contravariant_indices: set[int]
@@ -85,7 +93,7 @@ class Tensor(Sized, Iterable["Tensor"]):
         else:
             self.array = np.array(args, **kwargs)
 
-        if not is_numeric_dtype(self.dtype):
+        if not is_numerical_dtype(self.dtype):
             raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
 
         if tensor_rank is None:
@@ -108,8 +116,8 @@ class Tensor(Sized, Iterable["Tensor"]):
             for idx in covariant:
                 if not -tensor_rank <= idx < tensor_rank:
                     raise IndexError(f"Index {idx} out of range [{-tensor_rank}, {tensor_rank})")
-                idx = sanitize_index(idx)
-                idx = posify_index(tensor_rank, idx)
+                idx = sanitize_index(idx)  # type: ignore[no-untyped-call]
+                idx = posify_index(tensor_rank, idx)  # type: ignore[no-untyped-call]
                 self._covariant_indices.add(n_col + idx)
 
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - self._collection_indices
@@ -126,12 +134,12 @@ class Tensor(Sized, Iterable["Tensor"]):
         return result
 
     @property
-    def shape(self) -> tuple[int, ...]:
+    def shape(self) -> Shape:
         """The shape of the underlying numpy array, same as ``self.array.shape``."""
         return self.array.shape
 
     @property
-    def dtype(self) -> np.dtype[NumericDType[PrecisionT]]:
+    def dtype(self) -> np.dtype[NumericalDType]:
         """The dtype of the underlying numpy array, same as ``self.array.dtype``."""
         return self.array.dtype
 
@@ -239,8 +247,8 @@ class Tensor(Sized, Iterable["Tensor"]):
         result = self.copy()
         result.array = np.expand_dims(self.array, axis)
 
-        axis = sanitize_index(axis)
-        axis = posify_index(self.rank, axis)
+        axis = sanitize_index(axis)  # type: ignore[no-untyped-call]
+        axis = posify_index(self.rank, axis)  # type: ignore[no-untyped-call]
         result._collection_indices = {i + 1 if i >= axis else i for i in self._collection_indices}
         result._covariant_indices = {i + 1 if i >= axis else i for i in self._covariant_indices}
         result._contravariant_indices = {i + 1 if i >= axis else i for i in self._contravariant_indices}
@@ -261,8 +269,8 @@ class Tensor(Sized, Iterable["Tensor"]):
         result = self.copy()
         result.array = np.squeeze(self.array, axis)
 
-        axis = sanitize_index(axis)
-        axis = posify_index(self.rank, axis)
+        axis = sanitize_index(axis)  # type: ignore[no-untyped-call]
+        axis = posify_index(self.rank, axis)  # type: ignore[no-untyped-call]
         result._collection_indices = {i - 1 if i > axis else i for i in self._collection_indices if i != axis}
         result._covariant_indices = {i - 1 if i > axis else i for i in self._covariant_indices if i != axis}
         result._contravariant_indices = {i - 1 if i > axis else i for i in self._contravariant_indices if i != axis}
@@ -280,7 +288,7 @@ class Tensor(Sized, Iterable["Tensor"]):
 
         """
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
-        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
+        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)  # type: ignore[no-any-return]
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
@@ -289,7 +297,7 @@ class Tensor(Sized, Iterable["Tensor"]):
         return f"{class_name}({self.array.tolist()})"
 
     def _get_index_mapping(self, index: TensorIndex) -> list[int | None]:
-        normalized_index = normalize_index(index, self.shape)
+        normalized_index = normalize_index(index, self.shape)  # type: ignore[no-untyped-call]
         advanced_indices = []
         index_mapping: list[int | None] = list(range(self.rank))
         i = 0
@@ -356,7 +364,7 @@ class Tensor(Sized, Iterable["Tensor"]):
             value = value.array
         self.array[key] = value
 
-    def __iter__(self) -> Iterator[Tensor | np.generic]:
+    def __iter__(self) -> Iterator[Tensor]:
         for i in range(len(self)):
             yield self[i]
 
@@ -364,14 +372,14 @@ class Tensor(Sized, Iterable["Tensor"]):
         return self.copy()
 
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if np.isscalar(other):
+        if is_numerical_scalar(other):
             return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)
         if not isinstance(other, Tensor):
             other = Tensor(other, copy=False)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if np.isscalar(other):
+        if is_numerical_scalar(other):
             return self * other
         if not isinstance(other, Tensor):
             other = Tensor(other, copy=False)
@@ -394,7 +402,7 @@ class Tensor(Sized, Iterable["Tensor"]):
         return d.calculate()
 
     def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if np.isscalar(other):
+        if is_numerical_scalar(other):
             return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)
         return NotImplemented
 
@@ -428,12 +436,12 @@ class Tensor(Sized, Iterable["Tensor"]):
     def __len__(self) -> int:
         return len(self.array)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> np.ndarray:
+    def __array__(self, dtype: npt.DTypeLike | None = None) -> np.ndarray:
         if dtype and dtype != self.dtype:
             return self.array.astype(dtype)
         return self.array
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any):
         return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
@@ -689,7 +697,7 @@ class ProjectiveTensor(Tensor, ABC):
     """Base class for all projective tensors, i.e. all objects that identify scalar multiples."""
 
     def __eq__(self, other: object) -> bool:
-        if np.isscalar(other):
+        if is_numerical_scalar(other):
             return super().__eq__(other)
 
         if not isinstance(other, Tensor):

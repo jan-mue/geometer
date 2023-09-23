@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from geometer.base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
 from geometer.exceptions import GeometryException, LinearDependenceError, NotCoplanar
-from geometer.utils import matmul, matvec, null_space
+from geometer.utils import is_numerical_scalar, matmul, matvec, null_space
 
 
 @overload
@@ -281,14 +281,14 @@ class Point(ProjectiveTensor):
         return Point(result, copy=False)
 
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not np.isscalar(other):
+        if not is_numerical_scalar(other):
             return super().__mul__(other)
         result = self.normalized_array[..., :-1] * other
         result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return Point(result, copy=False)
 
     def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not np.isscalar(other):
+        if not is_numerical_scalar(other):
             return super().__truediv__(other)
         result = self.normalized_array[..., :-1] / other
         result = np.append(result, self.array[..., -1:] != 0, axis=-1)

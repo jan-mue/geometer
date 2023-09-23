@@ -103,6 +103,7 @@ ban-relative-imports = "all"
 plugins = ["numpy.typing.mypy_plugin"]
 strict = true
 implicit_reexport = true
+disallow_any_generics = false # TODO
 
 [[tool.mypy.overrides]]
 module = "geometer.utils.indexing"
