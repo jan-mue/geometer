@@ -28,8 +28,8 @@ dependencies = [
 
 [project.optional-dependencies]
 docs = [
-    "sphinx",
-    "sphinx-rtd-theme"
+    "sphinx>=7",
+    "sphinx-rtd-theme>=1.0"
 ]
 
 [project.urls]
