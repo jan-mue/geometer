@@ -46,6 +46,7 @@ dependencies = [
 ]
 [tool.hatch.envs.default.scripts]
 tests = "coverage run -m pytest {args:tests}"
+rtd-docs = "sphinx-build docs/ _readthedocs/html/"
 
 [tool.black]
 target-version = ["py39"]
