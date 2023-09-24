@@ -4,6 +4,10 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-  commands:
-    - pip install hatch
-    - hatch run rtd-docs
+
+python:
+  install:
+  - method: pip
+    path: .
+    extra_requirements:
+    - docs

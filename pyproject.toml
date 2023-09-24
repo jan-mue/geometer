@@ -26,6 +26,12 @@ dependencies = [
     "numpy>=1.22"
 ]
 
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme"
+]
+
 [project.urls]
 Documentation = "https://github.com/jan-mue/geometer#readme"
 Issues = "https://github.com/jan-mue/geometer/issues"
@@ -35,15 +41,17 @@ Source = "https://github.com/jan-mue/geometer"
 path = "geometer/__version__.py"
 
 [tool.hatch.envs.default]
+features = [
+    "docs"
+]
 dependencies = [
     "pytest",
     "codecov",
-    "sphinx",
-    "sphinx-rtd-theme",
     "pre-commit",
     "typing-extensions",
     "mypy>=1.0.0"
 ]
+
 [tool.hatch.envs.default.scripts]
 tests = "coverage run -m pytest {args:tests}"
 rtd-docs = "sphinx-build docs/ _readthedocs/html/"
