@@ -498,6 +498,8 @@ class Circle(Ellipse):
     """
 
     def __init__(self, center: Point = Point(0, 0), radius: float = 1, **kwargs) -> None:
+        if radius <= 0:
+            raise ValueError(f"radius must be greater than 0, but is {radius}")
         super().__init__(center, radius, radius, **kwargs)
 
     @property
@@ -512,11 +514,11 @@ class Circle(Ellipse):
         return np.sqrt(c.dot(c) - self.array[2, 2] / self.array[0, 0])
 
     @property
-    def lie_coordinates(self) -> Point:
-        """The Lie coordinates of the circle as point in RP4."""
+    def lie_coordinates(self) -> np.ndarray:
+        """The normalized Lie coordinates of the circle in R4."""
         m = self.center.normalized_array
         x = m[0] ** 2 + m[1] ** 2 - self.radius**2
-        return Point([(1 + x) / 2, (1 - x) / 2, m[0], m[1], self.radius])
+        return np.array([(1 + x) / 2, (1 - x) / 2, m[0], m[1]]) / self.radius
 
     def intersection_angle(self, other: Circle) -> float:
         """Calculates the angle of intersection of two circles using its Lie coordinates.
@@ -532,8 +534,8 @@ class Circle(Ellipse):
 
         """
         # lorenz coordinates
-        p1 = self.lie_coordinates.normalized_array[:-1]
-        p2 = other.lie_coordinates.normalized_array[:-1]
+        p1 = self.lie_coordinates
+        p2 = other.lie_coordinates
 
         return np.arccos(np.vdot(p1, p2))
 

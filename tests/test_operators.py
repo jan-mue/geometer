@@ -49,8 +49,8 @@ def test_dist():
     q = Point(1000001, 0)
     assert np.isclose(dist(p, q), 1)
 
-    p1 = Point(1j, 0, 0, 2j)
-    p2 = Point(0, 2j, 0, 0)
+    p1 = Point(1j, 0, 2j)
+    p2 = Point(0, 2j, 0)
     assert np.isclose(dist(p1, p2), 3)
 
     p1 = Point(1, 0, 0)

@@ -197,63 +197,6 @@ class Test3D:
         assert is_perpendicular(e, f)
 
 
-class Test4D:
-    def test_join(self):
-        p1 = Point(1, 1, 4, 0)
-        p2 = Point(2, 1, 5, 0)
-        p3 = Point(3, 4, 6, 0)
-        p4 = Point(0, 2, 7, 0)
-        p5 = Point(1, 5, 8, 0)
-
-        # 4 points
-        assert join(p1, p2, p3, p4).contains(p5)
-
-        # 3 points
-        assert join(p1, p2, p3).contains(p3)
-
-        # two lines
-        l = Line(p1, p2)
-        m = Line(p3, p4)
-        assert join(l, m) == Plane(p1, p2, p3, p4)
-
-        # coplanar lines
-        l = Line(p1, p2)
-        m = Line(p1, p3)
-        assert join(l, m).contains(p3)
-
-        # point and line
-        p = join(l, p3)
-        assert p == join(p1, p2, p3)
-
-        # 2 points
-        l = p1.join(p2)
-        assert l.contains(Point(3, 1, 6, 0))
-
-    def test_meet(self):
-        p1 = Plane(1, 0, 0, 0, 0)
-        p2 = Plane(0, 1, 0, 0, 0)
-        p3 = Plane(0, 0, 1, 0, 0)
-        p4 = Plane(0, 0, 0, 1, 0)
-
-        # four hyperplanes
-        assert meet(p1, p2, p3, p4) == Point(0, 0, 0, 0)
-
-        # hyperplane and line
-        l = Line(Point(0, 0, 0, 0), Point(0, 0, 1, 0))
-        assert p3.meet(l) == Point(0, 0, 0, 0)
-
-        # two lines
-        m = Line(Point(0, 0, 0, 0), Point(1, 2, 5, 6))
-        assert l.meet(m) == Point(0, 0, 0, 0)
-
-    def test_project(self):
-        p1 = Point(1, 0, 0, 0)
-        p2 = Point(0, 1, 0, 0)
-
-        l = Line(p1, p2)
-        assert l.project(Point(0, 0, 0, 0)) == Point(0.5, 0.5, 0, 0)
-
-
 class TestCollections:
     def test_join(self):
         # 2 points

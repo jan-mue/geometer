@@ -81,7 +81,7 @@ def _join_meet_duality(
         covariant = args[0].tensor_shape[0] > 0
         e = LeviCivitaTensor(n, not covariant)
 
-        # summing all arguments with e gives a (n-len(args))-tensor (e.g. a 1-tensor for two 2D-lines)
+        # connecting all arguments with e gives a (n-len(args))-tensor (e.g. a 1-tensor for two 2D-lines)
         result = TensorDiagram(*[(o, e) if covariant else (e, o) for o in args]).calculate()
 
     # two lines/planes
@@ -134,11 +134,12 @@ def _join_meet_duality(
                 raise GeometryException("Can only join tensors that are either all coplanar or all not coplanar.")
 
         else:
-            # TODO: intersect arbitrary subspaces (use GA)
-            raise ValueError("Operation not supported.")
+            raise ValueError(f"Arguments of type {type(a)} and {type(b)} are not supported.")
 
     else:
-        raise ValueError("Wrong number of arguments.")
+        raise ValueError(
+            f"Expected all arguments to be 1-tensors or a pair of lines/planes, but got {len(args)} tensors of higher rank."
+        )
 
     if check_dependence:
         is_zero = result.is_zero()
