@@ -1,11 +1,12 @@
 # geometer
 
-[![image](https://img.shields.io/pypi/v/geometer.svg)](https://pypi.org/project/geometer/)
-[![image](https://img.shields.io/pypi/l/geometer.svg)](https://pypi.org/project/geometer/)
-[![image](https://img.shields.io/pypi/pyversions/geometer.svg)](https://pypi.org/project/geometer/)
-[![Build Status](https://github.com/jan-mue/geometer/workflows/build/badge.svg?branch=master)](https://github.com/jan-mue/geometer/actions)
+[![version](https://img.shields.io/pypi/v/geometer.svg)](https://pypi.org/project/geometer/)
+[![license](https://img.shields.io/pypi/l/geometer.svg)](https://pypi.org/project/geometer/)
+[![python](https://img.shields.io/pypi/pyversions/geometer.svg)](https://pypi.org/project/geometer/)
+[![tests](https://github.com/jan-mue/geometer/actions/workflows/tests.yaml/badge.svg)](https://github.com/jan-mue/geometer/actions)
 [![docs](https://readthedocs.org/projects/geometer/badge/?version=latest)](https://geometer.readthedocs.io/en/latest/?badge=latest)
 [![codecov](https://codecov.io/github/jan-mue/geometer/coverage.svg?branch=master)](https://codecov.io/github/jan-mue/geometer)
+[![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Geometer is a geometry library for Python that uses projective geometry and numpy for fast geometric computation.
 In projective geometry every point in 2D is represented by a three-dimensional vector and every point in 3D
