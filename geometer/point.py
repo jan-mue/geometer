@@ -8,7 +8,15 @@ import numpy.typing as npt
 if TYPE_CHECKING:
     from typing_extensions import Literal, Unpack
 
-from geometer.base import EQ_TOL_ABS, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
+from geometer.base import (
+    EQ_TOL_ABS,
+    LeviCivitaTensor,
+    NDArrayParameters,
+    ProjectiveTensor,
+    Tensor,
+    TensorDiagram,
+    TensorIndex,
+)
 from geometer.exceptions import GeometryException, LinearDependenceError, NotCoplanar
 from geometer.utils import is_numerical_scalar, matmul, matvec, null_space
 
@@ -255,7 +263,9 @@ class Point(ProjectiveTensor):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, homogenize=False, tensor_rank=1, **kwargs) -> None:
+    def __init__(
+        self, *args: Tensor | npt.ArrayLike, homogenize=False, tensor_rank=1, **kwargs: Unpack[NDArrayParameters]
+    ) -> None:
         if np.isscalar(args[0]):
             super().__init__(*args, 1, tensor_rank=tensor_rank, **kwargs)
             homogenize = False
@@ -363,7 +373,9 @@ class Subspace(ProjectiveTensor):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, tensor_rank: int = 1, **kwargs) -> None:
+    def __init__(
+        self, *args: Tensor | npt.ArrayLike, tensor_rank: int = 1, **kwargs: Unpack[NDArrayParameters]
+    ) -> None:
         kwargs.setdefault("covariant", False)
         super().__init__(*args, tensor_rank=tensor_rank, **kwargs)
 
@@ -488,7 +500,7 @@ class Line(Subspace):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if len(args) == 2:
             kwargs["copy"] = False
             p, q = args
@@ -710,7 +722,7 @@ class Plane(Subspace):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if all(isinstance(o, (Line, Point)) for o in args):
             kwargs["copy"] = False
             super().__init__(join(*args), **kwargs)

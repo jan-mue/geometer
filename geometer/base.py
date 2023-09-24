@@ -696,6 +696,19 @@ class TensorDiagram:
 class ProjectiveTensor(Tensor, ABC):
     """Base class for all projective tensors, i.e. all objects that identify scalar multiples."""
 
+    def __init__(
+        self,
+        *args: Tensor | npt.ArrayLike,
+        covariant: bool | Iterable[int] = True,
+        tensor_rank: int | None = None,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
+        super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
+        if self.rank == 0:
+            raise ValueError("A projective tensor cannot be of rank 0")
+        if not 0 < self.dim <= 4:
+            raise ValueError(f"Only dimensions 1, 2, 3 and 4 are supported, got dimension {self.dim}")
+
     def __eq__(self, other: object) -> bool:
         if is_numerical_scalar(other):
             return super().__eq__(other)
