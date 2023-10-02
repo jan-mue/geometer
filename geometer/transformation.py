@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, TypeVar, overload
 import numpy as np
 import numpy.typing as npt
 
-from geometer.base import LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
+from geometer.base import ArrayIndex, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorCollection, TensorDiagram
 from geometer.exceptions import NoIncidence
 from geometer.point import Line, Point, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
@@ -284,16 +284,16 @@ class Transformation(ProjectiveTensor):
 
     def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
         if power == 0:
-            if self.cdim == 0:
+            if self.free_indices == 0:
                 return identity(self.dim)
-            return identity(self.dim, self.shape[: self.cdim])
+            return identity(self.dim, self.shape[: self.free_indices])
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 
         result = super().__pow__(power, modulo)
         return Transformation(result, copy=False)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
@@ -309,3 +309,7 @@ class Transformation(ProjectiveTensor):
 
         """
         return Transformation(inv(self.array), copy=False)
+
+
+class TransformationCollection(TensorCollection[Transformation]):
+    pass

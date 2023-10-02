@@ -8,7 +8,15 @@ import numpy as np
 import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
-from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, NDArrayParameters, ProjectiveTensor, Tensor, TensorDiagram
+from geometer.base import (
+    EQ_TOL_ABS,
+    EQ_TOL_REL,
+    NDArrayParameters,
+    ProjectiveTensor,
+    Tensor,
+    TensorCollection,
+    TensorDiagram,
+)
 from geometer.exceptions import IncidenceError, NotReducible
 from geometer.point import I, J, Line, Plane, Point, Subspace, infty_plane, join
 from geometer.transformation import rotation, translation
@@ -203,7 +211,7 @@ class Quadric(ProjectiveTensor):
             if self.dim > 2:
                 arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
 
-                if other.cdim == 0:
+                if other.free_indices == 0:
                     i = arr.nonzero()[0][0]
                     m = Plane(arr[i], copy=False).basis_matrix
                 else:
@@ -227,7 +235,7 @@ class Quadric(ProjectiveTensor):
                 e, f = cast(Union[Line, Plane], e), cast(Union[Line, Plane], f)
                 p, q = e.meet(other), f.meet(other)
 
-        if p.cdim == 0 and p == q:
+        if p.free_indices == 0 and p == q:
             return [p]
 
         return [p, q]
@@ -236,6 +244,10 @@ class Quadric(ProjectiveTensor):
     def dual(self) -> Quadric:
         """The dual quadric."""
         return Quadric(inv(self.array), is_dual=not self.is_dual, copy=False)
+
+
+class QuadricCollection(TensorCollection[Quadric]):
+    pass
 
 
 class Conic(Quadric):

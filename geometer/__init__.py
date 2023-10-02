@@ -1,5 +1,5 @@
 from geometer.__version__ import __version__
-from geometer.curve import Circle, Cone, Conic, Cylinder, Ellipse, Quadric, Sphere
+from geometer.curve import Circle, Cone, Conic, Cylinder, Ellipse, Quadric, QuadricCollection, Sphere
 from geometer.operators import (
     angle,
     angle_bisectors,
@@ -12,10 +12,36 @@ from geometer.operators import (
     is_coplanar,
     is_perpendicular,
 )
-from geometer.point import I, J, Line, Plane, Point, infty, infty_plane, join, meet
-from geometer.shapes import Cuboid, Polygon, Polyhedron, Polytope, Rectangle, RegularPolygon, Segment, Simplex, Triangle
+from geometer.point import (
+    I,
+    J,
+    Line,
+    LineCollection,
+    Plane,
+    PlaneCollection,
+    Point,
+    PointCollection,
+    infty,
+    infty_plane,
+    join,
+    meet,
+)
+from geometer.shapes import (
+    Cuboid,
+    Polygon,
+    PolygonCollection,
+    Polyhedron,
+    Polytope,
+    Rectangle,
+    RegularPolygon,
+    Segment,
+    SegmentCollection,
+    Simplex,
+    Triangle,
+)
 from geometer.transformation import (
     Transformation,
+    TransformationCollection,
     affine_transform,
     identity,
     reflection,
@@ -23,11 +49,3 @@ from geometer.transformation import (
     scaling,
     translation,
 )
-
-PointCollection = Point
-LineCollection = Line
-PlaneCollection = Plane
-QuadricCollection = Quadric
-TransformationCollection = Transformation
-SegmentCollection = Segment
-PolygonCollection = Polygon

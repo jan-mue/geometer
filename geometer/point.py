@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, cast, overload
 
 import numpy as np
@@ -10,12 +11,13 @@ if TYPE_CHECKING:
 
 from geometer.base import (
     EQ_TOL_ABS,
+    ArrayIndex,
     LeviCivitaTensor,
     NDArrayParameters,
     ProjectiveTensor,
     Tensor,
+    TensorCollection,
     TensorDiagram,
-    TensorIndex,
 )
 from geometer.exceptions import GeometryException, LinearDependenceError, NotCoplanar
 from geometer.utils import is_numerical_scalar, matmul, matvec, null_space
@@ -130,7 +132,7 @@ def _join_meet_duality(
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
                 raise NotCoplanar("The given lines are not all coplanar.")
-            elif np.any(coplanar) and (a.cdim > 0 or b.cdim > 0):
+            elif np.any(coplanar) and (a.free_indices > 0 or b.free_indices > 0):
                 raise GeometryException("Can only join tensors that are either all coplanar or all not coplanar.")
 
         else:
@@ -143,7 +145,7 @@ def _join_meet_duality(
 
     if check_dependence:
         is_zero = result.is_zero()
-        if result.cdim == 0 and is_zero:
+        if result.free_indices == 0 and is_zero:
             raise LinearDependenceError("Arguments are not linearly independent.")
         elif np.any(is_zero):
             raise LinearDependenceError("Some arguments are not linearly independent.", is_zero)
@@ -306,7 +308,7 @@ class Point(ProjectiveTensor):
         return Point(result, copy=False)
 
     def __repr__(self) -> str:
-        if self.cdim == 0:
+        if self.free_indices == 0:
             result = f"Point({', '.join(self.normalized_array[:-1].astype(str))})"
             if self.isinf:
                 result += " at Infinity"
@@ -324,7 +326,7 @@ class Point(ProjectiveTensor):
     def join(self, *others: Point | Subspace) -> Subspace:
         return join(self, *others)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 0):
@@ -344,7 +346,7 @@ class Point(ProjectiveTensor):
         return np.real_if_close(result)
 
     def _matrix_transform(self, m: npt.ArrayLike) -> Point:
-        if self.cdim == 0:
+        if self.free_indices == 0:
             return Point(np.dot(m, self.array), copy=False)
         return Point(matvec(m, self.array), copy=False)
 
@@ -364,7 +366,11 @@ class Point(ProjectiveTensor):
         return np.all(np.isreal(self.normalized_array), axis=-1)
 
 
-class Subspace(ProjectiveTensor):
+class PointCollection(TensorCollection[Point]):
+    pass
+
+
+class Subspace(ProjectiveTensor, ABC):
     """Represents a general subspace of a projective space. Line and Plane are subclasses.
 
     Args:
@@ -394,7 +400,7 @@ class Subspace(ProjectiveTensor):
     def join(self, *others: Point | Subspace) -> Subspace:
         return join(self, *others)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
@@ -418,8 +424,8 @@ class Subspace(ProjectiveTensor):
     @property
     def basis_matrix(self) -> np.ndarray:
         x = self.array
-        x = x.reshape(x.shape[: self.cdim] + (-1, x.shape[-1]))
-        return np.swapaxes(null_space(x, self.shape[-1] - self.rank + self.cdim), -1, -2)
+        x = x.reshape(x.shape[: self.free_indices] + (-1, x.shape[-1]))
+        return np.swapaxes(null_space(x, self.shape[-1] - self.rank + self.free_indices), -1, -2)
 
     def _matrix_transform(self, m: npt.ArrayLike) -> Subspace:
         transformed_basis = matmul(self.basis_matrix, m, transpose_b=True)
@@ -430,7 +436,7 @@ class Subspace(ProjectiveTensor):
     def general_point(self) -> Point:
         """Points in general position i.e. not in the subspaces."""
         n = self.dim + 1
-        s = [self.shape[i] for i in self._collection_indices]
+        s = [self.shape[i] for i in self.free_indices]
         p = Point(np.zeros([*s, n], dtype=int), copy=False)
         ind = np.ones(s, dtype=bool)
         for i in range(n):
@@ -489,6 +495,10 @@ class Subspace(ProjectiveTensor):
         """
         x = self.meet(other)
         return infty_hyperplane(self.dim).contains(x)
+
+    @abstractmethod
+    def project(self, pt: Point) -> Point:
+        pass
 
 
 class Line(Subspace):
@@ -604,7 +614,7 @@ class Line(Subspace):
 
         """
         if self.dim == 2:
-            return np.ones(self.shape[: self.cdim], dtype=bool)
+            return np.ones(self.shape[: self.free_indices], dtype=bool)
 
         e = LeviCivitaTensor(self.dim + 1)
         d = TensorDiagram(*[(e, self)] * (self.dim - 1), *[(e, other)] * (self.dim - 1))
@@ -668,14 +678,14 @@ class Line(Subspace):
         result = Line(np.empty(contains.shape + (n,) * (n - 2), np.complex128))
         if np.any(contains):
             l = self
-            if self.cdim > 0:
+            if self.free_indices > 0:
                 l = self[contains]
 
             if n > 3:
                 if plane is None:
                     # additional point is required to determine the exact line
                     plane = join(l, l.general_point)
-                elif plane.cdim > 0:
+                elif plane.free_indices > 0:
                     plane = plane[contains]
 
                 basis = plane.basis_matrix
@@ -687,12 +697,12 @@ class Line(Subspace):
             if n > 3:
                 p = p._matrix_transform(np.swapaxes(basis, -1, -2))
 
-            result[contains] = join(through if through.cdim == 0 else through[contains], p)
+            result[contains] = join(through if through.free_indices == 0 else through[contains], p)
 
         if np.any(~contains):
-            if through.cdim > 0:
+            if through.free_indices > 0:
                 through = through[~contains]
-            if self.cdim > 0:
+            if self.free_indices > 0:
                 result[~contains] = cast(Line, self[~contains]).mirror(through).join(through)
             else:
                 result[~contains] = self.mirror(through).join(through)
@@ -711,6 +721,10 @@ class Line(Subspace):
         """
         l = self.perpendicular(pt)
         return self.meet(l)
+
+
+class LineCollection(TensorCollection[Line]):
+    pass
 
 
 class Plane(Subspace):
@@ -819,6 +833,10 @@ class Plane(Subspace):
         p = self.array[..., :-1]
         p = Point(np.append(p, np.zeros(p.shape[:-1] + (1,), dtype=p.dtype), axis=-1), copy=False)
         return through.join(p)
+
+
+class PlaneCollection(TensorCollection[Plane]):
+    pass
 
 
 I = Point([-1j, 1, 0])

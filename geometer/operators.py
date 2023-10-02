@@ -35,7 +35,7 @@ def crossratio(
     """
 
     if a == b:
-        return np.ones(a.shape[: a.cdim])
+        return np.ones(a.shape[: a.free_indices])
 
     if isinstance(a, Line):
         if not np.all(is_concurrent(a, b, c, d)):
@@ -255,7 +255,7 @@ def dist(p: Point | Line | Plane, q: Point | Line | Plane) -> npt.NDArray[np.flo
 
     """
     if p == q:
-        return np.zeros(p.shape[: p.cdim])
+        return np.zeros(p.shape[: p.free_indices])
 
     subspace_types = (Line, Plane)
 

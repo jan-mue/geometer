@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import numpy.typing as npt
 
-from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, NDArrayParameters, Tensor, TensorIndex
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, ArrayIndex, NDArrayParameters, Tensor, TensorCollection
 from geometer.exceptions import LinearDependenceError, NotCoplanar
 from geometer.operators import angle, dist, harmonic_set
 from geometer.point import Line, Plane, Point, infty_hyperplane, join, meet
@@ -45,7 +45,7 @@ class Polytope(Point):
 
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
-        if self.cdim - max(self.pdim - 1, 1) > 0:
+        if self.free_indices - max(self.pdim - 1, 1) > 0:
             class_name += "Collection"
         return f"{class_name}({', '.join(str(v) for v in self.vertices)})"
 
@@ -127,14 +127,14 @@ class Polytope(Point):
 
         return Polytope(tensor, copy=False)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
-        if not isinstance(result, Tensor) or result.cdim == 0 or result.tensor_shape != (1, 0):
+        if not isinstance(result, Tensor) or result.free_indices == 0 or result.tensor_shape != (1, 0):
             return result
 
         index_mapping = self._get_index_mapping(index)
-        removed_cdims = [i for i in self._collection_indices if i not in index_mapping]
+        removed_cdims = [i for i in self.free_indices if i not in index_mapping]
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         result_pdim = self.pdim - len([i for i in removed_cdims if i >= first_polygon_index])
 
@@ -173,7 +173,7 @@ class Segment(Polytope):
         result._line = transformation.apply(result._line)
         return result
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.rank < 2 or result.shape[-2] != 2:
@@ -260,7 +260,7 @@ class Segment(Polytope):
             result = meet(self._line, other, _check_dependence=False)
             ind = ~result.is_zero() & self.contains(result)
 
-        if result.cdim > 0:
+        if result.free_indices > 0:
             return list(result[ind])
         if ind:
             return [result]
@@ -276,6 +276,10 @@ class Segment(Polytope):
     def length(self) -> npt.NDArray[np.float_]:
         """The length of the segment."""
         return dist(*self.vertices)
+
+
+class SegmentCollection(TensorCollection[Segment]):
+    pass
 
 
 class Simplex(Polytope):
@@ -403,7 +407,7 @@ class Polygon(Polytope):
                 s[:-1] + (-1,)
             )
 
-            if other.cdim == 0 and i.ndim == 1:
+            if other.free_indices == 0 and i.ndim == 1:
                 other = Point(np.delete(other.array, i), copy=False)
             else:
                 s = other.shape[:-1] + (1, other.shape[-1])
@@ -416,7 +420,7 @@ class Polygon(Polytope):
         edges = self.edges
         edge_points = edges.contains(Point(np.expand_dims(other.array, -2), copy=False))
 
-        if other.cdim == 0:
+        if other.free_indices == 0:
             direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
             rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
         else:
@@ -479,7 +483,7 @@ class Polygon(Polytope):
         try:
             result = self._plane.meet(other)
         except LinearDependenceError as e:
-            if other.cdim > 0:
+            if other.free_indices > 0:
                 other = other[~e.dependent_values]
             result = cast(Plane, self._plane[~e.dependent_values]).meet(other)
             return list(result[Polygon(self[~e.dependent_values], copy=False).contains(result)])
@@ -492,7 +496,7 @@ class Polygon(Polytope):
         if self.dim > 2:
             e = self._plane
             o = Point(*[0] * self.dim)
-            if e.cdim > 0:
+            if e.free_indices > 0:
                 ind = ~e.contains(o)
                 e[ind] = cast(Plane, e[ind]).parallel(o)
             elif not e.contains(o):
@@ -529,6 +533,10 @@ class Polygon(Polytope):
             a = b
 
         return result
+
+
+class PolygonCollection(TensorCollection[Polygon]):
+    pass
 
 
 class RegularPolygon(Polygon):
