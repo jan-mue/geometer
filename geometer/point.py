@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, cast, overload
+from typing import TYPE_CHECKING, TypeVar, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -576,6 +576,17 @@ class SubspaceTensor(ProjectiveTensor, ABC):
         return self.meet(l)
 
 
+class Subspace(SubspaceTensor, ABC):
+    pass
+
+
+SubspaceT = TypeVar("SubspaceT", bound=Subspace)
+
+
+class SubspaceCollection(SubspaceTensor, TensorCollection[SubspaceT], ABC):
+    pass
+
+
 class LineTensor(SubspaceTensor, ABC):
     """Represents a line in a projective space of arbitrary dimension.
 
@@ -787,11 +798,11 @@ class LineTensor(SubspaceTensor, ABC):
         return LineTensor(np.real_if_close(result.array), copy=False)
 
 
-class Line(LineTensor):
+class Line(LineTensor, Subspace):
     pass
 
 
-class LineCollection(LineTensor, TensorCollection[Line]):
+class LineCollection(LineTensor, SubspaceCollection[Line]):
     pass
 
 
@@ -890,11 +901,11 @@ class PlaneTensor(SubspaceTensor):
         return through.join(p)
 
 
-class Plane(PlaneTensor):
+class Plane(PlaneTensor, Subspace):
     pass
 
 
-class PlaneCollection(PlaneTensor, TensorCollection[Plane]):
+class PlaneCollection(PlaneTensor, SubspaceCollection[Plane]):
     pass
 
 

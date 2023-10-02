@@ -2,18 +2,28 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, TypeVar, overload
+from typing import TYPE_CHECKING, Literal, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
 
 from geometer.base import ArrayIndex, LeviCivitaTensor, ProjectiveTensor, Tensor, TensorCollection, TensorDiagram
 from geometer.exceptions import NoIncidence
-from geometer.point import LineTensor, PointTensor, SubspaceTensor, infty_hyperplane
+from geometer.point import LineTensor, Point, PointTensor, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
     from geometer.curve import Conic
+
+
+@overload
+def identity(dim: int, collection_dims: Literal[None] = None) -> Transformation:
+    ...
+
+
+@overload
+def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationCollection:
+    ...
 
 
 def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationTensor:
@@ -32,11 +42,11 @@ def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> Transf
         e = np.eye(dim + 1)
         e = e.reshape((1,) * len(collection_dims) + e.shape)
         e = np.tile(e, (*collection_dims, 1, 1))
-        return TransformationTensor(e, copy=False)
-    return TransformationTensor(np.eye(dim + 1), copy=False)
+        return TransformationCollection(e, copy=False)
+    return Transformation(np.eye(dim + 1), copy=False)
 
 
-def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike = 0) -> TransformationTensor:
+def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike = 0) -> Transformation:
     """Returns a projective transformation for the given affine transformation.
 
     Args:
@@ -66,10 +76,10 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
         result[:-1, :-1] = matrix
 
     result[:-1, -1] = offset
-    return TransformationTensor(result, copy=False)
+    return Transformation(result, copy=False)
 
 
-def rotation(angle: float, axis: PointTensor | None = None) -> TransformationTensor:
+def rotation(angle: float, axis: Point | None = None) -> Transformation:
     """Returns a projective transformation that represents a rotation by the specified angle (and axis).
 
     Args:
@@ -99,7 +109,7 @@ def rotation(angle: float, axis: PointTensor | None = None) -> TransformationTen
     return affine_transform(result)
 
 
-def translation(*coordinates: Tensor | npt.ArrayLike) -> TransformationTensor:
+def translation(*coordinates: Tensor | npt.ArrayLike) -> Transformation:
     """Returns a projective transformation that represents a translation by the given coordinates.
 
     Args:
@@ -109,11 +119,11 @@ def translation(*coordinates: Tensor | npt.ArrayLike) -> TransformationTensor:
         The translation.
 
     """
-    offset = PointTensor(*coordinates)
+    offset = Point(*coordinates)
     return affine_transform(offset=offset.normalized_array[:-1])
 
 
-def scaling(*factors: npt.ArrayLike) -> TransformationTensor:
+def scaling(*factors: npt.ArrayLike) -> Transformation:
     """Returns a projective transformation that represents general scaling by given factors in each dimension.
 
     Args:
@@ -126,7 +136,7 @@ def scaling(*factors: npt.ArrayLike) -> TransformationTensor:
     return affine_transform(np.diag(factors))
 
 
-def reflection(axis: SubspaceTensor) -> TransformationTensor:
+def reflection(axis: Subspace) -> Transformation:
     """Returns a projective transformation that represents a reflection at the given axis/hyperplane.
 
     Args:
@@ -202,7 +212,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
         t1 = m1.dot(np.diag(d1))
         t2 = m2.dot(np.diag(d2))
 
-        return TransformationTensor(t2.dot(np.linalg.inv(t1)))
+        return cls(t2.dot(np.linalg.inv(t1)))
 
     @classmethod
     def from_points_and_conics(
@@ -247,7 +257,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
         p, q = conic2.intersect(m)
         d2 = p if q == c2 else q
 
-        return TransformationTensor.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
+        return cls.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
 
     T = TypeVar("T", bound=Tensor)
 
