@@ -436,7 +436,7 @@ class Subspace(ProjectiveTensor, ABC):
     def general_point(self) -> Point:
         """Points in general position i.e. not in the subspaces."""
         n = self.dim + 1
-        s = [self.shape[i] for i in self.free_indices]
+        s = [self.shape[i] for i in range(self.free_indices)]
         p = Point(np.zeros([*s, n], dtype=int), copy=False)
         ind = np.ones(s, dtype=bool)
         for i in range(n):

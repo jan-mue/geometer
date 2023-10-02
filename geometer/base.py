@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, ABCMeta
 from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypedDict, TypeVar, Union
@@ -447,21 +447,21 @@ class Tensor(ArrayContainer):
 T = TypeVar("T", bound=Tensor)
 
 
-class TensorCollectionMeta(type, Generic[T]):
-    _collection_class: type[T]
+class TensorCollectionMeta(ABCMeta):
+    _collection_class: type[Tensor]
 
     def __getattr__(self, item: str) -> Any:
         return getattr(self._collection_class, item)
 
 
-class TensorCollection(Tensor, Generic[T], Sized, Iterable[T], metaclass=TensorCollectionMeta[T]):
+class TensorCollection(Tensor, Generic[T], Sized, Iterable[T], metaclass=TensorCollectionMeta):
     _collection_class = Tensor
 
     def __init__(
         self,
         *args: Tensor | npt.ArrayLike,
         covariant: bool | Iterable[int] = True,
-        tensor_rank: int | None = None,
+        tensor_rank: int | None = 1,
         **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
