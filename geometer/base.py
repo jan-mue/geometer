@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC, ABCMeta
+from abc import ABC
 from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypedDict, TypeVar, Union
@@ -22,7 +22,7 @@ from geometer.utils.math import NumericalDType
 if TYPE_CHECKING:
     from typing_extensions import Self, TypeAlias, Unpack
 
-    from geometer.transformation import Transformation
+    from geometer.transformation import TransformationTensor
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
@@ -184,7 +184,7 @@ class Tensor(ArrayContainer):
         free_indices = set(range(n_free_indices))
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - free_indices
 
-    def __apply__(self, transformation: Transformation) -> Self:
+    def __apply__(self, transformation: TransformationTensor) -> Self:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
@@ -447,15 +447,10 @@ class Tensor(ArrayContainer):
 T = TypeVar("T", bound=Tensor)
 
 
-class TensorCollectionMeta(ABCMeta):
-    _collection_class: type[Tensor]
+class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
+    """A collection of tensors."""
 
-    def __getattr__(self, item: str) -> Any:
-        return getattr(self._collection_class, item)
-
-
-class TensorCollection(Tensor, Generic[T], Sized, Iterable[T], metaclass=TensorCollectionMeta):
-    _collection_class = Tensor
+    _collection_class: ClassVar[type[T]] = Tensor
 
     def __init__(
         self,

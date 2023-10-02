@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from abc import ABC
 from itertools import combinations
 from typing import TYPE_CHECKING, Union, cast
 
@@ -18,7 +19,7 @@ from geometer.base import (
     TensorDiagram,
 )
 from geometer.exceptions import IncidenceError, NotReducible
-from geometer.point import I, J, Line, Plane, Point, Subspace, infty_plane, join
+from geometer.point import I, J, LineTensor, PlaneTensor, PointTensor, SubspaceTensor, infty_plane, join
 from geometer.transformation import rotation, translation
 from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
 
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     from typing_extensions import Unpack
 
 
-class Quadric(ProjectiveTensor):
+class QuadricTensor(ProjectiveTensor, ABC):
     r"""Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
     The quadric is defined by a symmetric matrix of size :math:`n+1` where :math:`n` is the dimension of the projective
@@ -67,19 +68,19 @@ class Quadric(ProjectiveTensor):
         super().__init__(matrix, tensor_rank=2, **kwargs)
 
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
+        if not isinstance(other, PointTensor):
             return super().__add__(other)
 
         return translation(other).apply(self)
 
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
+        if not isinstance(other, PointTensor):
             return super().__add__(other)
 
         return translation(-other).apply(self)
 
     @classmethod
-    def from_planes(cls, e: Plane, f: Plane) -> Quadric:
+    def from_planes(cls, e: PlaneTensor, f: PlaneTensor) -> QuadricTensor:
         """Construct a degenerate quadric from two hyperplanes.
 
         Args:
@@ -91,9 +92,9 @@ class Quadric(ProjectiveTensor):
         """
         m = outer(e.array, f.array)
         m += m.T
-        return Quadric(m, normalize_matrix=True)
+        return QuadricTensor(m, normalize_matrix=True)
 
-    def tangent(self, at: Point) -> Plane:
+    def tangent(self, at: PointTensor) -> PlaneTensor:
         """Returns the hyperplane defining the tangent space at a given point.
 
         Args:
@@ -103,9 +104,9 @@ class Quadric(ProjectiveTensor):
             The tangent plane at the given point.
 
         """
-        return Plane(matvec(self.array, at.array), copy=False)
+        return PlaneTensor(matvec(self.array, at.array), copy=False)
 
-    def is_tangent(self, plane: Subspace) -> npt.NDArray[np.bool_]:
+    def is_tangent(self, plane: SubspaceTensor) -> npt.NDArray[np.bool_]:
         """Tests if a given hyperplane is tangent to the quadric.
 
         Args:
@@ -117,7 +118,7 @@ class Quadric(ProjectiveTensor):
         """
         return self.dual.contains(plane)
 
-    def contains(self, other: Point | Subspace, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor | SubspaceTensor, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests if a given point lies on the quadric.
 
         Args:
@@ -140,7 +141,7 @@ class Quadric(ProjectiveTensor):
         return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
-    def components(self) -> list[Point | Line | Plane]:
+    def components(self) -> list[PointTensor | LineTensor | PlaneTensor]:
         """The components of a degenerate quadric."""
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
         n = self.shape[-1]
@@ -176,12 +177,12 @@ class Quadric(ProjectiveTensor):
         p, q = np.real_if_close(p), np.real_if_close(q)
 
         if self.is_dual:
-            return [Point(p, copy=False), Point(q, copy=False)]
+            return [PointTensor(p, copy=False), PointTensor(q, copy=False)]
         elif n == 3:
-            return [Line(p, copy=False), Line(q, copy=False)]
-        return [Plane(p, copy=False), Plane(q, copy=False)]
+            return [LineTensor(p, copy=False), LineTensor(q, copy=False)]
+        return [PlaneTensor(p, copy=False), PlaneTensor(q, copy=False)]
 
-    def intersect(self, other: Line) -> list[Point] | list[Line]:
+    def intersect(self, other: LineTensor) -> list[PointTensor] | list[LineTensor]:
         """Calculates points of intersection of a line with the quadric.
 
         This method also returns complex points of intersection, even if the quadric and the line do not intersect in
@@ -197,9 +198,6 @@ class Quadric(ProjectiveTensor):
           - J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
-        if not isinstance(other, Line):
-            raise TypeError(f"Expected Line but got {type(other)}")
-
         reducible: bool | np.bool_ = np.all(self.is_degenerate)
         if reducible:
             try:
@@ -213,26 +211,26 @@ class Quadric(ProjectiveTensor):
 
                 if other.free_indices == 0:
                     i = arr.nonzero()[0][0]
-                    m = Plane(arr[i], copy=False).basis_matrix
+                    m = PlaneTensor(arr[i], copy=False).basis_matrix
                 else:
                     i = np.any(arr, axis=-1).argmax(-1)
-                    m = Plane(arr[(*tuple(np.indices(i.shape)), i)], copy=False).basis_matrix
+                    m = PlaneTensor(arr[(*tuple(np.indices(i.shape)), i)], copy=False).basis_matrix
                 line = other._matrix_transform(m)
-                projected_quadric = Quadric(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
+                projected_quadric = QuadricTensor(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
                 return [
-                    Point(np.squeeze(matmul(np.expand_dims(point.array, -2), m), -2), copy=False)
+                    PointTensor(np.squeeze(matmul(np.expand_dims(point.array, -2), m), -2), copy=False)
                     for point in projected_quadric.intersect(line)
                 ]
             else:
                 m = hat_matrix(other.array)
                 b = matmul(matmul(m, self.array, transpose_a=True), m)
-                p, q = Quadric(b, is_dual=not self.is_dual, copy=False).components
+                p, q = QuadricTensor(b, is_dual=not self.is_dual, copy=False).components
         else:
             if self.is_dual:
-                e, f = cast(Point, e), cast(Point, f)
+                e, f = cast(PointTensor, e), cast(PointTensor, f)
                 p, q = e.join(other), f.join(other)
             else:
-                e, f = cast(Union[Line, Plane], e), cast(Union[Line, Plane], f)
+                e, f = cast(Union[LineTensor, PlaneTensor], e), cast(Union[LineTensor, PlaneTensor], f)
                 p, q = e.meet(other), f.meet(other)
 
         if p.free_indices == 0 and p == q:
@@ -241,20 +239,24 @@ class Quadric(ProjectiveTensor):
         return [p, q]
 
     @property
-    def dual(self) -> Quadric:
+    def dual(self) -> QuadricTensor:
         """The dual quadric."""
-        return Quadric(inv(self.array), is_dual=not self.is_dual, copy=False)
+        return QuadricTensor(inv(self.array), is_dual=not self.is_dual, copy=False)
 
 
-class QuadricCollection(TensorCollection[Quadric]):
+class Quadric(QuadricTensor):
     pass
 
 
-class Conic(Quadric):
+class QuadricCollection(QuadricTensor, TensorCollection[Quadric]):
+    pass
+
+
+class Conic(QuadricTensor):
     """A two-dimensional conic."""
 
     @classmethod
-    def from_points(cls, a: Point, b: Point, c: Point, d: Point, e: Point) -> Conic:
+    def from_points(cls, a: PointTensor, b: PointTensor, c: PointTensor, d: PointTensor, e: PointTensor) -> Conic:
         """Construct a conic through five points.
 
         Args:
@@ -279,7 +281,7 @@ class Conic(Quadric):
         return Conic(np.real_if_close(m + m.T), normalize_matrix=True)
 
     @classmethod
-    def from_lines(cls, g: Line, h: Line) -> Conic:
+    def from_lines(cls, g: LineTensor, h: LineTensor) -> Conic:
         """Construct a degenerate conic from two lines.
 
         Args:
@@ -294,7 +296,7 @@ class Conic(Quadric):
         return Conic(m, normalize_matrix=True)
 
     @classmethod
-    def from_tangent(cls, tangent: Line, a: Point, b: Point, c: Point, d: Point) -> Conic:
+    def from_tangent(cls, tangent: LineTensor, a: PointTensor, b: PointTensor, c: PointTensor, d: PointTensor) -> Conic:
         """Construct a conic through four points and tangent to a line.
 
         Args:
@@ -311,8 +313,8 @@ class Conic(Quadric):
         if any(tangent.contains(p) for p in [a, b, c, d]):
             raise IncidenceError("The supplied points cannot lie on the supplied tangent!")
 
-        a1, a2 = Line(a, c).meet(tangent).normalized_array, Line(b, d).meet(tangent).normalized_array
-        b1, b2 = Line(a, b).meet(tangent).normalized_array, Line(c, d).meet(tangent).normalized_array
+        a1, a2 = LineTensor(a, c).meet(tangent).normalized_array, LineTensor(b, d).meet(tangent).normalized_array
+        b1, b2 = LineTensor(a, b).meet(tangent).normalized_array, LineTensor(c, d).meet(tangent).normalized_array
 
         o = tangent.general_point.array
 
@@ -324,8 +326,8 @@ class Conic(Quadric):
         c1 = csqrt(a2b1 * a2b2)
         c2 = csqrt(a1b1 * a1b2)
 
-        x = Point(c1 * a1 + c2 * a2, copy=False)
-        y = Point(c1 * a1 - c2 * a2, copy=False)
+        x = PointTensor(c1 * a1 + c2 * a2, copy=False)
+        y = PointTensor(c1 * a1 - c2 * a2, copy=False)
 
         conic = cls.from_points(a, b, c, d, x)
         if np.all(np.isreal(conic.array)):
@@ -333,7 +335,7 @@ class Conic(Quadric):
         return cls.from_points(a, b, c, d, y)
 
     @classmethod
-    def from_foci(cls, f1: Point, f2: Point, bound: Point) -> Conic:
+    def from_foci(cls, f1: PointTensor, f2: PointTensor, bound: PointTensor) -> Conic:
         """Construct a conic with the given focal points that passes through the boundary point.
 
         Args:
@@ -348,13 +350,13 @@ class Conic(Quadric):
         t2 = join(f1, J, _normalize_result=False)
         t3 = join(f2, I, _normalize_result=False)
         t4 = join(f2, J, _normalize_result=False)
-        p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
-        p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
-        c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)
+        p1, p2 = PointTensor(t1.array, copy=False), PointTensor(t2.array, copy=False)
+        p3, p4 = PointTensor(t3.array, copy=False), PointTensor(t4.array, copy=False)
+        c = cls.from_tangent(LineTensor(bound.array, copy=False), p1, p2, p3, p4)
         return Conic(np.linalg.inv(c.array), copy=False)
 
     @classmethod
-    def from_crossratio(cls, cr: float, a: Point, b: Point, c: Point, d: Point) -> Conic:
+    def from_crossratio(cls, cr: float, a: PointTensor, b: PointTensor, c: PointTensor, d: PointTensor) -> Conic:
         """Construct a conic from a cross ratio and four other points.
 
         This method relies on the fact that a point lies on a conic with five other points, if and only of the
@@ -382,7 +384,7 @@ class Conic(Quadric):
 
         return cls(matrix, normalize_matrix=True)
 
-    def intersect(self, other: Line | Conic) -> list[Point]:
+    def intersect(self, other: LineTensor | Conic) -> list[PointTensor]:
         """Calculates points of intersection with the conic.
 
         Args:
@@ -417,7 +419,7 @@ class Conic(Quadric):
 
         return super().intersect(other)
 
-    def tangent(self, at: Point) -> Line | tuple[Line, Line]:
+    def tangent(self, at: PointTensor) -> LineTensor | tuple[LineTensor, LineTensor]:
         """Calculates the tangent line at a given point or the tangent lines between a point and the conic.
 
         Args:
@@ -432,7 +434,7 @@ class Conic(Quadric):
         p, q = self.intersect(self.polar(at))
         return at.join(p), at.join(q)
 
-    def polar(self, pt: Point) -> Line:
+    def polar(self, pt: PointTensor) -> LineTensor:
         """Calculates the polar line of the conic at a given point.
 
         Args:
@@ -442,16 +444,16 @@ class Conic(Quadric):
             The polar line.
 
         """
-        return Line(self.array.dot(pt.array), copy=False)
+        return LineTensor(self.array.dot(pt.array), copy=False)
 
     @property
-    def foci(self) -> tuple[Point, ...]:
+    def foci(self) -> tuple[PointTensor, ...]:
         """The foci of the conic."""
         # Algorithm from Perspectives on Projective Geometry, Section 19.4
         i = self.tangent(at=I)
         j = self.tangent(at=J)
 
-        if isinstance(i, Line) and isinstance(j, Line):
+        if isinstance(i, LineTensor) and isinstance(j, LineTensor):
             return (i.meet(j),)
 
         i1, i2 = i
@@ -479,7 +481,9 @@ class Ellipse(Conic):
 
     """
 
-    def __init__(self, center: Point = Point(0, 0), hradius: float = 1, vradius: float = 1, **kwargs) -> None:
+    def __init__(
+        self, center: PointTensor = PointTensor(0, 0), hradius: float = 1, vradius: float = 1, **kwargs
+    ) -> None:
         if hradius == vradius == 0:
             raise ValueError("hradius and vradius can not both be zero.")
 
@@ -509,13 +513,13 @@ class Circle(Ellipse):
 
     """
 
-    def __init__(self, center: Point = Point(0, 0), radius: float = 1, **kwargs) -> None:
+    def __init__(self, center: PointTensor = PointTensor(0, 0), radius: float = 1, **kwargs) -> None:
         if radius <= 0:
             raise ValueError(f"radius must be greater than 0, but is {radius}")
         super().__init__(center, radius, radius, **kwargs)
 
     @property
-    def center(self) -> Point:
+    def center(self) -> PointTensor:
         """The center of the circle."""
         return self.foci[0]
 
@@ -557,7 +561,7 @@ class Circle(Ellipse):
         return 2 * np.pi * self.radius**2
 
 
-class Sphere(Quadric):
+class Sphere(QuadricTensor):
     """A sphere in any dimension.
 
     Args:
@@ -567,7 +571,9 @@ class Sphere(Quadric):
 
     """
 
-    def __init__(self, center: Point = Point(0, 0, 0), radius: float = 1, **kwargs: Unpack[NDArrayParameters]) -> None:
+    def __init__(
+        self, center: PointTensor = PointTensor(0, 0, 0), radius: float = 1, **kwargs: Unpack[NDArrayParameters]
+    ) -> None:
         if radius == 0:
             raise ValueError("Sphere radius cannot be 0.")
 
@@ -584,9 +590,9 @@ class Sphere(Quadric):
         super().__init__(m, **kwargs)
 
     @property
-    def center(self) -> Point:
+    def center(self) -> PointTensor:
         """The center of the sphere."""
-        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=False)
+        return PointTensor(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=False)
 
     @property
     def radius(self) -> float:
@@ -611,7 +617,7 @@ class Sphere(Quadric):
         return n * self._alpha(n) * self.radius ** (n - 1)
 
 
-class Cone(Quadric):
+class Cone(QuadricTensor):
     """A quadric that forms a circular double cone in 3D.
 
     Args:
@@ -624,8 +630,8 @@ class Cone(Quadric):
 
     def __init__(
         self,
-        vertex: Point = Point(0, 0, 0),
-        base_center: Point = Point(0, 0, 1),
+        vertex: PointTensor = PointTensor(0, 0, 0),
+        base_center: PointTensor = PointTensor(0, 0, 1),
         radius: float = 1,
         **kwargs: Unpack[NDArrayParameters],
     ) -> None:
@@ -656,14 +662,14 @@ class Cone(Quadric):
             m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2] ** 2 * c)
 
         # rotate the axis of the cone
-        v = Point(v, copy=False)
-        axis = Line(v, v + Point(0, 0, 1))
-        new_axis = Line(vertex, base_center)
+        v = PointTensor(v, copy=False)
+        axis = LineTensor(v, v + PointTensor(0, 0, 1))
+        new_axis = LineTensor(vertex, base_center)
 
         if new_axis != axis:
             a = angle(axis, new_axis)
             e = axis.join(new_axis)
-            t = rotation(a, axis=Point(*e.array[:3]))
+            t = rotation(a, axis=PointTensor(*e.array[:3]))
             t = translation(v) * t * translation(-v)
             m = t.array.T.dot(m).dot(t.array)
 
@@ -684,10 +690,10 @@ class Cylinder(Cone):
 
     def __init__(
         self,
-        center: Point = Point(0, 0, 0),
-        direction: Point = Point(0, 0, 1),
+        center: PointTensor = PointTensor(0, 0, 0),
+        direction: PointTensor = PointTensor(0, 0, 1),
         radius: float = 1,
         **kwargs: Unpack[NDArrayParameters],
     ) -> None:
-        vertex = infty_plane.meet(Line(center, center + direction))
+        vertex = infty_plane.meet(LineTensor(center, center + direction))
         super().__init__(vertex, center, radius, **kwargs)

@@ -10,15 +10,15 @@ import numpy.typing as npt
 from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, ArrayIndex, NDArrayParameters, Tensor, TensorCollection
 from geometer.exceptions import LinearDependenceError, NotCoplanar
 from geometer.operators import angle, dist, harmonic_set
-from geometer.point import Line, Plane, Point, infty_hyperplane, join, meet
-from geometer.transformation import Transformation, rotation, translation
+from geometer.point import LineTensor, PlaneTensor, PointTensor, infty_hyperplane, join, meet
+from geometer.transformation import TransformationTensor, rotation, translation
 from geometer.utils import det, distinct, is_multiple, matmul, matvec
 
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
 
-class Polytope(Point):
+class Polytope(PointTensor):
     """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons, 1-polytopes are
     line segments and 0-polytopes are points.
@@ -50,12 +50,12 @@ class Polytope(Point):
         return f"{class_name}({', '.join(str(v) for v in self.vertices)})"
 
     @property
-    def vertices(self) -> list[Point]:
+    def vertices(self) -> list[PointTensor]:
         """The vertices of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         new_shape = self.shape[:first_polygon_index] + (-1, self.shape[-1])
         array = self.array.reshape(new_shape)
-        return list(distinct(Point(x, copy=False) for x in np.moveaxis(array, -2, 0)))
+        return list(distinct(PointTensor(x, copy=False) for x in np.moveaxis(array, -2, 0)))
 
     @property
     def facets(self) -> list[Polytope]:
@@ -98,7 +98,7 @@ class Polytope(Point):
         return False
 
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
+        if not isinstance(other, PointTensor):
             return super().__add__(other)
         return translation(other).apply(self)
 
@@ -134,7 +134,7 @@ class Polytope(Point):
             return result
 
         index_mapping = self._get_index_mapping(index)
-        removed_cdims = [i for i in self.free_indices if i not in index_mapping]
+        removed_cdims = [i for i in range(self.free_indices) if i not in index_mapping]
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         result_pdim = self.pdim - len([i for i in removed_cdims if i >= first_polygon_index])
 
@@ -155,7 +155,7 @@ class Segment(Polytope):
 
     """
 
-    _line: Line
+    _line: LineTensor
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if len(args) == 2:
@@ -168,7 +168,7 @@ class Segment(Polytope):
 
         self._line = join(*self.vertices)
 
-    def __apply__(self, transformation: Transformation) -> Segment:
+    def __apply__(self, transformation: TransformationTensor) -> Segment:
         result = super().__apply__(transformation)
         result._line = transformation.apply(result._line)
         return result
@@ -187,21 +187,21 @@ class Segment(Polytope):
         return result
 
     @property
-    def vertices(self) -> list[Point]:
+    def vertices(self) -> list[PointTensor]:
         """The start and endpoint of the line segment."""
-        a = Point(self.array[..., 0, :], copy=False)
-        b = Point(self.array[..., 1, :], copy=False)
+        a = PointTensor(self.array[..., 0, :], copy=False)
+        b = PointTensor(self.array[..., 1, :], copy=False)
         return [a, b]
 
     @property
-    def facets(self) -> list[Point]:
+    def facets(self) -> list[PointTensor]:
         return self.vertices
 
     @property
     def _edges(self) -> np.ndarray:
         return self.array
 
-    def contains(self, other: Point, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests whether a point is contained in the segment.
 
         Args:
@@ -240,7 +240,7 @@ class Segment(Polytope):
         y_zero = np.isclose(y, 0, atol=EQ_TOL_ABS)
         return result & (~x_zero | ~y_zero) & (0 <= x + tol) & (x <= y + tol)
 
-    def intersect(self, other: Line | Plane | Segment | Polygon | Polyhedron) -> list[Point]:
+    def intersect(self, other: LineTensor | PlaneTensor | Segment | Polygon | Polyhedron) -> list[PointTensor]:
         """Intersect the line segment with another object.
 
         Args:
@@ -267,7 +267,7 @@ class Segment(Polytope):
         return []
 
     @property
-    def midpoint(self) -> Point:
+    def midpoint(self) -> PointTensor:
         """The midpoint of the segment."""
         l = self._line.meet(infty_hyperplane(self.dim))
         return harmonic_set(*self.vertices, l)
@@ -294,13 +294,13 @@ class Simplex(Polytope):
     """
 
     # TODO: return only instances of type Simplex
-    def __new__(cls, *args: Point, **kwargs: Unpack[NDArrayParameters]) -> Polytope:
+    def __new__(cls, *args: PointTensor, **kwargs: Unpack[NDArrayParameters]) -> Polytope:
         if len(args) == 2:
             return Segment(*args, **kwargs)
 
         return super(Polytope, cls).__new__(cls)
 
-    def __init__(self, *args: Point, **kwargs: Unpack[NDArrayParameters]) -> None:
+    def __init__(self, *args: PointTensor, **kwargs: Unpack[NDArrayParameters]) -> None:
         kwargs.setdefault("pdim", len(args) - 1)
         if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args) - 1)]
@@ -340,7 +340,7 @@ class Polygon(Polytope):
 
     """
 
-    _plane: Plane
+    _plane: PlaneTensor
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if all(isinstance(x, Segment) for x in args):
@@ -351,17 +351,17 @@ class Polygon(Polytope):
             kwargs["copy"] = False
             args = (np.stack(args, axis=-2),)
         super().__init__(*args, pdim=2, **kwargs)
-        self._plane = Plane(*self.vertices[: self.dim]) if self.dim > 2 else None
+        self._plane = PlaneTensor(*self.vertices[: self.dim]) if self.dim > 2 else None
 
-    def __apply__(self, transformation: Transformation) -> Polygon:
+    def __apply__(self, transformation: TransformationTensor) -> Polygon:
         result = super().__apply__(transformation)
         if result.dim > 2:
-            result._plane = Plane(*result.vertices[: result.dim])
+            result._plane = PlaneTensor(*result.vertices[: result.dim])
         return result
 
     @property
-    def vertices(self) -> list[Point]:
-        return [Point(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
+    def vertices(self) -> list[PointTensor]:
+        return [PointTensor(self.array[..., i, :], copy=False) for i in range(self.shape[-2])]
 
     @property
     def facets(self) -> list[Segment]:
@@ -372,7 +372,7 @@ class Polygon(Polytope):
         """The edges of the polygon."""
         return Segment(self._edges, copy=False)
 
-    def contains(self, other: Point) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor) -> npt.NDArray[np.bool_]:
         """Tests whether a point is contained in the polygon.
 
         Points on an edge of the polygon are considered True.
@@ -408,17 +408,17 @@ class Polygon(Polytope):
             )
 
             if other.free_indices == 0 and i.ndim == 1:
-                other = Point(np.delete(other.array, i), copy=False)
+                other = PointTensor(np.delete(other.array, i), copy=False)
             else:
                 s = other.shape[:-1] + (1, other.shape[-1])
                 other = np.delete(other.array, np.ravel_multi_index((*tuple(np.indices(s[:-1])), i), s))
-                other = Point(other.reshape(s[:-2] + (-1,)), copy=False)
+                other = PointTensor(other.reshape(s[:-2] + (-1,)), copy=False)
 
             # TODO: only test coplanar points
             return coplanar & Polygon(arr, copy=False).contains(other)
 
         edges = self.edges
-        edge_points = edges.contains(Point(np.expand_dims(other.array, -2), copy=False))
+        edge_points = edges.contains(PointTensor(np.expand_dims(other.array, -2), copy=False))
 
         if other.free_indices == 0:
             direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
@@ -454,7 +454,7 @@ class Polygon(Polytope):
 
         return result
 
-    def intersect(self, other: Line | Segment) -> list[Point]:
+    def intersect(self, other: LineTensor | Segment) -> list[PointTensor]:
         """Intersect the polygon with another object.
 
         Args:
@@ -473,7 +473,7 @@ class Polygon(Polytope):
             except LinearDependenceError as e:
                 if isinstance(other, Segment):
                     other = cast(Segment, other[~e.dependent_values])
-                result = cast(Plane, self._plane[~e.dependent_values]).meet(other._line)
+                result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other._line)
                 return list(
                     result[Polygon(self[~e.dependent_values], copy=False).contains(result) & other.contains(result)]
                 )
@@ -485,7 +485,7 @@ class Polygon(Polytope):
         except LinearDependenceError as e:
             if other.free_indices > 0:
                 other = other[~e.dependent_values]
-            result = cast(Plane, self._plane[~e.dependent_values]).meet(other)
+            result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other)
             return list(result[Polygon(self[~e.dependent_values], copy=False).contains(result)])
         else:
             return list(result[self.contains(result)])
@@ -495,10 +495,10 @@ class Polygon(Polytope):
 
         if self.dim > 2:
             e = self._plane
-            o = Point(*[0] * self.dim)
+            o = PointTensor(*[0] * self.dim)
             if e.free_indices > 0:
                 ind = ~e.contains(o)
-                e[ind] = cast(Plane, e[ind]).parallel(o)
+                e[ind] = cast(PlaneTensor, e[ind]).parallel(o)
             elif not e.contains(o):
                 # use parallel hyperplane for projection to avoid rescaling
                 e = e.parallel(o)
@@ -515,12 +515,12 @@ class Polygon(Polytope):
         return 1 / 2 * np.abs(a)
 
     @property
-    def centroid(self) -> Point:
+    def centroid(self) -> PointTensor:
         """The centroid (center of mass) of the polygon."""
         points = self.normalized_array
         centroids = [np.average(points[[0, i, i + 1], :-1], axis=0) for i in range(1, points.shape[0] - 1)]
         weights = [det(self._normalized_projection()[[0, i, i + 1]]) / 2 for i in range(1, points.shape[0] - 1)]
-        return Point(*np.average(centroids, weights=weights, axis=0))
+        return PointTensor(*np.average(centroids, weights=weights, axis=0))
 
     @property
     def angles(self) -> list[npt.NDArray[np.float_]]:
@@ -551,12 +551,12 @@ class RegularPolygon(Polygon):
 
     """
 
-    def __init__(self, center: Point, radius: float, n: int, axis: Point | None = None, **kwargs) -> None:
+    def __init__(self, center: PointTensor, radius: float, n: int, axis: PointTensor | None = None, **kwargs) -> None:
         if axis is None:
-            p = Point(1, 0)
+            p = PointTensor(1, 0)
         else:
-            e = Plane(np.append(axis.array[:-1], [0]), copy=False)
-            p = Point(*e.basis_matrix[0, :-1], copy=False)
+            e = PlaneTensor(np.append(axis.array[:-1], [0]), copy=False)
+            p = PointTensor(*e.basis_matrix[0, :-1], copy=False)
 
         vertex = center + radius * p
 
@@ -574,9 +574,9 @@ class RegularPolygon(Polygon):
         return dist(self.center, self.vertices[0])
 
     @property
-    def center(self) -> Point:
+    def center(self) -> PointTensor:
         """The center of the polygon."""
-        return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
+        return PointTensor(*np.sum(self.normalized_array[:, :-1], axis=0))
 
     @property
     def inradius(self) -> npt.NDArray[np.float_]:
@@ -598,14 +598,14 @@ class Triangle(Polygon, Simplex):
         assert self.shape[-2] == 3, "Unexpected number of vertices."
 
     @property
-    def circumcenter(self) -> Point:
+    def circumcenter(self) -> PointTensor:
         """The circumcenter of the triangle."""
         e1, e2, e3 = self.edges
         bisector1 = e1._line.perpendicular(e1.midpoint, plane=self._plane)
         bisector2 = e2._line.perpendicular(e2.midpoint, plane=self._plane)
         return bisector1.meet(bisector2)
 
-    def contains(self, other: Point) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor) -> npt.NDArray[np.bool_]:
         # faster algorithm using barycentric coordinates
 
         # TODO: vectorize
@@ -672,7 +672,7 @@ class Polyhedron(Polytope):
         """The surface area of the polyhedron."""
         return np.sum(self.faces.area)
 
-    def intersect(self, other: Line | Segment) -> list[Point]:
+    def intersect(self, other: LineTensor | Segment) -> list[PointTensor]:
         """Intersect the polyhedron with another object.
 
         Args:
@@ -697,7 +697,9 @@ class Cuboid(Polyhedron):
 
     """
 
-    def __init__(self, a: Point, b: Point, c: Point, d: Point, **kwargs: Unpack[NDArrayParameters]) -> None:
+    def __init__(
+        self, a: PointTensor, b: PointTensor, c: PointTensor, d: PointTensor, **kwargs: Unpack[NDArrayParameters]
+    ) -> None:
         x, y, z = b - a, c - a, d - a
         yz = Rectangle(a, a + z, a + y + z, a + y)
         xz = Rectangle(a, a + x, a + x + z, a + z)
