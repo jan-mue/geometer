@@ -362,7 +362,7 @@ class PointTensor(ProjectiveTensor, ABC):
     ) -> SubspaceTensor:
         ...
 
-    def join(self, *others: PointTensor | SubspaceTensor) -> SubspaceTensor:
+    def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:

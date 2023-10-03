@@ -285,23 +285,23 @@ def dist(p: PointTensor | SubspaceTensor, q: PointTensor | SubspaceTensor) -> np
     if isinstance(q, PlaneTensor) and isinstance(p, LineTensor):
         return dist(q, p.base_point)
 
-    from geometer.shapes import Polygon, Polyhedron, Segment
+    from geometer.shapes import PolygonTensor, PolyhedronTensor, SegmentTensor
 
-    if isinstance(p, PointTensor) and isinstance(q, Polygon):
+    if isinstance(p, PointTensor) and isinstance(q, PolygonTensor):
         return dist(q, p)
-    if isinstance(p, Polygon) and isinstance(q, PointTensor):
+    if isinstance(p, PolygonTensor) and isinstance(q, PointTensor):
         result = np.min([dist(e, q) for e in p.edges], axis=0)
         if p.dim > 2:
             r = p._plane.project(q)
             return np.where(p.contains(r), dist(r, q), result)
         return result
-    if isinstance(p, PointTensor) and isinstance(q, Polyhedron):
+    if isinstance(p, PointTensor) and isinstance(q, PolyhedronTensor):
         return dist(q, p)
-    if isinstance(p, Polyhedron) and isinstance(q, PointTensor):
+    if isinstance(p, PolyhedronTensor) and isinstance(q, PointTensor):
         return np.min([dist(f, q) for f in p.faces], axis=0)
-    if isinstance(p, PointTensor) and isinstance(q, Segment):
+    if isinstance(p, PointTensor) and isinstance(q, SegmentTensor):
         return dist(q, p)
-    if isinstance(p, Segment) and isinstance(q, PointTensor):
+    if isinstance(p, SegmentTensor) and isinstance(q, PointTensor):
         result = np.min([dist(v, q) for v in p.vertices], axis=0)
         r = p._line.project(q)
         return np.where(p.contains(r), dist(r, q), result)

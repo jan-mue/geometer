@@ -680,7 +680,7 @@ class TensorDiagram:
         result_indices: tuple[list[int], list[int], list[int]] = ([], [], [])
         for i, (node, ind, offset) in enumerate(zip(self._nodes, self._unused_indices, self._node_positions)):
             if node.free_indices > 0:
-                free_ind = range(node.free_indices, 0, -1)
+                free_ind = list(reversed(range(node.free_indices)))
                 for j, k in enumerate(free_ind[: len(result_indices[0])]):
                     indices[offset + k] = result_indices[0][-j - 1]
                 if node.free_indices > len(result_indices[0]):
@@ -694,10 +694,10 @@ class TensorDiagram:
 
         result = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
 
-        n_col = len(result_indices[0])
+        n_free = len(result_indices[0])
         n_cov = len(result_indices[1])
 
-        return Tensor(result, covariant=range(n_cov), tensor_rank=result.ndim - n_col, copy=False)
+        return Tensor(result, covariant=range(n_cov), tensor_rank=result.ndim - n_free, copy=False)
 
     def copy(self) -> TensorDiagram:
         result = TensorDiagram()
