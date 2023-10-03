@@ -219,19 +219,19 @@ class Tensor:
 
         return result
 
+    @property
+    def T(self) -> Tensor:
+        """The transposed tensor, same as ``self.transpose()``."""
+        return self.transpose()
+
     def copy(self) -> Self:
         cls = self.__class__
         result = cls.__new__(cls)
         result.__dict__.update(self.__dict__)
         return result
 
-    @property
-    def T(self) -> Tensor:
-        """The transposed tensor, same as ``self.transpose()``."""
-        return self.transpose()
-
     def expand_dims(self, axis: int) -> Self:
-        """Add a new index as collection index.
+        """Add a new index as a free index.
 
         Args:
             axis: Position in the new shape where the new axis is placed.
@@ -408,6 +408,14 @@ class Tensor:
     def __neg__(self) -> Tensor:
         return self * (-1)
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Tensor):
+            other = other.array
+        try:
+            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+        except TypeError:
+            return NotImplemented
+
     def __array__(self, dtype: npt.DTypeLike | None = None) -> np.ndarray:
         if dtype and dtype != self.dtype:
             return self.array.astype(dtype)
@@ -418,14 +426,6 @@ class Tensor:
 
     def __array_function__(self, func, types, args, kwargs):
         return NotImplemented
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Tensor):
-            other = other.array
-        try:
-            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
-        except TypeError:
-            return NotImplemented
 
 
 class BoundTensor(Tensor):
