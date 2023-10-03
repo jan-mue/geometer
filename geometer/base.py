@@ -122,12 +122,6 @@ class Tensor:
         if not is_numerical_dtype(self.dtype):
             raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
 
-    def copy(self) -> Self:
-        cls = self.__class__
-        result = cls.__new__(cls)
-        result.__dict__.update(self.__dict__)
-        return result
-
     def __apply__(self, transformation: TransformationTensor) -> Self:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
@@ -223,6 +217,12 @@ class Tensor:
         result._covariant_indices = set(covariant_indices)
         result._contravariant_indices = set(contravariant_indices)
 
+        return result
+
+    def copy(self) -> Self:
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
         return result
 
     @property
