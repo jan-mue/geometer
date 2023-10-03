@@ -71,7 +71,7 @@ class PolytopeTensor(PointTensor, ABC):
         v2 = np.roll(v1, -1, axis=-2)
         return np.stack([v1, v2], axis=-2)
 
-    def __eq__(self, other: Tensor | npt.ArrayLike) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, PolytopeTensor):
             return super().__eq__(other)
 
@@ -629,7 +629,7 @@ class Triangle(Polygon, Simplex):
         bisector2 = e2._line.perpendicular(e2.midpoint, plane=self._plane)
         return bisector1.meet(bisector2)
 
-    def contains(self, other: Point) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor) -> npt.NDArray[np.bool_]:
         # faster algorithm using barycentric coordinates
 
         # TODO: vectorize

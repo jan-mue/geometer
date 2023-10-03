@@ -168,7 +168,7 @@ def _join_meet_duality(
     return _cast_point_or_subspace(result, n - 1)
 
 
-def _cast_point_or_subspace(tensor: Tensor, dim) -> PointTensor | SubspaceTensor:
+def _cast_point_or_subspace(tensor: Tensor, dim: int) -> PointTensor | SubspaceTensor:
     if tensor.free_indices == 0:
         if tensor.tensor_shape == (0, 1):
             return Line(tensor, copy=False) if dim == 2 else Plane(tensor, copy=False)
@@ -304,7 +304,11 @@ class PointTensor(ProjectiveTensor, ABC):
     """
 
     def __init__(
-        self, *args: Tensor | npt.ArrayLike, homogenize=False, tensor_rank=1, **kwargs: Unpack[NDArrayParameters]
+        self,
+        *args: Tensor | npt.ArrayLike,
+        homogenize: bool = False,
+        tensor_rank=1,
+        **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         if np.isscalar(args[0]):
             super().__init__(*args, 1, tensor_rank=tensor_rank, **kwargs)

@@ -93,7 +93,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
         """
         m = outer(e.array, f.array)
         m += m.T
-        return QuadricTensor(m, normalize_matrix=True)
+        return cls(m, normalize_matrix=True)
 
     def tangent(self, at: PointTensor) -> PlaneTensor:
         """Returns the hyperplane defining the tangent space at a given point.

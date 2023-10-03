@@ -113,6 +113,7 @@ plugins = ["numpy.typing.mypy_plugin"]
 strict = true
 implicit_reexport = true
 disallow_any_generics = false # TODO
+warn_return_any = false # TODO
 
 [[tool.mypy.overrides]]
 module = "geometer.utils.indexing"

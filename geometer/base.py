@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, TypedDict, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -18,6 +18,7 @@ from geometer.utils import (
     sanitize_index,
 )
 from geometer.utils.math import NumericalDType
+from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
 
 if TYPE_CHECKING:
     from typing_extensions import Self, TypeAlias, Unpack
@@ -54,7 +55,7 @@ class Tensor:
             indices of the array will be covariant indices and all others contravariant indices.
             By default, all indices are covariant. If the first argument is a tensor then its indices are copied.
         tensor_rank: If the Tensor object contains multiple tensors, this parameter specifies the rank of the tensors
-            contained in the collection. By default, only a single tensor is contained in a Tensor object.
+            contained in it. By default, only a single tensor is contained in a Tensor object.
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes:
@@ -118,7 +119,7 @@ class Tensor:
 
         self._validate_tensor()
 
-    def _validate_tensor(self):
+    def _validate_tensor(self) -> None:
         if not is_numerical_dtype(self.dtype):
             raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
 
@@ -182,7 +183,7 @@ class Tensor:
         return Tensor(result, covariant=range(len(covariant)), copy=False)
 
     def transpose(self, perm: Iterable[int] | None = None) -> Tensor:
-        """Permute the indices of the tensor.
+        """Permute the indices of the tensor. Free indices are not permuted.
 
         Args:
             perm: A list of permuted indices or a shorter list representing a permutation in cycle notation.
@@ -193,10 +194,11 @@ class Tensor:
 
         """
         if perm is None:
-            # TODO: don't permute free indices
-            perm = reversed(range(self.rank))
+            perm = list(range(self.free_indices)) + list(reversed(range(self.free_indices, self.rank)))
+        else:
+            perm = list(perm)
 
-        perm = list(perm)
+        # TODO: check that free indices are not permuted
 
         if len(perm) < self.rank:
             a = list(range(self.rank))
@@ -282,7 +284,7 @@ class Tensor:
 
         """
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
-        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)  # type: ignore[no-any-return]
+        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.array.tolist()})"
@@ -421,17 +423,25 @@ class Tensor:
             return self.array.astype(dtype)
         return self.array
 
-    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any):
-        return NotImplemented
+    def __array_ufunc__(
+        self,
+        ufunc: np.ufunc,
+        method: Literal["__call__", "reduce", "reduceat", "accumulate", "outer", "inner"],
+        *inputs: Any,
+        **kwargs: Any,
+    ) -> Any:
+        return maybe_dispatch_ufunc_to_dunder_op(self, ufunc, method, *inputs, **kwargs)
 
-    def __array_function__(self, func, types, args, kwargs):
+    def __array_function__(
+        self, func: Callable[..., Any], types: Iterable[type], args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> Any:
         return NotImplemented
 
 
 class BoundTensor(Tensor):
     """A tensor without free indices."""
 
-    def _validate_tensor(self):
+    def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices != 0:
             raise ValueError(f"Only tensors without free indices can be used in a {self.__class__.__name__}")
@@ -443,7 +453,7 @@ T = TypeVar("T", bound=Tensor)
 class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     """A collection of tensors."""
 
-    _element_class: ClassVar[type[T]] = Tensor
+    _element_class: ClassVar[type] = Tensor
 
     def __init__(
         self,
@@ -454,7 +464,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     ) -> None:
         super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
 
-    def _validate_tensor(self):
+    def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices == 0:
             raise ValueError(f"Tensor has no free indices and cannot be used in a {self.__class__.__name__}.")

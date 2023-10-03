@@ -8,7 +8,19 @@ import numpy.typing as npt
 from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, LeviCivitaTensor, TensorDiagram
 from geometer.curve import absolute_conic
 from geometer.exceptions import NotCollinear, NotConcurrent
-from geometer.point import I, J, LineTensor, PlaneTensor, PointTensor, SubspaceTensor, infty, infty_plane, join, meet
+from geometer.point import (
+    I,
+    J,
+    LineTensor,
+    PlaneTensor,
+    Point,
+    PointTensor,
+    SubspaceTensor,
+    infty,
+    infty_plane,
+    join,
+    meet,
+)
 from geometer.utils import det, matvec, orth
 
 
@@ -193,7 +205,7 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
         if isinstance(x, LineTensor) and isinstance(y, LineTensor):
             a = x.meet(y)
         else:
-            a = PointTensor(*(x.dim * [0]))
+            a = Point(*(x.dim * [0]))
             if isinstance(x, PointTensor):
                 x = a.join(x)
             if isinstance(y, PointTensor):
