@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, TypeVar, cast
 import numpy as np
 import numpy.typing as npt
 
-from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, NDArrayParameters, Tensor, TensorCollection, TensorIndex
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, Tensor, TensorCollection
 from geometer.exceptions import LinearDependenceError, NotCoplanar
 from geometer.operators import angle, dist, harmonic_set
 from geometer.point import LineTensor, Plane, PlaneTensor, Point, PointTensor, infty_hyperplane, join, meet
@@ -17,6 +17,8 @@ from geometer.utils import det, distinct, is_multiple, matmul, matvec
 
 if TYPE_CHECKING:
     from typing_extensions import Unpack
+
+    from geometer.utils.typing import NDArrayParameters, TensorIndex
 
 
 class PolytopeTensor(PointTensor, ABC):
@@ -575,7 +577,9 @@ class RegularPolygon(Polygon):
 
     """
 
-    def __init__(self, center: Point, radius: float, n: int, axis: Point | None = None, **kwargs) -> None:
+    def __init__(
+        self, center: Point, radius: float, n: int, axis: Point | None = None, **kwargs: Unpack[NDArrayParameters]
+    ) -> None:
         if axis is None:
             p = Point(1, 0)
         else:
@@ -617,7 +621,7 @@ class Triangle(Polygon, Simplex):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]):
         super().__init__(*args, **kwargs)
         assert self.shape[-2] == 3, "Unexpected number of vertices."
 

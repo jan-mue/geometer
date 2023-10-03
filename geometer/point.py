@@ -9,16 +9,16 @@ import numpy.typing as npt
 if TYPE_CHECKING:
     from typing_extensions import Literal, Unpack
 
+    from geometer.utils.typing import NDArrayParameters, TensorIndex
+
 from geometer.base import (
     EQ_TOL_ABS,
     BoundTensor,
     LeviCivitaTensor,
-    NDArrayParameters,
     ProjectiveTensor,
     Tensor,
     TensorCollection,
     TensorDiagram,
-    TensorIndex,
 )
 from geometer.exceptions import GeometryException, LinearDependenceError, NotCoplanar
 from geometer.utils import is_numerical_scalar, matmul, matvec, null_space
@@ -307,7 +307,7 @@ class PointTensor(ProjectiveTensor, ABC):
         self,
         *args: Tensor | npt.ArrayLike,
         homogenize: bool = False,
-        tensor_rank=1,
+        tensor_rank: int = 1,
         **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         if np.isscalar(args[0]):

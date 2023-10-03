@@ -13,7 +13,6 @@ from geometer.base import (
     EQ_TOL_ABS,
     EQ_TOL_REL,
     BoundTensor,
-    NDArrayParameters,
     ProjectiveTensor,
     Tensor,
     TensorCollection,
@@ -26,6 +25,8 @@ from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, 
 
 if TYPE_CHECKING:
     from typing_extensions import Unpack
+
+    from geometer.utils.typing import NDArrayParameters
 
 
 class QuadricTensor(ProjectiveTensor, ABC):
@@ -483,7 +484,11 @@ class Ellipse(Conic):
     """
 
     def __init__(
-        self, center: PointTensor = PointTensor(0, 0), hradius: float = 1, vradius: float = 1, **kwargs
+        self,
+        center: PointTensor = PointTensor(0, 0),
+        hradius: float = 1,
+        vradius: float = 1,
+        **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         if hradius == vradius == 0:
             raise ValueError("hradius and vradius can not both be zero.")
@@ -514,7 +519,9 @@ class Circle(Ellipse):
 
     """
 
-    def __init__(self, center: PointTensor = PointTensor(0, 0), radius: float = 1, **kwargs) -> None:
+    def __init__(
+        self, center: PointTensor = PointTensor(0, 0), radius: float = 1, **kwargs: Unpack[NDArrayParameters]
+    ) -> None:
         if radius <= 0:
             raise ValueError(f"radius must be greater than 0, but is {radius}")
         super().__init__(center, radius, radius, **kwargs)

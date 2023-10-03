@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Iterable, Iterator, Sequence, Sized
+from collections.abc import Iterable, Iterator, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -17,30 +17,16 @@ from geometer.utils import (
     posify_index,
     sanitize_index,
 )
-from geometer.utils.math import NumericalDType
 from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
+from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
 
 if TYPE_CHECKING:
-    from typing_extensions import Self, TypeAlias, Unpack
+    from typing_extensions import Self, Unpack
 
     from geometer.transformation import TransformationTensor
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
-
-IntegerIndex1D: TypeAlias = Union[int, np.int_, slice, Sequence[int], Sequence[np.int_], npt.NDArray[np.int_]]
-BooleanIndex1D: TypeAlias = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
-TensorIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
-Shape: TypeAlias = tuple[int, ...]
-
-
-class NDArrayParameters(TypedDict, total=False):
-    dtype: npt.DTypeLike
-    copy: bool
-    order: Literal["K", "A", "C", "F"]
-    subok: bool
-    ndim: int
-    like: npt.ArrayLike
 
 
 class Tensor:

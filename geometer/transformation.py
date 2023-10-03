@@ -14,14 +14,16 @@ from geometer.base import (
     Tensor,
     TensorCollection,
     TensorDiagram,
-    TensorIndex,
 )
 from geometer.exceptions import NoIncidence
 from geometer.point import LineTensor, Point, PointTensor, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
+    from typing_extensions import Unpack
+
     from geometer.curve import Conic
+    from geometer.utils.typing import NDArrayParameters, TensorIndex
 
 
 @overload
@@ -186,7 +188,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         kwargs.setdefault("covariant", [0])
         super().__init__(*args, tensor_rank=2, **kwargs)
 
