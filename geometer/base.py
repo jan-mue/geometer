@@ -29,7 +29,7 @@ EQ_TOL_ABS = 1e-8
 
 IntegerIndex1D: TypeAlias = Union[int, np.int_, slice, Sequence[int], Sequence[np.int_], npt.NDArray[np.int_]]
 BooleanIndex1D: TypeAlias = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
-ArrayIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
+TensorIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
 Shape: TypeAlias = tuple[int, ...]
 
 
@@ -42,79 +42,7 @@ class NDArrayParameters(TypedDict, total=False):
     like: npt.ArrayLike
 
 
-class ArrayContainer:
-    array: npt.NDArray[NumericalDType]
-
-    def __init__(
-        self,
-        *args: ArrayContainer | npt.ArrayLike,
-        **kwargs: Unpack[NDArrayParameters],
-    ) -> None:
-        if len(args) == 0:
-            raise TypeError("At least one argument is required.")
-
-        if len(args) == 1:
-            self.array = np.array(args[0], **kwargs)
-        else:
-            self.array = np.array(args, **kwargs)
-
-        if not is_numerical_dtype(self.dtype):
-            raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
-
-    @property
-    def shape(self) -> Shape:
-        """The shape of the underlying numpy array, same as ``self.array.shape``."""
-        return self.array.shape
-
-    @property
-    def dtype(self) -> np.dtype[NumericalDType]:
-        """The dtype of the underlying numpy array, same as ``self.array.dtype``."""
-        return self.array.dtype
-
-    def copy(self) -> Self:
-        cls = self.__class__
-        result = cls.__new__(cls)
-        result.__dict__.update(self.__dict__)
-        return result
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.array.tolist()})"
-
-    def __copy__(self) -> Self:
-        return self.copy()
-
-    def __getitem__(self, index: ArrayIndex) -> ArrayContainer | np.generic:
-        result = self.array[index]
-        if isinstance(result, np.generic):
-            return result
-        return ArrayContainer(result, copy=False)
-
-    def __setitem__(self, key: ArrayIndex, value: ArrayContainer | npt.ArrayLike) -> None:
-        if isinstance(value, ArrayContainer):
-            value = value.array
-        self.array[key] = value
-
-    def __array__(self, dtype: npt.DTypeLike | None = None) -> np.ndarray:
-        if dtype and dtype != self.dtype:
-            return self.array.astype(dtype)
-        return self.array
-
-    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any):
-        return NotImplemented
-
-    def __array_function__(self, func, types, args, kwargs):
-        return NotImplemented
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, ArrayContainer):
-            other = other.array
-        try:
-            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
-        except TypeError:
-            return NotImplemented
-
-
-class Tensor(ArrayContainer):
+class Tensor:
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
     Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
@@ -138,6 +66,7 @@ class Tensor(ArrayContainer):
 
     """
 
+    array: npt.NDArray[NumericalDType]
     _covariant_indices: set[int]
     _contravariant_indices: set[int]
 
@@ -151,13 +80,16 @@ class Tensor(ArrayContainer):
         if len(args) == 0:
             raise TypeError("At least one argument is required.")
 
-        if len(args) == 1 and isinstance(args[0], Tensor):
-            super().__init__(args[0].array, **kwargs)
-            self._covariant_indices = args[0]._covariant_indices
-            self._contravariant_indices = args[0]._contravariant_indices
-            return
+        if len(args) == 1:
+            if isinstance(args[0], Tensor):
+                self.array = np.array(args[0].array, **kwargs)
+                self._covariant_indices = args[0]._covariant_indices
+                self._contravariant_indices = args[0]._contravariant_indices
+                return
+            else:
+                self.array = np.array(args[0], **kwargs)
         else:
-            super().__init__(*args, **kwargs)
+            self.array = np.array(args, **kwargs)
 
         if tensor_rank is None:
             tensor_rank = self.rank
@@ -184,6 +116,18 @@ class Tensor(ArrayContainer):
         free_indices = set(range(n_free_indices))
         self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - free_indices
 
+        self._validate_tensor()
+
+    def _validate_tensor(self):
+        if not is_numerical_dtype(self.dtype):
+            raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
+
+    def copy(self) -> Self:
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
     def __apply__(self, transformation: TransformationTensor) -> Self:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
@@ -194,6 +138,16 @@ class Tensor(ArrayContainer):
         result = self.copy()
         result.array = diagram.calculate().array
         return result
+
+    @property
+    def shape(self) -> Shape:
+        """The shape of the underlying numpy array, same as ``self.array.shape``."""
+        return self.array.shape
+
+    @property
+    def dtype(self) -> np.dtype[NumericalDType]:
+        """The dtype of the underlying numpy array, same as ``self.array.dtype``."""
+        return self.array.dtype
 
     @property
     def free_indices(self) -> int:
@@ -330,7 +284,10 @@ class Tensor(ArrayContainer):
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
         return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)  # type: ignore[no-any-return]
 
-    def _get_index_mapping(self, index: ArrayIndex) -> list[int | None]:
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.array.tolist()})"
+
+    def _get_index_mapping(self, index: TensorIndex) -> list[int | None]:
         normalized_index = normalize_index(index, self.shape)  # type: ignore[no-untyped-call]
         advanced_indices = []
         index_mapping: list[int | None] = list(range(self.rank))
@@ -366,7 +323,7 @@ class Tensor(ArrayContainer):
             # replace indices with broadcast shape
             return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
 
-    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = self.array[index]
 
         if isinstance(result, np.generic):
@@ -388,6 +345,14 @@ class Tensor(ArrayContainer):
         result_tensor._contravariant_indices = set(contravariant_indices)
 
         return result_tensor
+
+    def __setitem__(self, key: TensorIndex, value: Tensor | npt.ArrayLike) -> None:
+        if isinstance(value, Tensor):
+            value = value.array
+        self.array[key] = value
+
+    def __copy__(self) -> Self:
+        return self.copy()
 
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if is_numerical_scalar(other):
@@ -443,6 +408,34 @@ class Tensor(ArrayContainer):
     def __neg__(self) -> Tensor:
         return self * (-1)
 
+    def __array__(self, dtype: npt.DTypeLike | None = None) -> np.ndarray:
+        if dtype and dtype != self.dtype:
+            return self.array.astype(dtype)
+        return self.array
+
+    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any):
+        return NotImplemented
+
+    def __array_function__(self, func, types, args, kwargs):
+        return NotImplemented
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Tensor):
+            other = other.array
+        try:
+            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+        except TypeError:
+            return NotImplemented
+
+
+class BoundTensor(Tensor):
+    """A tensor without free indices."""
+
+    def _validate_tensor(self):
+        super()._validate_tensor()
+        if self.free_indices != 0:
+            raise ValueError(f"Only tensors without free indices can be used in a {self.__class__.__name__}")
+
 
 T = TypeVar("T", bound=Tensor)
 
@@ -450,7 +443,7 @@ T = TypeVar("T", bound=Tensor)
 class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     """A collection of tensors."""
 
-    _collection_class: ClassVar[type[T]] = Tensor
+    _element_class: ClassVar[type[T]] = Tensor
 
     def __init__(
         self,
@@ -460,12 +453,15 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
+
+    def _validate_tensor(self):
+        super()._validate_tensor()
         if self.free_indices == 0:
             raise ValueError(f"Tensor has no free indices and cannot be used in a {self.__class__.__name__}.")
 
     def __iter__(self) -> Iterator[T]:
         for i in range(len(self)):
-            yield self._collection_class(self[i])
+            yield self._element_class(self[i])
 
     def __len__(self) -> int:
         return len(self.array)
@@ -476,7 +472,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         return np.prod([self.shape[i] for i in range(self.free_indices)], dtype=int)
 
 
-class LeviCivitaTensor(Tensor):
+class LeviCivitaTensor(BoundTensor):
     r"""This class can be used to construct a tensor representing the Levi-Civita symbol.
 
     The Levi-Civita symbol is also called :math:`\varepsilon`-Tensor and is defined as follows:
@@ -517,7 +513,7 @@ class LeviCivitaTensor(Tensor):
         super().__init__(array, covariant=bool(covariant), copy=False)
 
 
-class KroneckerDelta(Tensor):
+class KroneckerDelta(BoundTensor):
     r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
 
     The following generalized definition of the Kronecker delta is used:

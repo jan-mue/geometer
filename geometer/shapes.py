@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import numpy.typing as npt
 
-from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, ArrayIndex, NDArrayParameters, Tensor, TensorCollection
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, NDArrayParameters, Tensor, TensorCollection, TensorIndex
 from geometer.exceptions import LinearDependenceError, NotCoplanar
 from geometer.operators import angle, dist, harmonic_set
 from geometer.point import LineTensor, PlaneTensor, PointTensor, infty_hyperplane, join, meet
@@ -127,7 +127,7 @@ class Polytope(PointTensor):
 
         return Polytope(tensor, copy=False)
 
-    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.free_indices == 0 or result.tensor_shape != (1, 0):
@@ -173,7 +173,7 @@ class Segment(Polytope):
         result._line = transformation.apply(result._line)
         return result
 
-    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.rank < 2 or result.shape[-2] != 2:
@@ -279,7 +279,7 @@ class Segment(Polytope):
 
 
 class SegmentCollection(TensorCollection[Segment]):
-    pass
+    _element_class = Segment
 
 
 class Simplex(Polytope):

@@ -11,13 +11,14 @@ if TYPE_CHECKING:
 
 from geometer.base import (
     EQ_TOL_ABS,
-    ArrayIndex,
+    BoundTensor,
     LeviCivitaTensor,
     NDArrayParameters,
     ProjectiveTensor,
     Tensor,
     TensorCollection,
     TensorDiagram,
+    TensorIndex,
 )
 from geometer.exceptions import GeometryException, LinearDependenceError, NotCoplanar
 from geometer.utils import is_numerical_scalar, matmul, matvec, null_space
@@ -364,7 +365,7 @@ class PointTensor(ProjectiveTensor, ABC):
     def join(self, *others: PointTensor | SubspaceTensor) -> SubspaceTensor:
         return join(self, *others)
 
-    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 0):
@@ -404,12 +405,12 @@ class PointTensor(ProjectiveTensor, ABC):
         return np.all(np.isreal(self.normalized_array), axis=-1)
 
 
-class Point(PointTensor):
+class Point(PointTensor, BoundTensor):
     pass
 
 
 class PointCollection(PointTensor, TensorCollection[Point]):
-    pass
+    _element_class = Point
 
 
 class SubspaceTensor(ProjectiveTensor, ABC):
@@ -442,7 +443,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     def join(self, *others: PointTensor | SubspaceTensor) -> SubspaceTensor:
         return join(self, *others)
 
-    def __getitem__(self, index: ArrayIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
@@ -576,7 +577,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
         return self.meet(l)
 
 
-class Subspace(SubspaceTensor, ABC):
+class Subspace(SubspaceTensor, BoundTensor, ABC):
     pass
 
 
@@ -803,7 +804,7 @@ class Line(LineTensor, Subspace):
 
 
 class LineCollection(LineTensor, SubspaceCollection[Line]):
-    pass
+    _element_class = Line
 
 
 class PlaneTensor(SubspaceTensor):
@@ -906,7 +907,7 @@ class Plane(PlaneTensor, Subspace):
 
 
 class PlaneCollection(PlaneTensor, SubspaceCollection[Plane]):
-    pass
+    _element_class = Plane
 
 
 I = Point([-1j, 1, 0])

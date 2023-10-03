@@ -12,6 +12,7 @@ from numpy.lib.scimath import sqrt as csqrt
 from geometer.base import (
     EQ_TOL_ABS,
     EQ_TOL_REL,
+    BoundTensor,
     NDArrayParameters,
     ProjectiveTensor,
     Tensor,
@@ -244,12 +245,12 @@ class QuadricTensor(ProjectiveTensor, ABC):
         return QuadricTensor(inv(self.array), is_dual=not self.is_dual, copy=False)
 
 
-class Quadric(QuadricTensor):
+class Quadric(QuadricTensor, BoundTensor):
     pass
 
 
 class QuadricCollection(QuadricTensor, TensorCollection[Quadric]):
-    pass
+    _element_class = Quadric
 
 
 class Conic(QuadricTensor):
