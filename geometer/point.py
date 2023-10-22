@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast, overload
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, TypeVar, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -8,69 +9,68 @@ import numpy.typing as npt
 if TYPE_CHECKING:
     from typing_extensions import Literal, Unpack
 
+    from geometer.utils.typing import NDArrayParameters, TensorIndex
+
 from geometer.base import (
     EQ_TOL_ABS,
+    EQ_TOL_REL,
+    BoundTensor,
     LeviCivitaTensor,
-    NDArrayParameters,
     ProjectiveTensor,
     Tensor,
+    TensorCollection,
     TensorDiagram,
-    TensorIndex,
 )
 from geometer.exceptions import GeometryException, LinearDependenceError, NotCoplanar
-from geometer.utils import is_numerical_scalar, matmul, matvec, null_space
+from geometer.utils import is_multiple, is_numerical_scalar, matmul, matvec, null_space
 
 
 @overload
 def _join_meet_duality(
-    *args: Line, intersect_lines: Literal[True], check_dependence: bool = True, normalize_result: bool = True
-) -> Point:
-    ...
-
-
-@overload
-def _join_meet_duality(
-    *args: Unpack[tuple[Subspace, Line]],
+    *args: Unpack[tuple[SubspaceTensor, LineTensor]],
     intersect_lines: Literal[True],
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> Point:
+) -> PointTensor:
     ...
 
 
 @overload
 def _join_meet_duality(
-    *args: Unpack[tuple[Line, Subspace]],
+    *args: Unpack[tuple[LineTensor, SubspaceTensor]],
     intersect_lines: Literal[True],
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> Point:
+) -> PointTensor:
     ...
 
 
 @overload
 def _join_meet_duality(
-    *args: Unpack[tuple[Point, Point]],
+    *args: Unpack[tuple[PointTensor, PointTensor]],
     intersect_lines: Literal[True],
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> Line:
+) -> LineTensor:
     ...
 
 
 @overload
 def _join_meet_duality(
-    *args: Point | Subspace,
+    *args: PointTensor | SubspaceTensor,
     intersect_lines: Literal[False],
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> Subspace:
+) -> SubspaceTensor:
     ...
 
 
 def _join_meet_duality(
-    *args: Point | Subspace, intersect_lines: bool = True, check_dependence: bool = True, normalize_result: bool = True
-) -> Point | Subspace:
+    *args: PointTensor | SubspaceTensor,
+    intersect_lines: bool = True,
+    check_dependence: bool = True,
+    normalize_result: bool = True,
+) -> PointTensor | SubspaceTensor:
     if len(args) < 2:
         raise ValueError(f"Expected at least 2 arguments, got {len(args)}.")
 
@@ -87,14 +87,19 @@ def _join_meet_duality(
     # two lines/planes
     elif len(args) == 2:
         a, b = args
-        if isinstance(a, Line) and isinstance(b, Plane) or isinstance(b, Line) and isinstance(a, Plane):
+        if (
+            isinstance(a, LineTensor)
+            and isinstance(b, PlaneTensor)
+            or isinstance(b, LineTensor)
+            and isinstance(a, PlaneTensor)
+        ):
             e = LeviCivitaTensor(n)
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
-        elif isinstance(a, Subspace) and isinstance(b, Point):
+        elif isinstance(a, SubspaceTensor) and isinstance(b, PointTensor):
             result = a * b
-        elif isinstance(a, Point) and isinstance(b, Subspace):
+        elif isinstance(a, PointTensor) and isinstance(b, SubspaceTensor):
             result = b * a
-        elif isinstance(a, Line) and isinstance(b, Line):
+        elif isinstance(a, LineTensor) and isinstance(b, LineTensor):
             # can assume that n >= 4, because for n = 3 lines are 1-tensors
             e = LeviCivitaTensor(n)
 
@@ -130,7 +135,7 @@ def _join_meet_duality(
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
                 raise NotCoplanar("The given lines are not all coplanar.")
-            elif np.any(coplanar) and (a.cdim > 0 or b.cdim > 0):
+            elif np.any(coplanar) and (a.free_indices > 0 or b.free_indices > 0):
                 raise GeometryException("Can only join tensors that are either all coplanar or all not coplanar.")
 
         else:
@@ -143,7 +148,7 @@ def _join_meet_duality(
 
     if check_dependence:
         is_zero = result.is_zero()
-        if result.cdim == 0 and is_zero:
+        if result.free_indices == 0 and is_zero:
             raise LinearDependenceError("Arguments are not linearly independent.")
         elif np.any(is_zero):
             raise LinearDependenceError("Some arguments are not linearly independent.", is_zero)
@@ -155,15 +160,15 @@ def _join_meet_duality(
         result.array = _divide_by_power_of_two(result.array, max_exponent)
 
     if result.tensor_shape == (0, 1):
-        return Line(result, copy=False) if n == 3 else Plane(result, copy=False)
+        return LineCollection.from_tensor(result) if n == 3 else PlaneCollection.from_tensor(result)
     if result.tensor_shape == (1, 0):
-        return Point(result, copy=False)
+        return PointCollection.from_tensor(result)
     if result.tensor_shape == (2, 0):
-        return Line(result, copy=False).contravariant_tensor
+        return LineCollection.from_tensor(result).contravariant_tensor
     if result.tensor_shape == (0, n - 2):
-        return Line(result, copy=False)
+        return LineCollection.from_tensor(result)
 
-    return Subspace(result, copy=False)
+    raise RuntimeError(f"Unexpected tensor of type {result.tensor_shape}")
 
 
 def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
@@ -183,16 +188,22 @@ def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
 
 
 @overload
-def join(*args: Unpack[tuple[Point, Point]], _check_dependence: bool = True, _normalize_result: bool = True) -> Line:
+def join(
+    *args: Unpack[tuple[PointTensor, PointTensor]], _check_dependence: bool = True, _normalize_result: bool = True
+) -> LineTensor:
     ...
 
 
 @overload
-def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Subspace:
+def join(
+    *args: PointTensor | SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
+) -> SubspaceTensor:
     ...
 
 
-def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Subspace:
+def join(
+    *args: PointTensor | SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
+) -> SubspaceTensor:
     """Joins a number of objects to form a line, plane or subspace.
 
     Args:
@@ -212,21 +223,27 @@ def join(*args: Point | Subspace, _check_dependence: bool = True, _normalize_res
 
 
 @overload
-def meet(*args: Line, _check_dependence: bool = True, _normalize_result: bool = True) -> Point:
+def meet(*args: LineTensor, _check_dependence: bool = True, _normalize_result: bool = True) -> PointTensor:
     ...
 
 
 @overload
-def meet(*args: Unpack[tuple[Subspace, Line]], _check_dependence: bool = True, _normalize_result: bool = True) -> Point:
+def meet(
+    *args: Unpack[tuple[SubspaceTensor, LineTensor]], _check_dependence: bool = True, _normalize_result: bool = True
+) -> PointTensor:
     ...
 
 
 @overload
-def meet(*args: Unpack[tuple[Line, Subspace]], _check_dependence: bool = True, _normalize_result: bool = True) -> Point:
+def meet(
+    *args: Unpack[tuple[LineTensor, SubspaceTensor]], _check_dependence: bool = True, _normalize_result: bool = True
+) -> PointTensor:
     ...
 
 
-def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: bool = True) -> Point | Subspace:
+def meet(
+    *args: SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
+) -> PointTensor | SubspaceTensor:
     """Intersects a number of given objects.
 
     Args:
@@ -245,7 +262,70 @@ def meet(*args: Subspace, _check_dependence: bool = True, _normalize_result: boo
     )
 
 
-class Point(ProjectiveTensor):
+class PointLikeTensor(ProjectiveTensor, ABC):
+    """Base class for point tensors and polytopes implementing arithmetic operations."""
+
+    def __init__(
+        self,
+        *args: Tensor | npt.ArrayLike,
+        homogenize: bool = False,
+        tensor_rank: int = 1,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
+        super().__init__(*args, tensor_rank=tensor_rank, **kwargs)
+        if homogenize is True:
+            self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=-1)
+        if self.tensor_shape != (1, 0):
+            raise ValueError(f"Expected tensor of type (1, 0), but is {self.tensor_shape}")
+
+    @staticmethod
+    def _normalize_array(array: np.ndarray) -> np.ndarray:
+        z = array[..., -1, None]
+        isinf = np.isclose(z, 0, atol=EQ_TOL_ABS)
+        if np.all(isinf | (z == 1)):
+            return array
+        dtype = np.promote_types(np.float64, array.dtype)
+        result = array.astype(dtype)
+        np.divide(result, z, where=~isinf, out=result)
+        return np.real_if_close(result)
+
+    @property
+    def normalized_array(self) -> np.ndarray:
+        """The coordinate array of the points with the last coordinates normalized to 1."""
+        return self._normalize_array(self.array)
+
+    def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        if not isinstance(other, PointLikeTensor):
+            return super().__add__(other)
+        a, b = self.normalized_array, other.normalized_array
+        result = a[..., :-1] + b[..., :-1]
+        result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
+        return PointCollection.from_array(result)
+
+    def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        if not isinstance(other, PointLikeTensor):
+            return super().__add__(other)
+        a, b = self.normalized_array, other.normalized_array
+        result = a[..., :-1] - b[..., :-1]
+        result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
+        return PointCollection.from_array(result)
+
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        if not is_numerical_scalar(other):
+            return super().__mul__(other)
+        result = self.normalized_array[..., :-1] * other
+        result = np.append(result, self.array[..., -1:] != 0, axis=-1)
+        return PointCollection.from_array(result)
+
+    def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        if not is_numerical_scalar(other):
+            return super().__truediv__(other)
+        result = self.normalized_array[..., :-1] / other
+        result = np.append(result, self.array[..., -1:] != 0, axis=-1)
+        return PointCollection.from_array(result)
+
+
+class PointTensor(PointLikeTensor, ABC):
     """Represents points in a projective space of arbitrary dimension.
 
     The number of supplied coordinates determines the dimension of the space that the point lives in.
@@ -265,48 +345,19 @@ class Point(ProjectiveTensor):
     """
 
     def __init__(
-        self, *args: Tensor | npt.ArrayLike, homogenize=False, tensor_rank=1, **kwargs: Unpack[NDArrayParameters]
+        self,
+        *args: Tensor | npt.ArrayLike,
+        homogenize: bool = False,
+        tensor_rank: int = 1,
+        **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         if np.isscalar(args[0]):
-            super().__init__(*args, 1, tensor_rank=tensor_rank, **kwargs)
-            homogenize = False
+            super().__init__(*args, 1, homogenize=False, tensor_rank=tensor_rank, **kwargs)
         else:
-            super().__init__(*args, tensor_rank=tensor_rank, **kwargs)
-        if homogenize is True:
-            self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=-1)
-
-    def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
-            return super().__add__(other)
-        a, b = self.normalized_array, other.normalized_array
-        result = a[..., :-1] + b[..., :-1]
-        result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
-        return Point(result, copy=False)
-
-    def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
-            return super().__add__(other)
-        a, b = self.normalized_array, other.normalized_array
-        result = a[..., :-1] - b[..., :-1]
-        result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
-        return Point(result, copy=False)
-
-    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not is_numerical_scalar(other):
-            return super().__mul__(other)
-        result = self.normalized_array[..., :-1] * other
-        result = np.append(result, self.array[..., -1:] != 0, axis=-1)
-        return Point(result, copy=False)
-
-    def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not is_numerical_scalar(other):
-            return super().__truediv__(other)
-        result = self.normalized_array[..., :-1] / other
-        result = np.append(result, self.array[..., -1:] != 0, axis=-1)
-        return Point(result, copy=False)
+            super().__init__(*args, homogenize=homogenize, tensor_rank=tensor_rank, **kwargs)
 
     def __repr__(self) -> str:
-        if self.cdim == 0:
+        if self.free_indices == 0:
             result = f"Point({', '.join(self.normalized_array[:-1].astype(str))})"
             if self.isinf:
                 result += " at Infinity"
@@ -314,14 +365,16 @@ class Point(ProjectiveTensor):
         return f"PointCollection({self.normalized_array.tolist()})"
 
     @overload
-    def join(self, *others: Unpack[tuple[Point, Point]]) -> Line:
+    def join(self, *others: Unpack[tuple[PointTensor, PointTensor]]) -> LineTensor:
         ...
 
     @overload
-    def join(self, *others: Unpack[tuple[Point, Subspace]] | Unpack[tuple[Subspace, Point]]) -> Subspace:
+    def join(
+        self, *others: Unpack[tuple[PointTensor, SubspaceTensor]] | Unpack[tuple[SubspaceTensor, PointTensor]]
+    ) -> SubspaceTensor:
         ...
 
-    def join(self, *others: Point | Subspace) -> Subspace:
+    def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
@@ -330,28 +383,12 @@ class Point(ProjectiveTensor):
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 0):
             return result
 
-        return Point(result, copy=False)
+        return PointCollection.from_array(result)
 
-    @staticmethod
-    def _normalize_array(array: np.ndarray) -> np.ndarray:
-        z = array[..., -1, None]
-        isinf = np.isclose(z, 0, atol=EQ_TOL_ABS)
-        if np.all(isinf | (z == 1)):
-            return array
-        dtype = np.promote_types(np.float64, array.dtype)
-        result = array.astype(dtype)
-        np.divide(result, z, where=~isinf, out=result)
-        return np.real_if_close(result)
-
-    def _matrix_transform(self, m: npt.ArrayLike) -> Point:
-        if self.cdim == 0:
-            return Point(np.dot(m, self.array), copy=False)
-        return Point(matvec(m, self.array), copy=False)
-
-    @property
-    def normalized_array(self) -> np.ndarray:
-        """The coordinate array of the points with the last coordinates normalized to 1."""
-        return self._normalize_array(self.array)
+    def _matrix_transform(self, m: npt.ArrayLike) -> PointTensor:
+        if self.free_indices == 0:
+            return PointCollection.from_array(np.dot(m, self.array))
+        return PointCollection.from_array(matvec(m, self.array))
 
     @property
     def isinf(self) -> npt.NDArray[np.bool_]:
@@ -364,8 +401,16 @@ class Point(ProjectiveTensor):
         return np.all(np.isreal(self.normalized_array), axis=-1)
 
 
-class Subspace(ProjectiveTensor):
-    """Represents a general subspace of a projective space. Line and Plane are subclasses.
+class Point(PointTensor, BoundTensor):
+    pass
+
+
+class PointCollection(PointTensor, TensorCollection[Point]):
+    _element_class = Point
+
+
+class SubspaceTensor(ProjectiveTensor, ABC):
+    """Abstract base class for subspaces of a projective space. Line and Plane are subclasses.
 
     Args:
         *args: The coordinates of the subspace. Instead of separate coordinates, a single iterable can be supplied.
@@ -381,29 +426,21 @@ class Subspace(ProjectiveTensor):
         super().__init__(*args, tensor_rank=tensor_rank, **kwargs)
 
     @overload
-    def meet(self, other: Line) -> Point:
+    def meet(self, other: LineTensor) -> PointTensor:
         ...
 
     @overload
-    def meet(self, other: Subspace) -> Point | Subspace:
+    def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor:
         ...
 
-    def meet(self, other: Subspace) -> Point | Subspace:
+    def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor:
         return meet(self, other)
 
-    def join(self, *others: Point | Subspace) -> Subspace:
+    def join(self, *others: PointTensor | SubspaceTensor) -> SubspaceTensor:
         return join(self, *others)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
-            return result
-
-        return type(self)(result, copy=False)
-
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
+        if not isinstance(other, PointTensor):
             return super().__add__(other)
 
         from geometer.transformation import translation
@@ -418,20 +455,20 @@ class Subspace(ProjectiveTensor):
     @property
     def basis_matrix(self) -> np.ndarray:
         x = self.array
-        x = x.reshape(x.shape[: self.cdim] + (-1, x.shape[-1]))
-        return np.swapaxes(null_space(x, self.shape[-1] - self.rank + self.cdim), -1, -2)
+        x = x.reshape(x.shape[: self.free_indices] + (-1, x.shape[-1]))
+        return np.swapaxes(null_space(x, self.shape[-1] - self.rank + self.free_indices), -1, -2)
 
-    def _matrix_transform(self, m: npt.ArrayLike) -> Subspace:
+    def _matrix_transform(self, m: npt.ArrayLike) -> SubspaceTensor:
         transformed_basis = matmul(self.basis_matrix, m, transpose_b=True)
-        transformed_basis_points = [Point(p, copy=False) for p in np.swapaxes(transformed_basis, 0, -2)]
+        transformed_basis_points = [PointCollection.from_array(p) for p in np.swapaxes(transformed_basis, 0, -2)]
         return join(*transformed_basis_points)
 
     @property
-    def general_point(self) -> Point:
-        """Points in general position i.e. not in the subspaces."""
+    def general_point(self) -> PointTensor:
+        """Point in general position i.e. not in the subspaces."""
         n = self.dim + 1
-        s = [self.shape[i] for i in self._collection_indices]
-        p = Point(np.zeros([*s, n], dtype=int), copy=False)
+        s = [self.shape[i] for i in range(self.free_indices)]
+        p = PointCollection.from_array(np.zeros([*s, n], dtype=int))
         ind = np.ones(s, dtype=bool)
         for i in range(n):
             p[ind, -i - 1] = 1
@@ -440,20 +477,20 @@ class Subspace(ProjectiveTensor):
                 break
         return p
 
-    def parallel(self, through: Point) -> Subspace:
-        """Returns the subspaces through given points that are parallel to this collection of subspaces.
+    def parallel(self, through: PointTensor) -> SubspaceTensor:
+        """Returns the subspace through given point that is parallel to this subspace.
 
         Args:
-            through: The point through which the parallel subspaces are to be constructed.
+            through: The point through which the parallel subspace is to be constructed.
 
         Returns:
-            The parallel subspaces.
+            The parallel subspace.
 
         """
         x = self.meet(infty_hyperplane(self.dim))
         return join(x, through)
 
-    def contains(self, other: Point | Subspace, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor | LineTensor, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests whether given points or lines lie in the subspaces.
 
         Args:
@@ -464,20 +501,17 @@ class Subspace(ProjectiveTensor):
             Boolean array that indicates which of given points/lines lies in the subspaces.
 
         """
-        if isinstance(other, Point):
+        if isinstance(other, PointTensor):
             result = self * other
-
-        elif isinstance(other, Line):
+        elif isinstance(other, LineTensor):
             result = self * other.covariant_tensor
-
         else:
-            # TODO: test subspace
-            raise ValueError(f"argument of type {type(other)} not supported")
+            raise TypeError(f"argument of type {type(other)} not supported")
 
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
 
-    def is_parallel(self, other: Subspace) -> npt.NDArray[np.bool_]:
+    def is_parallel(self, other: SubspaceTensor) -> npt.NDArray[np.bool_]:
         """Tests whether the given subspace is parallel to this subspace.
 
         Args:
@@ -490,8 +524,56 @@ class Subspace(ProjectiveTensor):
         x = self.meet(other)
         return infty_hyperplane(self.dim).contains(x)
 
+    @abstractmethod
+    def mirror(self, pt: PointTensor) -> PointTensor:
+        """Construct the reflection of a point at the subspace.
 
-class Line(Subspace):
+        Args:
+            pt: The point to reflect.
+
+        Returns:
+            The mirror point.
+
+        """
+
+    @abstractmethod
+    def perpendicular(self, through: PointTensor | LineTensor) -> SubspaceTensor:
+        """Construct the perpendicular subspace though the given point or line.
+
+        Args:
+            through: The point or line through which the perpendicular is constructed.
+
+        Returns:
+            The perpendicular subspace.
+
+        """
+
+    def project(self, pt: PointTensor) -> PointTensor:
+        """The orthogonal projection of a point onto the subspace.
+
+        Args:
+            pt: The point to project.
+
+        Returns:
+            The projected point.
+
+        """
+        l = self.perpendicular(pt)
+        return self.meet(l)
+
+
+class Subspace(SubspaceTensor, BoundTensor, ABC):
+    pass
+
+
+SubspaceT = TypeVar("SubspaceT", bound=Subspace)
+
+
+class SubspaceCollection(SubspaceTensor, TensorCollection[SubspaceT], ABC):
+    pass
+
+
+class LineTensor(SubspaceTensor, ABC):
     """Represents a line in a projective space of arbitrary dimension.
 
     Args:
@@ -505,27 +587,41 @@ class Line(Subspace):
         if len(args) == 2:
             kwargs["copy"] = False
             p, q = args
-            super().__init__(join(Point(p, copy=False), Point(q, copy=False)), tensor_rank=-2, **kwargs)
+            super().__init__(
+                join(PointCollection.from_array(p), PointCollection.from_array(q)), tensor_rank=-2, **kwargs
+            )
         else:
             super().__init__(*args, tensor_rank=-2, **kwargs)
+        if self.tensor_shape not in {(0, self.dim - 1), (self.dim - 1, 0)}:
+            raise ValueError(f"Unexpected tensor of type {self.tensor_shape}")
+        if self.dim == 3 and self.shape[-1] != self.shape[-2]:
+            raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
 
-    def _matrix_transform(self, m: npt.ArrayLike) -> Line:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
+            return result
+
+        return LineCollection.from_tensor(result)
+
+    def _matrix_transform(self, m: npt.ArrayLike) -> LineTensor:
         result = super()._matrix_transform(m)
-        return cast(Line, result)
+        return cast(LineTensor, result)
 
-    def meet(self, other: Subspace) -> Point:
+    def meet(self, other: SubspaceTensor) -> PointTensor:
         result = super().meet(other)
-        return cast(Point, result)
+        return cast(PointTensor, result)
 
     @property
-    def base_point(self) -> Point:
+    def base_point(self) -> PointTensor:
         """Base points for the lines, arbitrarily chosen."""
         if self.dim > 2:
             base = self.basis_matrix
             p, q = base[..., 0, :], base[..., 1, :]
             isinf = np.isclose(p[..., -1, None], 0, atol=EQ_TOL_ABS)
             result = np.where(isinf, q, p)
-            return Point(result, copy=False)
+            return PointCollection.from_array(result)
 
         y_zero = np.isclose(self.array[..., 1], 0, atol=EQ_TOL_ABS)
         z_zero = np.isclose(self.array[..., 2], 0, atol=EQ_TOL_ABS)
@@ -539,10 +635,10 @@ class Line(Subspace):
         result[y_zero & ~z_zero, 0] = self.array[y_zero & ~z_zero, 2]
         result[y_zero & ~z_zero, 2] = -self.array[y_zero & ~z_zero, 0]
 
-        return Point(result, copy=False)
+        return PointCollection.from_array(result)
 
     @property
-    def direction(self) -> Point:
+    def direction(self) -> PointTensor:
         """The direction of the lines (not normalized)."""
         if self.dim > 2:
             return meet(self, infty_hyperplane(self.dim), _normalize_result=False)
@@ -556,20 +652,20 @@ class Line(Subspace):
         result[~(x_zero & y_zero), 0] = self.array[~(x_zero & y_zero), 1]
         result[~(x_zero & y_zero), 1] = -self.array[~(x_zero & y_zero), 0]
 
-        return Point(result, copy=False)
+        return PointCollection.from_array(result)
 
     @property
     def basis_matrix(self) -> np.ndarray:
         """A matrix with orthonormal basis vectors as rows."""
         if self.dim == 2:
             a = self.base_point.array
-            b = np.cross(self.array, a)
+            b = np.cross(self.array, a)  # type: ignore[arg-type]
             m = [a / np.linalg.norm(a, axis=-1, keepdims=True), b / np.linalg.norm(b, axis=-1, keepdims=True)]
             return np.stack(m, axis=-2)
         return super().basis_matrix
 
     @property
-    def covariant_tensor(self) -> Line:
+    def covariant_tensor(self) -> LineTensor:
         """The covariant tensors of lines in 3D."""
         if self.dim != 3:
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
@@ -577,10 +673,10 @@ class Line(Subspace):
             return self
         e = LeviCivitaTensor(4)
         diagram = TensorDiagram((e, self), (e, self))
-        return Line(diagram.calculate(), copy=False)
+        return LineCollection.from_tensor(diagram.calculate())
 
     @property
-    def contravariant_tensor(self) -> Line:
+    def contravariant_tensor(self) -> LineTensor:
         """The contravariant tensors of lines in 3D."""
         if self.dim != 3:
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
@@ -588,9 +684,9 @@ class Line(Subspace):
             return self
         e = LeviCivitaTensor(4, False)
         diagram = TensorDiagram((self, e), (self, e))
-        return Line(diagram.calculate(), copy=False)
+        return LineCollection.from_tensor(diagram.calculate())
 
-    def is_coplanar(self, other: Line) -> npt.NDArray[np.bool_]:
+    def is_coplanar(self, other: LineTensor) -> npt.NDArray[np.bool_]:
         """Tests whether another line lies in the same plane as this line, i.e. whether two lines intersect.
 
         Args:
@@ -604,13 +700,13 @@ class Line(Subspace):
 
         """
         if self.dim == 2:
-            return np.ones(self.shape[: self.cdim], dtype=bool)
+            return np.ones(self.shape[: self.free_indices], dtype=bool)
 
         e = LeviCivitaTensor(self.dim + 1)
         d = TensorDiagram(*[(e, self)] * (self.dim - 1), *[(e, other)] * (self.dim - 1))
         return d.calculate().is_zero()
 
-    def mirror(self, pt: Point) -> Point:
+    def mirror(self, pt: PointTensor) -> PointTensor:
         """Construct the reflection of points at the lines.
 
         Args:
@@ -629,7 +725,7 @@ class Line(Subspace):
             e = join(self, pt)
 
             if self.dim == 3:
-                e = cast(Plane, e)
+                e = cast(PlaneTensor, e)
                 f = e.perpendicular(self)
                 return f.mirror(pt)
 
@@ -638,7 +734,7 @@ class Line(Subspace):
             arr_sort = np.argsort(np.abs(arr), axis=-1)
             arr_ind = tuple(np.indices(arr.shape)[:-1])
             m = m[(*arr_ind, arr_sort, slice(None))]
-            pt = Point(arr[(*arr_ind, arr_sort)], copy=False)
+            pt = PointCollection(arr[(*arr_ind, arr_sort)], copy=False)
             l = self._matrix_transform(m)
         l1 = join(I, pt, _normalize_result=False)
         l2 = join(J, pt, _normalize_result=False)
@@ -651,7 +747,7 @@ class Line(Subspace):
             return result._matrix_transform(np.swapaxes(m, -1, -2))
         return result
 
-    def perpendicular(self, through: Point, plane: Subspace | None = None) -> Line:
+    def perpendicular(self, through: PointTensor, plane: PlaneTensor | None = None) -> LineTensor:
         """Construct the perpendicular line though a point.
 
         Args:
@@ -665,55 +761,52 @@ class Line(Subspace):
         """
         n = self.dim + 1
         contains = self.contains(through)
-        result = Line(np.empty(contains.shape + (n,) * (n - 2), np.complex128))
+        result = LineCollection.from_array(np.empty(contains.shape + (n,) * (n - 2), np.complex128))
         if np.any(contains):
             l = self
-            if self.cdim > 0:
+            if self.free_indices > 0:
                 l = self[contains]
 
             if n > 3:
                 if plane is None:
                     # additional point is required to determine the exact line
                     plane = join(l, l.general_point)
-                elif plane.cdim > 0:
+                elif isinstance(plane, PlaneCollection):
                     plane = plane[contains]
 
                 basis = plane.basis_matrix
                 line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
-                l = Line(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]), copy=False)
+                l = LineCollection.from_array(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]))
 
-            p = Point(np.append(l.array[..., :-1], np.zeros(l.shape[:-1] + (1,), dtype=l.dtype), axis=-1), copy=False)
+            p = PointCollection.from_array(
+                np.append(l.array[..., :-1], np.zeros(l.shape[:-1] + (1,), dtype=l.dtype), axis=-1)
+            )
 
             if n > 3:
                 p = p._matrix_transform(np.swapaxes(basis, -1, -2))
 
-            result[contains] = join(through if through.cdim == 0 else through[contains], p)
+            result[contains] = join(through if through.free_indices == 0 else through[contains], p)
 
         if np.any(~contains):
-            if through.cdim > 0:
+            if through.free_indices > 0:
                 through = through[~contains]
-            if self.cdim > 0:
-                result[~contains] = cast(Line, self[~contains]).mirror(through).join(through)
+            if self.free_indices > 0:
+                result[~contains] = cast(LineTensor, self[~contains]).mirror(through).join(through)
             else:
                 result[~contains] = self.mirror(through).join(through)
 
-        return Line(np.real_if_close(result.array), copy=False)
-
-    def project(self, pt: Point) -> Point:
-        """The orthogonal projection of points onto the lines.
-
-        Args:
-            pt: The points to project.
-
-        Returns:
-            The projected points.
-
-        """
-        l = self.perpendicular(pt)
-        return self.meet(l)
+        return LineCollection.from_array(np.real_if_close(result.array))
 
 
-class Plane(Subspace):
+class Line(LineTensor, Subspace):
+    pass
+
+
+class LineCollection(LineTensor, SubspaceCollection[Line]):
+    _element_class = Line
+
+
+class PlaneTensor(SubspaceTensor):
     """Represents a hyperplane in a projective space of arbitrary dimension.
 
     Args:
@@ -724,11 +817,21 @@ class Plane(Subspace):
     """
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
-        if all(isinstance(o, (Line, Point)) for o in args):
+        if all(isinstance(o, (LineTensor, PointTensor)) for o in args):
             kwargs["copy"] = False
             super().__init__(join(*args), **kwargs)
         else:
             super().__init__(*args, **kwargs)
+        if self.tensor_shape != (0, 1):
+            raise ValueError(f"Expected tensor of type (0, 1), but is {self.tensor_shape}")
+
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != (0, 1):
+            return result
+
+        return PlaneCollection.from_tensor(result)
 
     @property
     def basis_matrix(self) -> np.ndarray:
@@ -745,7 +848,7 @@ class Plane(Subspace):
         q, r = np.linalg.qr(result)
         return np.swapaxes(q, -1, -2)
 
-    def mirror(self, pt: Point) -> Point:
+    def mirror(self, pt: PointTensor) -> PointTensor:
         """Construct the reflections of a point at the plane.
 
         Only works in 3D.
@@ -761,15 +864,15 @@ class Plane(Subspace):
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
         l = self.meet(infty_plane)
         basis = l.basis_matrix
-        l = Line(np.cross(basis[..., 0, :-1], basis[..., 1, :-1]), copy=False)
+        l = LineCollection.from_array(np.cross(basis[..., 0, :-1], basis[..., 1, :-1]))
         p = l.base_point
-        polars = Line(p.array, copy=False)
+        polars = LineCollection.from_array(p.array)
 
         from geometer.curve import absolute_conic
 
         p1, p2 = absolute_conic.intersect(polars)
-        p1 = Point(np.append(p1.array, np.zeros(p1.shape[:-1] + (1,)), axis=-1), copy=False)
-        p2 = Point(np.append(p2.array, np.zeros(p2.shape[:-1] + (1,)), axis=-1), copy=False)
+        p1 = PointCollection.from_array(np.append(p1.array, np.zeros(p1.shape[:-1] + (1,)), axis=-1))
+        p2 = PointCollection.from_array(np.append(p2.array, np.zeros(p2.shape[:-1] + (1,)), axis=-1))
 
         l1 = p1.join(pt)
         l2 = p2.join(pt)
@@ -779,28 +882,15 @@ class Plane(Subspace):
         m2 = q2.join(p1)
         return m1.meet(m2)
 
-    def project(self, pt: Point) -> Point:
-        """The orthogonal projection of points onto the planes.
-
-        Args:
-            pt: The points to project.
-
-        Returns:
-            The projected points.
-
-        """
-        l = self.perpendicular(pt)
-        return self.meet(l)
-
     @overload
-    def perpendicular(self, through: Point) -> Line:
+    def perpendicular(self, through: PointTensor) -> LineTensor:
         ...
 
     @overload
-    def perpendicular(self, through: Line) -> Plane:
+    def perpendicular(self, through: LineTensor) -> PlaneTensor:
         ...
 
-    def perpendicular(self, through: Point | Line) -> Line | Plane:
+    def perpendicular(self, through: PointTensor | LineTensor) -> LineTensor | PlaneTensor:
         """Construct the perpendicular lines though the given points
         or the perpendicular planes through the given lines.
 
@@ -813,12 +903,25 @@ class Plane(Subspace):
             The perpendicular lines or planes.
 
         """
-        if self.dim != 3 and isinstance(through, Line):
+        if self.dim != 3 and isinstance(through, LineTensor):
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
 
         p = self.array[..., :-1]
-        p = Point(np.append(p, np.zeros(p.shape[:-1] + (1,), dtype=p.dtype), axis=-1), copy=False)
+        p = PointCollection.from_array(np.append(p, np.zeros(p.shape[:-1] + (1,), dtype=p.dtype), axis=-1))
         return through.join(p)
+
+    @property
+    def isinf(self) -> npt.NDArray[np.bool_]:
+        """Boolean array that indicates whether the plane is the hyperplane at infinity."""
+        return is_multiple(self.array, infty_hyperplane(self.dim).array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+
+
+class Plane(PlaneTensor, Subspace):
+    pass
+
+
+class PlaneCollection(PlaneTensor, SubspaceCollection[Plane]):
+    _element_class = Plane
 
 
 I = Point([-1j, 1, 0])

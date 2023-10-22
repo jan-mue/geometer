@@ -1,21 +1,42 @@
 from __future__ import annotations
 
+from abc import ABC
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, TypeVar, overload
+from typing import TYPE_CHECKING, Literal, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
 
-from geometer.base import LeviCivitaTensor, ProjectiveTensor, Tensor, TensorDiagram, TensorIndex
+from geometer.base import (
+    BoundTensor,
+    LeviCivitaTensor,
+    ProjectiveTensor,
+    Tensor,
+    TensorCollection,
+    TensorDiagram,
+)
 from geometer.exceptions import NoIncidence
-from geometer.point import Line, Point, Subspace, infty_hyperplane
+from geometer.point import LineTensor, Point, PointTensor, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
+    from typing_extensions import Unpack
+
     from geometer.curve import Conic
+    from geometer.utils.typing import NDArrayParameters, TensorIndex
 
 
-def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> Transformation:
+@overload
+def identity(dim: int, collection_dims: Literal[None] = None) -> Transformation:
+    ...
+
+
+@overload
+def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationCollection:
+    ...
+
+
+def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationTensor:
     """Returns the identity transformation.
 
     Args:
@@ -31,7 +52,7 @@ def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> Transf
         e = np.eye(dim + 1)
         e = e.reshape((1,) * len(collection_dims) + e.shape)
         e = np.tile(e, (*collection_dims, 1, 1))
-        return Transformation(e, copy=False)
+        return TransformationCollection(e, copy=False)
     return Transformation(np.eye(dim + 1), copy=False)
 
 
@@ -68,7 +89,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
     return Transformation(result, copy=False)
 
 
-def rotation(angle: float, axis: Point | None = None) -> Transformation:
+def rotation(angle: float | np.float_, axis: Point | None = None) -> Transformation:
     """Returns a projective transformation that represents a rotation by the specified angle (and axis).
 
     Args:
@@ -122,7 +143,7 @@ def scaling(*factors: npt.ArrayLike) -> Transformation:
         The scaling transformation.
 
     """
-    return affine_transform(np.diag(factors))
+    return affine_transform(np.diag(factors))  # type: ignore[arg-type]
 
 
 def reflection(axis: Subspace) -> Transformation:
@@ -142,7 +163,7 @@ def reflection(axis: Subspace) -> Transformation:
         return identity(axis.dim)
 
     v = axis.array[:-1]
-    v = v / np.linalg.norm(v)
+    v = v / np.linalg.norm(v)  # type: ignore[operator]
 
     p = affine_transform(np.eye(axis.dim) - 2 * outer(v, v.conj()))
 
@@ -154,7 +175,7 @@ def reflection(axis: Subspace) -> Transformation:
     return translation(x) * p * translation(-x)
 
 
-class Transformation(ProjectiveTensor):
+class TransformationTensor(ProjectiveTensor, ABC):
     """Represents a projective transformation in an arbitrary projective space.
 
     The underlying array is the matrix representation of the projective transformation. The matrix must be
@@ -167,15 +188,19 @@ class Transformation(ProjectiveTensor):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         kwargs.setdefault("covariant", [0])
         super().__init__(*args, tensor_rank=2, **kwargs)
+        if self.tensor_shape != (1, 1):
+            raise ValueError(f"Expected tensor of type (1, 1), but is {self.tensor_shape}")
+        if self.shape[-1] != self.shape[-2]:
+            raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
 
-    def __apply__(self, transformation: Transformation) -> Transformation:
-        return Transformation(matmul(transformation.array, self.array), copy=False)
+    def __apply__(self, transformation: TransformationTensor) -> TransformationTensor:
+        return TransformationCollection.from_array(matmul(transformation.array, self.array))
 
     @classmethod
-    def from_points(cls, *args: tuple[Point, Point]) -> Transformation:
+    def from_points(cls, *args: tuple[PointTensor, PointTensor]) -> TransformationTensor:
         """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in
         general position.
 
@@ -196,17 +221,17 @@ class Transformation(ProjectiveTensor):
         b = [y.array for x, y in args]
         m1 = np.column_stack(a[:-1])
         m2 = np.column_stack(b[:-1])
-        d1 = np.linalg.solve(m1, a[-1])
-        d2 = np.linalg.solve(m2, b[-1])
+        d1 = np.linalg.solve(m1, a[-1])  # type: ignore[arg-type]
+        d2 = np.linalg.solve(m2, b[-1])  # type: ignore[arg-type]
         t1 = m1.dot(np.diag(d1))
         t2 = m2.dot(np.diag(d2))
 
-        return Transformation(t2.dot(np.linalg.inv(t1)))
+        return cls(t2.dot(np.linalg.inv(t1)))
 
     @classmethod
     def from_points_and_conics(
-        cls, points1: Sequence[Point], points2: Sequence[Point], conic1: Conic, conic2: Conic
-    ) -> Transformation:
+        cls, points1: Sequence[PointTensor], points2: Sequence[PointTensor], conic1: Conic, conic2: Conic
+    ) -> TransformationTensor:
         """Constructs a projective transformation from two conics and the image of pairs of 3 points on the conics.
 
         Args:
@@ -225,9 +250,9 @@ class Transformation(ProjectiveTensor):
         a1, b1, c1 = points1
         l1, l2 = conic1.tangent(a1), conic1.tangent(b1)
 
-        if not isinstance(l1, Line):
+        if not isinstance(l1, LineTensor):
             raise NoIncidence(f"Point {a1} does not lie on the conic {conic1}.")
-        if not isinstance(l2, Line):
+        if not isinstance(l2, LineTensor):
             raise NoIncidence(f"Point {b1} does not lie on the conic {conic1}.")
 
         m = l1.meet(l2).join(c1)
@@ -237,16 +262,16 @@ class Transformation(ProjectiveTensor):
         a2, b2, c2 = points2
         l1, l2 = conic2.tangent(a2), conic2.tangent(b2)
 
-        if not isinstance(l1, Line):
+        if not isinstance(l1, LineTensor):
             raise NoIncidence(f"Point {a2} does not lie on the conic {conic2}.")
-        if not isinstance(l2, Line):
+        if not isinstance(l2, LineTensor):
             raise NoIncidence(f"Point {b2} does not lie on the conic {conic2}.")
 
         m = l1.meet(l2).join(c2)
         p, q = conic2.intersect(m)
         d2 = p if q == c2 else q
 
-        return Transformation.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
+        return cls.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
 
     T = TypeVar("T", bound=Tensor)
 
@@ -265,7 +290,7 @@ class Transformation(ProjectiveTensor):
         raise NotImplementedError(f"Object of type {type(other)} cannot be transformed.")
 
     @overload
-    def __mul__(self, other: Transformation) -> Transformation:
+    def __mul__(self, other: TransformationTensor) -> TransformationTensor:
         ...
 
     @overload
@@ -284,14 +309,14 @@ class Transformation(ProjectiveTensor):
 
     def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
         if power == 0:
-            if self.cdim == 0:
+            if self.free_indices == 0:
                 return identity(self.dim)
-            return identity(self.dim, self.shape[: self.cdim])
+            return identity(self.dim, self.shape[: self.free_indices])
         if power < 0:
             return self.inverse().__pow__(-power, modulo)
 
         result = super().__pow__(power, modulo)
-        return Transformation(result, copy=False)
+        return type(self)(result, copy=False)
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
@@ -299,13 +324,21 @@ class Transformation(ProjectiveTensor):
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
             return result
 
-        return Transformation(result, copy=False)
+        return TransformationCollection.from_tensor(result)
 
-    def inverse(self) -> Transformation:
+    def inverse(self) -> TransformationTensor:
         """Calculates the inverse projective transformation.
 
         Returns:
             The inverse transformation.
 
         """
-        return Transformation(inv(self.array), copy=False)
+        return type(self)(inv(self.array), copy=False)
+
+
+class Transformation(TransformationTensor, BoundTensor):
+    pass
+
+
+class TransformationCollection(TransformationTensor, TensorCollection[Transformation]):
+    _element_class = Transformation

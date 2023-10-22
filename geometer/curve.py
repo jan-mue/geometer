@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from abc import ABC
 from itertools import combinations
 from typing import TYPE_CHECKING, Union, cast
 
@@ -8,17 +9,42 @@ import numpy as np
 import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
-from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, NDArrayParameters, ProjectiveTensor, Tensor, TensorDiagram
+from geometer.base import (
+    EQ_TOL_ABS,
+    EQ_TOL_REL,
+    BoundTensor,
+    ProjectiveTensor,
+    Tensor,
+    TensorCollection,
+    TensorDiagram,
+)
 from geometer.exceptions import IncidenceError, NotReducible
-from geometer.point import I, J, Line, Plane, Point, Subspace, infty_plane, join
+from geometer.point import (
+    I,
+    J,
+    Line,
+    LineCollection,
+    LineTensor,
+    Plane,
+    PlaneCollection,
+    PlaneTensor,
+    Point,
+    PointCollection,
+    PointTensor,
+    SubspaceTensor,
+    infty_plane,
+    join,
+)
 from geometer.transformation import rotation, translation
 from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
 
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
+    from geometer.utils.typing import NDArrayParameters
 
-class Quadric(ProjectiveTensor):
+
+class QuadricTensor(ProjectiveTensor, ABC):
     r"""Represents a quadric, i.e. the zero set of a polynomial of degree 2, in any dimension.
 
     The quadric is defined by a symmetric matrix of size :math:`n+1` where :math:`n` is the dimension of the projective
@@ -59,19 +85,19 @@ class Quadric(ProjectiveTensor):
         super().__init__(matrix, tensor_rank=2, **kwargs)
 
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
+        if not isinstance(other, PointTensor):
             return super().__add__(other)
 
         return translation(other).apply(self)
 
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        if not isinstance(other, Point):
+        if not isinstance(other, PointTensor):
             return super().__add__(other)
 
         return translation(-other).apply(self)
 
     @classmethod
-    def from_planes(cls, e: Plane, f: Plane) -> Quadric:
+    def from_planes(cls, e: PlaneTensor, f: PlaneTensor) -> QuadricTensor:
         """Construct a degenerate quadric from two hyperplanes.
 
         Args:
@@ -83,9 +109,9 @@ class Quadric(ProjectiveTensor):
         """
         m = outer(e.array, f.array)
         m += m.T
-        return Quadric(m, normalize_matrix=True)
+        return cls(m, normalize_matrix=True)
 
-    def tangent(self, at: Point) -> Plane:
+    def tangent(self, at: PointTensor) -> PlaneTensor:
         """Returns the hyperplane defining the tangent space at a given point.
 
         Args:
@@ -95,9 +121,9 @@ class Quadric(ProjectiveTensor):
             The tangent plane at the given point.
 
         """
-        return Plane(matvec(self.array, at.array), copy=False)
+        return PlaneCollection.from_array(matvec(self.array, at.array))
 
-    def is_tangent(self, plane: Subspace) -> npt.NDArray[np.bool_]:
+    def is_tangent(self, plane: SubspaceTensor) -> npt.NDArray[np.bool_]:
         """Tests if a given hyperplane is tangent to the quadric.
 
         Args:
@@ -109,7 +135,7 @@ class Quadric(ProjectiveTensor):
         """
         return self.dual.contains(plane)
 
-    def contains(self, other: Point | Subspace, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor | SubspaceTensor, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests if a given point lies on the quadric.
 
         Args:
@@ -132,7 +158,7 @@ class Quadric(ProjectiveTensor):
         return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
-    def components(self) -> list[Point | Line | Plane]:
+    def components(self) -> list[PointTensor | LineTensor | PlaneTensor]:
         """The components of a degenerate quadric."""
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
         n = self.shape[-1]
@@ -150,7 +176,7 @@ class Quadric(ProjectiveTensor):
                 [np.delete(np.delete(ind, i, axis=1), i, axis=2) for i in combinations(range(n), n - 2)], axis=1
             )
             minors = det(self.array[..., ind[0], ind[1]])
-            p = csqrt(-minors)
+            p = csqrt(-minors)  # type: ignore[arg-type]
 
         # use the skew symmetric matrix m to get a matrix of rank 1 defining the same quadric
         m = hat_matrix(p)
@@ -168,12 +194,12 @@ class Quadric(ProjectiveTensor):
         p, q = np.real_if_close(p), np.real_if_close(q)
 
         if self.is_dual:
-            return [Point(p, copy=False), Point(q, copy=False)]
+            return [PointCollection.from_array(p), PointCollection.from_array(q)]
         elif n == 3:
-            return [Line(p, copy=False), Line(q, copy=False)]
-        return [Plane(p, copy=False), Plane(q, copy=False)]
+            return [LineCollection.from_array(p), LineCollection.from_array(q)]
+        return [PlaneCollection.from_array(p), PlaneCollection.from_array(q)]
 
-    def intersect(self, other: Line) -> list[Point] | list[Line]:
+    def intersect(self, other: LineTensor) -> list[PointTensor] | list[LineTensor]:
         """Calculates points of intersection of a line with the quadric.
 
         This method also returns complex points of intersection, even if the quadric and the line do not intersect in
@@ -189,9 +215,6 @@ class Quadric(ProjectiveTensor):
           - J. Richter-Gebert: Perspectives on Projective Geometry, Section 11.3
 
         """
-        if not isinstance(other, Line):
-            raise TypeError(f"Expected Line but got {type(other)}")
-
         reducible: bool | np.bool_ = np.all(self.is_degenerate)
         if reducible:
             try:
@@ -203,39 +226,47 @@ class Quadric(ProjectiveTensor):
             if self.dim > 2:
                 arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
 
-                if other.cdim == 0:
+                if isinstance(other, Line):
                     i = arr.nonzero()[0][0]
                     m = Plane(arr[i], copy=False).basis_matrix
                 else:
                     i = np.any(arr, axis=-1).argmax(-1)
-                    m = Plane(arr[(*tuple(np.indices(i.shape)), i)], copy=False).basis_matrix
+                    m = PlaneCollection(arr[(*tuple(np.indices(i.shape)), i)], copy=False).basis_matrix
                 line = other._matrix_transform(m)
-                projected_quadric = Quadric(matmul(matmul(m, self.array), m, transpose_b=True), copy=False)
+                projected_quadric = QuadricCollection.from_array(matmul(matmul(m, self.array), m, transpose_b=True))
                 return [
-                    Point(np.squeeze(matmul(np.expand_dims(point.array, -2), m), -2), copy=False)
+                    PointCollection.from_array(np.squeeze(matmul(np.expand_dims(point.array, -2), m), -2))
                     for point in projected_quadric.intersect(line)
                 ]
             else:
                 m = hat_matrix(other.array)
                 b = matmul(matmul(m, self.array, transpose_a=True), m)
-                p, q = Quadric(b, is_dual=not self.is_dual, copy=False).components
+                p, q = QuadricCollection.from_array(b, is_dual=not self.is_dual).components
         else:
             if self.is_dual:
-                e, f = cast(Point, e), cast(Point, f)
+                e, f = cast(PointTensor, e), cast(PointTensor, f)
                 p, q = e.join(other), f.join(other)
             else:
-                e, f = cast(Union[Line, Plane], e), cast(Union[Line, Plane], f)
+                e, f = cast(Union[LineTensor, PlaneTensor], e), cast(Union[LineTensor, PlaneTensor], f)
                 p, q = e.meet(other), f.meet(other)
 
-        if p.cdim == 0 and p == q:
+        if p.free_indices == 0 and p == q:
             return [p]
 
         return [p, q]
 
     @property
-    def dual(self) -> Quadric:
+    def dual(self) -> QuadricTensor:
         """The dual quadric."""
-        return Quadric(inv(self.array), is_dual=not self.is_dual, copy=False)
+        return type(self)(inv(self.array), is_dual=not self.is_dual, copy=False)
+
+
+class Quadric(QuadricTensor, BoundTensor):
+    pass
+
+
+class QuadricCollection(QuadricTensor, TensorCollection[Quadric]):
+    _element_class = Quadric
 
 
 class Conic(Quadric):
@@ -339,7 +370,7 @@ class Conic(Quadric):
         p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
         p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
         c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)
-        return Conic(np.linalg.inv(c.array), copy=False)
+        return cls(np.linalg.inv(c.array), copy=False)
 
     @classmethod
     def from_crossratio(cls, cr: float, a: Point, b: Point, c: Point, d: Point) -> Conic:
@@ -467,7 +498,13 @@ class Ellipse(Conic):
 
     """
 
-    def __init__(self, center: Point = Point(0, 0), hradius: float = 1, vradius: float = 1, **kwargs) -> None:
+    def __init__(
+        self,
+        center: Point = Point(0, 0),
+        hradius: float = 1,
+        vradius: float = 1,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
         if hradius == vradius == 0:
             raise ValueError("hradius and vradius can not both be zero.")
 
@@ -497,7 +534,7 @@ class Circle(Ellipse):
 
     """
 
-    def __init__(self, center: Point = Point(0, 0), radius: float = 1, **kwargs) -> None:
+    def __init__(self, center: Point = Point(0, 0), radius: float = 1, **kwargs: Unpack[NDArrayParameters]) -> None:
         if radius <= 0:
             raise ValueError(f"radius must be greater than 0, but is {radius}")
         super().__init__(center, radius, radius, **kwargs)

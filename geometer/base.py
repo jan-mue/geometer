@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Iterable, Iterator, Sequence, Sized
+from collections.abc import Iterable, Iterator, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
 
-from geometer.exceptions import TensorComputationError
+from geometer.exceptions import IncompatibleShapeError, TensorComputationError
 from geometer.utils import (
     is_multiple,
     is_numerical_dtype,
@@ -17,32 +17,19 @@ from geometer.utils import (
     posify_index,
     sanitize_index,
 )
-from geometer.utils.math import NumericalDType
+from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
+from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
 
 if TYPE_CHECKING:
-    from typing_extensions import Self, TypeAlias, Unpack
+    from typing_extensions import Self, Unpack
 
-    from geometer.transformation import Transformation
+    from geometer.transformation import TransformationTensor
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
 
-IntegerIndex1D: TypeAlias = Union[int, np.int_, slice, Sequence[int], Sequence[np.int_], npt.NDArray[np.int_]]
-BooleanIndex1D: TypeAlias = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
-TensorIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
-Shape: TypeAlias = tuple[int, ...]
 
-
-class NDArrayParameters(TypedDict, total=False):
-    dtype: npt.DTypeLike
-    copy: bool
-    order: Literal["K", "A", "C", "F"]
-    subok: bool
-    ndim: int
-    like: npt.ArrayLike
-
-
-class Tensor(Sized, Iterable["Tensor"]):
+class Tensor:
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
     Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
@@ -54,7 +41,7 @@ class Tensor(Sized, Iterable["Tensor"]):
             indices of the array will be covariant indices and all others contravariant indices.
             By default, all indices are covariant. If the first argument is a tensor then its indices are copied.
         tensor_rank: If the Tensor object contains multiple tensors, this parameter specifies the rank of the tensors
-            contained in the collection. By default, only a single tensor is contained in a Tensor object.
+            contained in it. By default, only a single tensor is contained in a Tensor object.
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
     Attributes:
@@ -67,7 +54,6 @@ class Tensor(Sized, Iterable["Tensor"]):
     """
 
     array: npt.NDArray[NumericalDType]
-    _collection_indices: set[int]
     _covariant_indices: set[int]
     _contravariant_indices: set[int]
 
@@ -84,7 +70,6 @@ class Tensor(Sized, Iterable["Tensor"]):
         if len(args) == 1:
             if isinstance(args[0], Tensor):
                 self.array = np.array(args[0].array, **kwargs)
-                self._collection_indices = args[0]._collection_indices
                 self._covariant_indices = args[0]._covariant_indices
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
@@ -92,9 +77,6 @@ class Tensor(Sized, Iterable["Tensor"]):
                 self.array = np.array(args[0], **kwargs)
         else:
             self.array = np.array(args, **kwargs)
-
-        if not is_numerical_dtype(self.dtype):
-            raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
 
         if tensor_rank is None:
             tensor_rank = self.rank
@@ -104,11 +86,9 @@ class Tensor(Sized, Iterable["Tensor"]):
         if self.rank < tensor_rank:
             raise ValueError("tensor_rank must be smaller than or equal to the number of array dimensions.")
 
-        n_col = self.rank - tensor_rank
-        self._collection_indices = set(range(n_col))
-
+        n_free_indices = self.rank - tensor_rank
         if covariant is True:
-            self._covariant_indices = set(range(n_col, self.rank))
+            self._covariant_indices = set(range(n_free_indices, self.rank))
         elif covariant is False:
             self._covariant_indices = set()
         else:
@@ -118,11 +98,18 @@ class Tensor(Sized, Iterable["Tensor"]):
                     raise IndexError(f"Index {idx} out of range [{-tensor_rank}, {tensor_rank})")
                 idx = sanitize_index(idx)  # type: ignore[no-untyped-call]
                 idx = posify_index(tensor_rank, idx)  # type: ignore[no-untyped-call]
-                self._covariant_indices.add(n_col + idx)
+                self._covariant_indices.add(n_free_indices + idx)
 
-        self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - self._collection_indices
+        free_indices = set(range(n_free_indices))
+        self._contravariant_indices = set(range(self.rank)) - self._covariant_indices - free_indices
 
-    def __apply__(self, transformation: Transformation) -> Self:
+        self._validate_tensor()
+
+    def _validate_tensor(self) -> None:
+        if not is_numerical_dtype(self.dtype):
+            raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
+
+    def __apply__(self, transformation: TransformationTensor) -> Self:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
@@ -144,9 +131,10 @@ class Tensor(Sized, Iterable["Tensor"]):
         return self.array.dtype
 
     @property
-    def cdim(self) -> int:
-        """Number of collection indices. For single tensors this is always zero."""
-        return len(self._collection_indices)
+    def free_indices(self) -> int:
+        """Number of free indices, i.e. indices that are not covariant and not contravariant."""
+        cov, con = self.tensor_shape
+        return self.rank - (cov + con)
 
     @property
     def tensor_shape(self) -> tuple[int, int]:
@@ -172,16 +160,18 @@ class Tensor(Sized, Iterable["Tensor"]):
             The tensor product.
 
         """
+        if self.free_indices > 0 or other.free_indices > 0:
+            raise NotImplementedError("tensor_product is only implemented for tensors without free indices")
         offset = self.rank
         covariant = list(self._covariant_indices) + [offset + i for i in other._covariant_indices]
         contravariant = list(self._contravariant_indices) + [offset + i for i in other._contravariant_indices]
 
-        result = np.tensordot(self.array, other.array, 0)
+        result = np.tensordot(self.array, other.array, 0)  # type: ignore[arg-type]
         result = np.transpose(result, axes=covariant + contravariant)
         return Tensor(result, covariant=range(len(covariant)), copy=False)
 
     def transpose(self, perm: Iterable[int] | None = None) -> Tensor:
-        """Permute the indices of the tensor.
+        """Permute the indices of the tensor. Free indices are not permuted.
 
         Args:
             perm: A list of permuted indices or a shorter list representing a permutation in cycle notation.
@@ -192,10 +182,11 @@ class Tensor(Sized, Iterable["Tensor"]):
 
         """
         if perm is None:
-            # TODO: don't permute collection indices
-            perm = reversed(range(self.rank))
+            perm = list(range(self.free_indices)) + list(reversed(range(self.free_indices, self.rank)))
+        else:
+            perm = list(perm)
 
-        perm = list(perm)
+        # TODO: check that free indices are not permuted
 
         if len(perm) < self.rank:
             a = list(range(self.rank))
@@ -206,19 +197,15 @@ class Tensor(Sized, Iterable["Tensor"]):
 
         covariant_indices = []
         contravariant_indices = []
-        collection_indices = []
         for i, j in enumerate(perm):
             if j in self._covariant_indices:
                 covariant_indices.append(i)
             elif j in self._contravariant_indices:
                 contravariant_indices.append(i)
-            elif j in self._collection_indices:
-                collection_indices.append(i)
 
         result = Tensor(self.array.transpose(perm), copy=False)
         result._covariant_indices = set(covariant_indices)
         result._contravariant_indices = set(contravariant_indices)
-        result._collection_indices = set(collection_indices)
 
         return result
 
@@ -233,49 +220,6 @@ class Tensor(Sized, Iterable["Tensor"]):
         result.__dict__.update(self.__dict__)
         return result
 
-    def expand_dims(self, axis: int) -> Self:
-        """Add a new index as collection index.
-
-        Args:
-            axis: Position in the new shape where the new axis is placed.
-
-        Returns:
-            The tensor with an additional index.
-
-        """
-        # TODO: return tensor
-        result = self.copy()
-        result.array = np.expand_dims(self.array, axis)
-
-        axis = sanitize_index(axis)  # type: ignore[no-untyped-call]
-        axis = posify_index(self.rank, axis)  # type: ignore[no-untyped-call]
-        result._collection_indices = {i + 1 if i >= axis else i for i in self._collection_indices}
-        result._covariant_indices = {i + 1 if i >= axis else i for i in self._covariant_indices}
-        result._contravariant_indices = {i + 1 if i >= axis else i for i in self._contravariant_indices}
-        result._collection_indices.add(axis)
-
-        return result
-
-    def squeeze(self, axis: int) -> Tensor:
-        """Remove an axis of length one.
-
-        Args:
-            axis: Axis to remove.
-
-        Returns:
-            The tensor without the removed axis.
-
-        """
-        result = self.copy()
-        result.array = np.squeeze(self.array, axis)
-
-        axis = sanitize_index(axis)  # type: ignore[no-untyped-call]
-        axis = posify_index(self.rank, axis)  # type: ignore[no-untyped-call]
-        result._collection_indices = {i - 1 if i > axis else i for i in self._collection_indices if i != axis}
-        result._covariant_indices = {i - 1 if i > axis else i for i in self._covariant_indices if i != axis}
-        result._contravariant_indices = {i - 1 if i > axis else i for i in self._contravariant_indices if i != axis}
-        return result
-
     def is_zero(self, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Test whether the tensor is zero with respect to covariant and contravariant indices.
 
@@ -288,13 +232,10 @@ class Tensor(Sized, Iterable["Tensor"]):
 
         """
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
-        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)  # type: ignore[no-any-return]
+        return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
     def __repr__(self) -> str:
-        class_name = self.__class__.__name__
-        if self.cdim > 0:
-            class_name += "Collection"
-        return f"{class_name}({self.array.tolist()})"
+        return f"{self.__class__.__name__}({self.array.tolist()})"
 
     def _get_index_mapping(self, index: TensorIndex) -> list[int | None]:
         normalized_index = normalize_index(index, self.shape)  # type: ignore[no-untyped-call]
@@ -340,14 +281,11 @@ class Tensor(Sized, Iterable["Tensor"]):
 
         covariant_indices = []
         contravariant_indices = []
-        collection_indices = []
 
         index_mapping = self._get_index_mapping(index)
 
         for new_axis, old_axis in enumerate(index_mapping):
-            if old_axis is None or old_axis in self._collection_indices:
-                collection_indices.append(new_axis)
-            elif old_axis in self._covariant_indices:
+            if old_axis in self._covariant_indices:
                 covariant_indices.append(new_axis)
             elif old_axis in self._contravariant_indices:
                 contravariant_indices.append(new_axis)
@@ -355,7 +293,6 @@ class Tensor(Sized, Iterable["Tensor"]):
         result_tensor = Tensor(result, copy=False)
         result_tensor._covariant_indices = set(covariant_indices)
         result_tensor._contravariant_indices = set(contravariant_indices)
-        result_tensor._collection_indices = set(collection_indices)
 
         return result_tensor
 
@@ -364,23 +301,19 @@ class Tensor(Sized, Iterable["Tensor"]):
             value = value.array
         self.array[key] = value
 
-    def __iter__(self) -> Iterator[Tensor]:
-        for i in range(len(self)):
-            yield self[i]
-
-    def __copy__(self) -> Tensor:
+    def __copy__(self) -> Self:
         return self.copy()
 
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if is_numerical_scalar(other):
-            return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)
+            return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
         if not isinstance(other, Tensor):
             other = Tensor(other, copy=False)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if is_numerical_scalar(other):
-            return self * other
+            return self * other  # type: ignore[operator]
         if not isinstance(other, Tensor):
             other = Tensor(other, copy=False)
         return TensorDiagram((self, other)).calculate()
@@ -403,13 +336,13 @@ class Tensor(Sized, Iterable["Tensor"]):
 
     def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if is_numerical_scalar(other):
-            return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)
+            return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
         return NotImplemented
 
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if isinstance(other, Tensor):
             other = other.array
-        return Tensor(self.array + other, covariant=self._covariant_indices, copy=False)
+        return Tensor(self.array + other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
 
     def __radd__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         return self + other
@@ -417,7 +350,7 @@ class Tensor(Sized, Iterable["Tensor"]):
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if isinstance(other, Tensor):
             other = other.array
-        return Tensor(self.array - other, covariant=self._covariant_indices, copy=False)
+        return Tensor(self.array - other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
 
     def __rsub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         return -self + other
@@ -433,27 +366,147 @@ class Tensor(Sized, Iterable["Tensor"]):
         except TypeError:
             return NotImplemented
 
-    def __len__(self) -> int:
-        return len(self.array)
-
     def __array__(self, dtype: npt.DTypeLike | None = None) -> np.ndarray:
         if dtype and dtype != self.dtype:
             return self.array.astype(dtype)
         return self.array
 
-    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any):
+    def __array_ufunc__(
+        self,
+        ufunc: np.ufunc,
+        method: Literal["__call__", "reduce", "reduceat", "accumulate", "outer", "inner"],
+        *inputs: Any,
+        **kwargs: Any,
+    ) -> Any:
+        return maybe_dispatch_ufunc_to_dunder_op(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(
+        self, func: Callable[..., Any], types: Iterable[type], args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> Any:
         return NotImplemented
 
-    def __array_function__(self, func, types, args, kwargs):
-        return NotImplemented
+
+class BoundTensor(Tensor):
+    """A tensor without free indices."""
+
+    def _validate_tensor(self) -> None:
+        super()._validate_tensor()
+        if self.free_indices != 0:
+            raise IncompatibleShapeError(
+                f"Only tensors without free indices can be used in a {self.__class__.__name__}"
+            )
+
+
+T = TypeVar("T", bound=Tensor)
+
+
+class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
+    """A collection of tensors."""
+
+    _element_class: ClassVar[type[Tensor]] = Tensor
+
+    def __init__(
+        self,
+        *args: Tensor | npt.ArrayLike,
+        covariant: bool | Iterable[int] = True,
+        tensor_rank: int | None = 1,
+        **kwargs: Unpack[NDArrayParameters],
+    ) -> None:
+        super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
+
+    def _validate_tensor(self) -> None:
+        super()._validate_tensor()
+        if self.free_indices == 0:
+            raise IncompatibleShapeError(
+                f"Tensor has no free indices and cannot be used in a {self.__class__.__name__}."
+            )
+
+    @classmethod
+    def from_tensor(cls, tensor: Tensor, **kwargs: Unpack[NDArrayParameters]) -> Self | T:
+        """Construct an object from another tensor. If the tensor has no free indices, an object of type T is returned.
+
+        By default the array in the tensor is not copied.
+
+        Args:
+            tensor: A tensor to use for the new tensor.
+            **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
+        Returns:
+            A new tensor.
+
+        """
+        kwargs.setdefault("copy", False)
+        if tensor.free_indices > 0:
+            return cls(tensor, **kwargs)
+        else:
+            return cls._element_class(tensor, **kwargs)
+
+    @classmethod
+    def from_array(cls, array: npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> Self | T:
+        """Try to construct a new collection from an array. If the rank is too low, an object of type T is returned.
+
+        By default the array is not copied.
+
+        Args:
+            array: A numpy array to use for the new tensor.
+            **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
+
+        Returns:
+            A new tensor.
+
+        """
+        kwargs.setdefault("copy", False)
+        try:
+            return cls(array, **kwargs)
+        except IncompatibleShapeError:
+            return cls._element_class(array, **kwargs)
+
+    def expand_dims(self, axis: int) -> Self:
+        """Add a new index as a free index.
+
+        Args:
+            axis: Position in the new shape where the new axis is placed.
+
+        Returns:
+            The tensor collection with an additional free index.
+
+        """
+        axis = sanitize_index(axis)  # type: ignore[no-untyped-call]
+        axis = posify_index(self.rank + 1, axis)  # type: ignore[no-untyped-call]
+        if axis > self.free_indices:
+            raise ValueError("Free indices can only be inserted at the beginning.")
+
+        result = self.copy()
+        result.array = np.expand_dims(self.array, axis)
+        result._covariant_indices = {i + 1 if i >= axis else i for i in self._covariant_indices}
+        result._contravariant_indices = {i + 1 if i >= axis else i for i in self._contravariant_indices}
+        return result
 
     @property
     def size(self) -> npt.NDArray[np.int_]:
-        """The number of tensors in the tensor, i.e. the product of the size of all collection axes."""
-        return np.prod([self.shape[i] for i in self._collection_indices], dtype=int)
+        """The number of tensors in the tensor collection, i.e. the product of the size of all collection axes."""
+        return np.prod([self.shape[i] for i in range(self.free_indices)], dtype=int)
+
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor):
+            return result
+
+        if result.free_indices > 0:
+            return TensorCollection(result, copy=False)
+
+        return self._element_class(result, copy=False)
+
+    def __len__(self) -> int:
+        return len(self.array)
+
+    def __iter__(self) -> Iterator[T]:
+        for i in range(len(self)):
+            yield self[i]
 
 
-class LeviCivitaTensor(Tensor):
+class LeviCivitaTensor(BoundTensor):
     r"""This class can be used to construct a tensor representing the Levi-Civita symbol.
 
     The Levi-Civita symbol is also called :math:`\varepsilon`-Tensor and is defined as follows:
@@ -494,7 +547,7 @@ class LeviCivitaTensor(Tensor):
         super().__init__(array, covariant=bool(covariant), copy=False)
 
 
-class KroneckerDelta(Tensor):
+class KroneckerDelta(BoundTensor):
     r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
 
     The following generalized definition of the Kronecker delta is used:
@@ -526,7 +579,7 @@ class KroneckerDelta(Tensor):
             array = self._cache[(p, n)]
         elif p == n:
             e = LeviCivitaTensor(n)
-            array = np.tensordot(e.array, e.array, 0)
+            array = np.tensordot(e.array, e.array, 0)  # type: ignore[arg-type]
 
             self._cache[(p, n)] = array
         else:
@@ -567,7 +620,7 @@ class TensorDiagram:
 
     def __init__(self, *edges: tuple[Tensor, Tensor]) -> None:
         self._nodes: list[Tensor] = []
-        self._free_indices: list[tuple[list[int], list[int]]] = []
+        self._unused_indices: list[tuple[list[int], list[int]]] = []
         self._node_positions: list[int] = []
         self._contraction_list: list[tuple[int, int, int, int]] = []
         self._index_count: int = 0
@@ -589,7 +642,7 @@ class TensorDiagram:
         self._node_positions.append(self._index_count)
         self._index_count += node.rank
         ind = (list(node._covariant_indices), list(node._contravariant_indices))
-        self._free_indices.append(ind)
+        self._unused_indices.append(ind)
         return ind
 
     def add_edge(self, source: Tensor, target: Tensor) -> None:
@@ -600,7 +653,7 @@ class TensorDiagram:
             target: The target tensor of the edge in the diagram.
 
         Raises:
-            TensorComputationError: If the tensors have no free indices or the dimensions do not match.
+            TensorComputationError: If the tensors have no unused indices or the dimensions do not match.
 
         """
 
@@ -609,10 +662,10 @@ class TensorDiagram:
         for index, node in enumerate(self._nodes):
             if node is source:
                 source_index = index
-                free_source = self._free_indices[index][0]
+                free_source = self._unused_indices[index][0]
             if node is target:
                 target_index = index
-                free_target = self._free_indices[index][1]
+                free_target = self._unused_indices[index][1]
 
             if source_index is not None and target_index is not None:
                 break
@@ -629,7 +682,7 @@ class TensorDiagram:
                 free_target = self.add_node(target)[1]
 
         if len(free_source) == 0 or len(free_target) == 0:
-            raise TensorComputationError("Could not add the edge because no free indices are left.")
+            raise TensorComputationError("Could not add the edge because no indices are left.")
 
         # Third step: Pick some free indices
         i = free_source.pop(0)
@@ -659,13 +712,13 @@ class TensorDiagram:
         # Split the indices and insert the arrays
         args: list[npt.ArrayLike] = []
         result_indices: tuple[list[int], list[int], list[int]] = ([], [], [])
-        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._free_indices, self._node_positions)):
-            if len(node._collection_indices) > 0:
-                col_ind = sorted(node._collection_indices, reverse=True)
-                for j, k in enumerate(col_ind[: len(result_indices[0])]):
+        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._unused_indices, self._node_positions)):
+            if node.free_indices > 0:
+                free_ind = list(reversed(range(node.free_indices)))
+                for j, k in enumerate(free_ind[: len(result_indices[0])]):
                     indices[offset + k] = result_indices[0][-j - 1]
-                if len(node._collection_indices) > len(result_indices[0]):
-                    for k in col_ind[len(result_indices[0]) :]:
+                if node.free_indices > len(result_indices[0]):
+                    for k in free_ind[len(result_indices[0]) :]:
                         result_indices[0].insert(0, offset + k)
             result_indices[1].extend(offset + x for x in ind[0])
             result_indices[2].extend(offset + x for x in ind[1])
@@ -673,17 +726,17 @@ class TensorDiagram:
             s = slice(offset, self._node_positions[i + 1] if i + 1 < len(self._node_positions) else None)
             args.append(indices[s])
 
-        result = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])
+        result = np.einsum(*args, result_indices[0] + result_indices[1] + result_indices[2])  # type: ignore[arg-type]
 
-        n_col = len(result_indices[0])
+        n_free = len(result_indices[0])
         n_cov = len(result_indices[1])
 
-        return Tensor(result, covariant=range(n_cov), tensor_rank=result.ndim - n_col, copy=False)
+        return Tensor(result, covariant=range(n_cov), tensor_rank=result.ndim - n_free, copy=False)
 
     def copy(self) -> TensorDiagram:
         result = TensorDiagram()
         result._nodes = self._nodes.copy()
-        result._free_indices = self._free_indices.copy()
+        result._unused_indices = self._unused_indices.copy()
         result._node_positions = self._node_positions.copy()
         result._contraction_list = self._contraction_list.copy()
         result._index_count = self._index_count
@@ -715,7 +768,7 @@ class ProjectiveTensor(Tensor, ABC):
 
         if not isinstance(other, Tensor):
             try:
-                other = Tensor(other)
+                other = Tensor(other)  # type: ignore[arg-type]
             except TypeError:
                 return NotImplemented
 

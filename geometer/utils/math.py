@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import math
 from numbers import Number
-from typing import TYPE_CHECKING, Literal, TypedDict, Union
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 import numpy as np
 import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias, TypeGuard, Unpack
+    from typing_extensions import TypeGuard, Unpack
 
-NumericalDType: TypeAlias = Union[np.number, np.bool_]
-NumericalArray: TypeAlias = npt.NDArray[NumericalDType]
-NumericalScalar: TypeAlias = Union[Number, np.number, np.bool_, NumericalArray]  # TODO: restrict array shape
+    from geometer.utils.typing import NumericalDType, NumericalScalar
 
 
 def is_numerical_scalar(element: npt.ArrayLike) -> TypeGuard[NumericalScalar]:
@@ -238,10 +236,10 @@ def det(A: npt.ArrayLike) -> npt.NDArray[np.number]:
     n = A.shape[-1]
 
     if n == 2:
-        return A[..., 0, 0] * A[..., 1, 1] - A[..., 1, 0] * A[..., 0, 1]  # type: ignore[no-any-return]
+        return A[..., 0, 0] * A[..., 1, 1] - A[..., 1, 0] * A[..., 0, 1]
 
     if n == 3 and A.size >= 9 * 64:
-        return (  # type: ignore[no-any-return]
+        return (
             A[..., 0, 0] * A[..., 1, 1] * A[..., 2, 2]
             + A[..., 0, 1] * A[..., 1, 2] * A[..., 2, 0]
             + A[..., 0, 2] * A[..., 1, 0] * A[..., 2, 1]
@@ -250,7 +248,7 @@ def det(A: npt.ArrayLike) -> npt.NDArray[np.number]:
             - A[..., 2, 2] * A[..., 1, 0] * A[..., 0, 1]
         )
 
-    return np.linalg.det(A)  # type: ignore[no-any-return]
+    return np.linalg.det(A)
 
 
 def inv(A: npt.ArrayLike) -> npt.NDArray[np.number]:
@@ -329,7 +327,7 @@ def orth(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.number]:
             raise ValueError("Cannot calculate the image spaces of matrices when the spaces have different dimensions.")
         dim = dims.flat[0]
 
-    return u[..., :dim]  # type: ignore[no-any-return]
+    return u[..., :dim]
 
 
 class UFuncParameters(TypedDict, total=False):
