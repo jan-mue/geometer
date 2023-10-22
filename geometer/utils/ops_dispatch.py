@@ -73,8 +73,7 @@ def maybe_dispatch_ufunc_to_dunder_op(
     *inputs: Any,
     **kwargs: Any,
 ) -> Any:
-    """
-    Dispatch a ufunc to the equivalent dunder method.
+    """Dispatch a ufunc to the equivalent dunder method.
 
     Args:
         obj: The object whose dunder method we dispatch to.

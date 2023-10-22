@@ -201,8 +201,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
     @classmethod
     def from_points(cls, *args: tuple[PointTensor, PointTensor]) -> TransformationTensor:
-        """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in
-        general position.
+        """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in general position.
 
         For two dimensional transformations, 4 pairs of points are required, of which no three points are collinear.
         For three dimensional transformations, 5 pairs of points are required, of which no four points are coplanar.

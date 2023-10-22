@@ -891,8 +891,7 @@ class PlaneTensor(SubspaceTensor):
         ...
 
     def perpendicular(self, through: PointTensor | LineTensor) -> LineTensor | PlaneTensor:
-        """Construct the perpendicular lines though the given points
-        or the perpendicular planes through the given lines.
+        """Construct the perpendicular lines though the given points or the perpendicular planes through the given lines.
 
         Only works for lines in 3D.
 

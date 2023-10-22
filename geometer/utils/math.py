@@ -331,6 +331,8 @@ def orth(A: npt.ArrayLike, dim: int | None = None) -> npt.NDArray[np.number]:
 
 
 class UFuncParameters(TypedDict, total=False):
+    """Keyword parameters for numpy's ufuncs."""
+
     where: npt.NDArray[np.bool_]
     axes: list[tuple[int]]
     axis: int

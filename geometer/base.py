@@ -138,8 +138,11 @@ class Tensor:
 
     @property
     def tensor_shape(self) -> tuple[int, int]:
-        """The shape or type of the tensor, the first number is the number of
-        covariant indices, the second the number of contravariant indices."""
+        """The shape or type of the tensor.
+
+        The first number is the number of covariant indices, the second the number of contravariant indices.
+
+        """
         return len(self._covariant_indices), len(self._contravariant_indices)
 
     @property
@@ -656,7 +659,6 @@ class TensorDiagram:
             TensorComputationError: If the tensors have no unused indices or the dimensions do not match.
 
         """
-
         # First step: Find nodes if they are already in the diagram
         source_index, target_index = None, None
         for index, node in enumerate(self._nodes):

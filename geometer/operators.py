@@ -51,7 +51,6 @@ def crossratio(
         NotCollinear: If four points are supplied that are not collinear.
 
     """
-
     if a == b:
         return np.ones(a.shape[: a.free_indices])
 

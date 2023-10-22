@@ -33,7 +33,9 @@ if TYPE_CHECKING:
 
 
 class PolytopeTensor(PointLikeTensor, ABC):
-    """A class representing polytopes in arbitrary dimension. A (n+1)-polytope is a collection of n-polytopes that
+    """A class representing polytopes in arbitrary dimension.
+
+    A (n+1)-polytope is a collection of n-polytopes that
     have some (n-1)-polytopes in common, where 3-polytopes are polyhedra, 2-polytopes are polygons, 1-polytopes are
     line segments and 0-polytopes are points.
 

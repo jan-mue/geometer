@@ -79,6 +79,7 @@ select = [
     "PT", # flake8-pytest-style
     "PL", # pylint
     "RUF", # ruff-specific rules
+    "D", # pydocstyle
 ]
 ignore = [
     "E501", # line too long, handled by black
@@ -93,6 +94,14 @@ ignore = [
     "PLR5501", # use `elif` instead of `else` then `if`, to reduce indentation
     "PLR0124", # name compared with itself, required to check custom __eq__
     "PLC0105", # type var naming according to variance
+    "D100", # Missing docstring in public module
+    "D101", # TODO: fix
+    "D102", # TODO: fix
+    "D103", # TODO: fix
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in `__init__`
+    "D417", # TODO: fix
 ]
 unfixable = []
 exclude = [
@@ -101,12 +110,16 @@ exclude = [
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
+"tests/**" = ["D"]
 
 [tool.ruff.isort]
 known-first-party = ["geometer"]
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
+
+[tool.ruff.pydocstyle]
+convention = "google"
 
 [tool.mypy]
 plugins = ["numpy.typing.mypy_plugin"]
