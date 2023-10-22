@@ -89,7 +89,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
     return Transformation(result, copy=False)
 
 
-def rotation(angle: float, axis: Point | None = None) -> Transformation:
+def rotation(angle: float | np.float_, axis: Point | None = None) -> Transformation:
     """Returns a projective transformation that represents a rotation by the specified angle (and axis).
 
     Args:
@@ -143,7 +143,7 @@ def scaling(*factors: npt.ArrayLike) -> Transformation:
         The scaling transformation.
 
     """
-    return affine_transform(np.diag(factors))
+    return affine_transform(np.diag(factors))  # type: ignore[arg-type]
 
 
 def reflection(axis: Subspace) -> Transformation:
@@ -163,14 +163,14 @@ def reflection(axis: Subspace) -> Transformation:
         return identity(axis.dim)
 
     v = axis.array[:-1]
-    v = v / np.linalg.norm(v)
+    v = v / np.linalg.norm(v)  # type: ignore[operator]
 
     p = affine_transform(np.eye(axis.dim) - 2 * outer(v, v.conj()))
 
     base = axis.basis_matrix
     ind = base[:, -1].nonzero()[0][0]
     x = base[ind, :-1] / base[ind, -1]
-    x = PointTensor(*x)
+    x = Point(*x)
 
     return translation(x) * p * translation(-x)
 
@@ -191,9 +191,13 @@ class TransformationTensor(ProjectiveTensor, ABC):
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         kwargs.setdefault("covariant", [0])
         super().__init__(*args, tensor_rank=2, **kwargs)
+        if self.tensor_shape != (1, 1):
+            raise ValueError(f"Expected tensor of type (1, 1), but is {self.tensor_shape}")
+        if self.shape[-1] != self.shape[-2]:
+            raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
 
     def __apply__(self, transformation: TransformationTensor) -> TransformationTensor:
-        return TransformationTensor(matmul(transformation.array, self.array), copy=False)
+        return TransformationCollection.from_array(matmul(transformation.array, self.array))
 
     @classmethod
     def from_points(cls, *args: tuple[PointTensor, PointTensor]) -> TransformationTensor:
@@ -217,8 +221,8 @@ class TransformationTensor(ProjectiveTensor, ABC):
         b = [y.array for x, y in args]
         m1 = np.column_stack(a[:-1])
         m2 = np.column_stack(b[:-1])
-        d1 = np.linalg.solve(m1, a[-1])
-        d2 = np.linalg.solve(m2, b[-1])
+        d1 = np.linalg.solve(m1, a[-1])  # type: ignore[arg-type]
+        d2 = np.linalg.solve(m2, b[-1])  # type: ignore[arg-type]
         t1 = m1.dot(np.diag(d1))
         t2 = m2.dot(np.diag(d2))
 
@@ -312,13 +316,15 @@ class TransformationTensor(ProjectiveTensor, ABC):
             return self.inverse().__pow__(-power, modulo)
 
         result = super().__pow__(power, modulo)
-        return TransformationTensor(result, copy=False)
+        return type(self)(result, copy=False)
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
             return result
+
+        # TODO: fix
 
         return TransformationTensor(result, copy=False)
 
@@ -329,7 +335,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
             The inverse transformation.
 
         """
-        return TransformationTensor(inv(self.array), copy=False)
+        return type(self)(inv(self.array), copy=False)
 
 
 class Transformation(TransformationTensor, BoundTensor):

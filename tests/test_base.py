@@ -42,15 +42,6 @@ class TestTensor:
         a = Tensor(2, 3, dtype=np.complex64)
         assert a.dtype == np.complex64
 
-    def test_expand_dims(self):
-        a = Tensor([[1, 2], [3, 4]], covariant=[0])
-        b = a.expand_dims(0)
-
-        assert b.shape == (1, 2, 2)
-        assert b[0] == a
-        assert b.squeeze(0) == a
-        assert b.squeeze(0).tensor_shape == a.tensor_shape
-
 
 class TestTensorCollection:
     def test_init(self):
@@ -94,6 +85,23 @@ class TestTensorCollection:
         assert list(c) == [a, b]
         assert c[:, 1] == Tensor([Tensor([3, 4]), Tensor([7, 8])], tensor_rank=1)
         assert c[:, 0, 0] == [1, 5]
+
+    def test_expand_dims(self):
+        a = TensorCollection[Tensor]([[1, 2], [3, 4]])
+        b = a.expand_dims(0)
+
+        assert b.shape == (1, 2, 2)
+        assert b[0] == a
+
+        c = a.expand_dims(-2)
+
+        assert c.shape == (2, 1, 2)
+        assert c[:, 0, :] == a
+
+        d = a.expand_dims(-3)
+
+        assert d.shape == (1, 2, 2)
+        assert d[0] == a
 
 
 class TestTensorDiagram:

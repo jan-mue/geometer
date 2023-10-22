@@ -45,3 +45,7 @@ class LinearDependenceError(GeometryException, ValueError):
 
 class NotReducible(GeometryException, ValueError):
     """The given geometric object is not reducible."""
+
+
+class IncompatibleShapeError(ValueError):
+    """The given tensor has a shape that is not compatible."""

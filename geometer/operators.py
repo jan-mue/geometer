@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -11,9 +11,12 @@ from geometer.exceptions import NotCollinear, NotConcurrent
 from geometer.point import (
     I,
     J,
+    LineCollection,
     LineTensor,
+    PlaneCollection,
     PlaneTensor,
     Point,
+    PointCollection,
     PointTensor,
     SubspaceTensor,
     infty,
@@ -22,6 +25,9 @@ from geometer.point import (
     meet,
 )
 from geometer.utils import det, matvec, orth
+
+if TYPE_CHECKING:
+    from geometer.shapes import PolytopeTensor
 
 
 def crossratio(
@@ -69,7 +75,7 @@ def crossratio(
     ):
         l = a.meet(b)
         l = cast(LineTensor, l)
-        e = PlaneTensor(l.direction.array, copy=False)
+        e = PlaneCollection.from_array(l.direction.array)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix
         p = e.meet(l)
@@ -192,10 +198,10 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
         if isinstance(x, PlaneTensor) and isinstance(y, PlaneTensor):
             l = x.meet(y)
             p = l.meet(infty_plane)
-            polar = LineTensor(p.array[..., :-1], copy=False)
+            polar = LineCollection.from_array(p.array[..., :-1])
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [
-                PointTensor(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False)
+                PointCollection.from_array(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1))
                 for p in tangent_points
             ]
             i = l.join(p.join(tangent_points[0]))
@@ -256,8 +262,8 @@ def angle_bisectors(l: LineTensor, m: LineTensor) -> tuple[LineTensor, LineTenso
     a, b = np.expand_dims(a, -1), np.expand_dims(b, -1)
     r, s = a * i + b * j, a * i - b * j
 
-    r = PointTensor(r, copy=False)
-    s = PointTensor(s, copy=False)
+    r = PointCollection.from_array(r)
+    s = PointCollection.from_array(s)
 
     if o.dim > 2:
         r = r._matrix_transform(np.swapaxes(basis, -1, -2))
@@ -266,7 +272,30 @@ def angle_bisectors(l: LineTensor, m: LineTensor) -> tuple[LineTensor, LineTenso
     return join(o, r), join(o, s)
 
 
-def dist(p: PointTensor | SubspaceTensor, q: PointTensor | SubspaceTensor) -> npt.NDArray[np.float_]:
+def _point_dist(p: PointTensor, q: PointTensor) -> npt.NDArray[np.float_]:
+    if p.dim > 2:
+        x = np.stack(np.broadcast_arrays(p.normalized_array, q.normalized_array), axis=-2)
+        z = x[..., -1]
+
+        m = orth(np.swapaxes(x, -1, -2), 2)
+        x = np.matmul(x, m)
+        x = np.concatenate([x, np.expand_dims(z, -1)], axis=-1)
+        p, q, i, j = np.broadcast_arrays(x[..., 0, :], x[..., 1, :], I.array, J.array)
+    else:
+        p, q, i, j = np.broadcast_arrays(p.array, q.array, I.array, J.array)
+
+    pqi = det(np.stack([p, q, i], axis=-2))
+    pqj = det(np.stack([p, q, j], axis=-2))
+    pij = det(np.stack([p, i, j], axis=-2))
+    qij = det(np.stack([q, i, j], axis=-2))
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return 4 * np.abs(np.sqrt(pqi * pqj) / (pij * qij))
+
+
+def dist(
+    p: PointTensor | SubspaceTensor | PolytopeTensor, q: PointTensor | SubspaceTensor | PolytopeTensor
+) -> npt.NDArray[np.float_]:
     r"""Calculates the (euclidean) distance between two objects.
 
     Instead of the usual formula for the euclidean distance this function uses
@@ -288,17 +317,27 @@ def dist(p: PointTensor | SubspaceTensor, q: PointTensor | SubspaceTensor) -> np
     if p == q:
         return np.zeros(p.shape[: p.free_indices])
 
+    if isinstance(p, PointTensor) and isinstance(q, PointTensor):
+        return _point_dist(p, q)
     if isinstance(p, SubspaceTensor) and isinstance(q, PointTensor):
         return dist(p.project(q), q)
     if isinstance(p, PointTensor) and isinstance(q, SubspaceTensor):
         return dist(q.project(p), p)
+    if isinstance(p, SubspaceTensor) and isinstance(q, PlaneTensor):
+        return dist(q, p)
+    if isinstance(p, PlaneTensor) and isinstance(q, LineTensor):
+        return dist(p, q.base_point)
     if isinstance(p, PlaneTensor) and isinstance(q, SubspaceTensor):
-        return dist(p, PointTensor(q.basis_matrix[0, :], copy=False))
-    if isinstance(q, PlaneTensor) and isinstance(p, LineTensor):
-        return dist(q, p.base_point)
+        return dist(p, PointCollection.from_array(q.basis_matrix[0, :]))
 
     from geometer.shapes import PolygonTensor, PolyhedronTensor, SegmentTensor
 
+    if isinstance(p, PointTensor) and isinstance(q, SegmentTensor):
+        return dist(q, p)
+    if isinstance(p, SegmentTensor) and isinstance(q, PointTensor):
+        result = np.min([dist(v, q) for v in p.vertices], axis=0)
+        r = p._line.project(q)
+        return np.where(p.contains(r), dist(r, q), result)
     if isinstance(p, PointTensor) and isinstance(q, PolygonTensor):
         return dist(q, p)
     if isinstance(p, PolygonTensor) and isinstance(q, PointTensor):
@@ -311,34 +350,8 @@ def dist(p: PointTensor | SubspaceTensor, q: PointTensor | SubspaceTensor) -> np
         return dist(q, p)
     if isinstance(p, PolyhedronTensor) and isinstance(q, PointTensor):
         return np.min([dist(f, q) for f in p.faces], axis=0)
-    if isinstance(p, PointTensor) and isinstance(q, SegmentTensor):
-        return dist(q, p)
-    if isinstance(p, SegmentTensor) and isinstance(q, PointTensor):
-        result = np.min([dist(v, q) for v in p.vertices], axis=0)
-        r = p._line.project(q)
-        return np.where(p.contains(r), dist(r, q), result)
 
-    if not isinstance(p, PointTensor) or not isinstance(q, PointTensor):
-        raise TypeError(f"Unsupported types {type(p)} and {type(q)}.")
-
-    if p.dim > 2:
-        x = np.stack(np.broadcast_arrays(p.normalized_array, q.normalized_array), axis=-2)
-        z = x[..., -1]
-
-        m = orth(np.swapaxes(x, -1, -2), 2)
-        x = np.matmul(x, m)
-        x = np.concatenate([x, np.expand_dims(z, -1)], axis=-1)
-        p, q, i, j = np.broadcast_arrays(x[..., 0, :], x[..., 1, :], I.array, J.array)
-    else:
-        p, q, i, j = np.broadcast_arrays(p.array, q.array, I.array, J.array)
-
-    pqi = det(np.stack([p, q, i], axis=-2))
-    pqj = det(np.stack([p, q, j], axis=-2))
-    pij = det(np.stack([p, i, j], axis=-2))
-    qij = det(np.stack([q, i, j], axis=-2))
-
-    with np.errstate(divide="ignore", invalid="ignore"):
-        return 4 * np.abs(np.sqrt(pqi * pqj) / (pij * qij))
+    raise TypeError(f"Unsupported types {type(p)} and {type(q)}.")
 
 
 def is_cocircular(
@@ -398,10 +411,11 @@ def is_perpendicular(
     elif isinstance(l, PlaneTensor) and isinstance(m, PlaneTensor):
         x = l.meet(m)
         p = x.meet(infty_plane)
-        polar = LineTensor(p.array[..., :-1], copy=False)
+        polar = LineCollection.from_array(p.array[..., :-1])
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [
-            PointTensor(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1), copy=False) for p in tangent_points
+            PointCollection.from_array(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1))
+            for p in tangent_points
         ]
         i = x.join(p.join(tangent_points[0]))
         j = x.join(p.join(tangent_points[1]))
@@ -410,7 +424,7 @@ def is_perpendicular(
     else:
         raise NotImplementedError("Only two lines or two planes are supported.")
 
-    return np.isclose(crossratio(L, M, I, J, PointTensor(1, 1)), -1, rtol, atol)
+    return np.isclose(crossratio(L, M, I, J, Point(1, 1)), -1, rtol, atol)
 
 
 def is_coplanar(*args: PointTensor | LineTensor, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
