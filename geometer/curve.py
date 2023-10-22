@@ -25,6 +25,7 @@ from geometer.point import (
     Line,
     LineCollection,
     LineTensor,
+    Plane,
     PlaneCollection,
     PlaneTensor,
     Point,
@@ -225,12 +226,12 @@ class QuadricTensor(ProjectiveTensor, ABC):
             if self.dim > 2:
                 arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
 
-                if other.free_indices == 0:
+                if isinstance(other, Line):
                     i = arr.nonzero()[0][0]
-                    m = PlaneCollection.from_array(arr[i]).basis_matrix
+                    m = Plane(arr[i], copy=False).basis_matrix
                 else:
                     i = np.any(arr, axis=-1).argmax(-1)
-                    m = PlaneCollection.from_array(arr[(*tuple(np.indices(i.shape)), i)]).basis_matrix
+                    m = PlaneCollection(arr[(*tuple(np.indices(i.shape)), i)], copy=False).basis_matrix
                 line = other._matrix_transform(m)
                 projected_quadric = QuadricCollection.from_array(matmul(matmul(m, self.array), m, transpose_b=True))
                 return [

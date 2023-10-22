@@ -439,14 +439,6 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     def join(self, *others: PointTensor | SubspaceTensor) -> SubspaceTensor:
         return join(self, *others)
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
-            return result
-
-        return type(self)(result, copy=False)
-
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointTensor):
             return super().__add__(other)
@@ -498,7 +490,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
         x = self.meet(infty_hyperplane(self.dim))
         return join(x, through)
 
-    def contains(self, other: PointTensor | SubspaceTensor, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
+    def contains(self, other: PointTensor | LineTensor, tol: float = EQ_TOL_ABS) -> npt.NDArray[np.bool_]:
         """Tests whether given points or lines lie in the subspaces.
 
         Args:
@@ -511,13 +503,10 @@ class SubspaceTensor(ProjectiveTensor, ABC):
         """
         if isinstance(other, PointTensor):
             result = self * other
-
         elif isinstance(other, LineTensor):
             result = self * other.covariant_tensor
-
         else:
-            # TODO: test subspace
-            raise ValueError(f"argument of type {type(other)} not supported")
+            raise TypeError(f"argument of type {type(other)} not supported")
 
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
@@ -607,6 +596,14 @@ class LineTensor(SubspaceTensor, ABC):
             raise ValueError(f"Unexpected tensor of type {self.tensor_shape}")
         if self.dim == 3 and self.shape[-1] != self.shape[-2]:
             raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
+
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
+            return result
+
+        return LineCollection.from_tensor(result)
 
     def _matrix_transform(self, m: npt.ArrayLike) -> LineTensor:
         result = super()._matrix_transform(m)
@@ -750,7 +747,7 @@ class LineTensor(SubspaceTensor, ABC):
             return result._matrix_transform(np.swapaxes(m, -1, -2))
         return result
 
-    def perpendicular(self, through: PointTensor, plane: SubspaceTensor | None = None) -> LineTensor:
+    def perpendicular(self, through: PointTensor, plane: PlaneTensor | None = None) -> LineTensor:
         """Construct the perpendicular line though a point.
 
         Args:
@@ -774,7 +771,7 @@ class LineTensor(SubspaceTensor, ABC):
                 if plane is None:
                     # additional point is required to determine the exact line
                     plane = join(l, l.general_point)
-                elif plane.free_indices > 0:
+                elif isinstance(plane, PlaneCollection):
                     plane = plane[contains]
 
                 basis = plane.basis_matrix
@@ -827,6 +824,14 @@ class PlaneTensor(SubspaceTensor):
             super().__init__(*args, **kwargs)
         if self.tensor_shape != (0, 1):
             raise ValueError(f"Expected tensor of type (0, 1), but is {self.tensor_shape}")
+
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != (0, 1):
+            return result
+
+        return PlaneCollection.from_tensor(result)
 
     @property
     def basis_matrix(self) -> np.ndarray:

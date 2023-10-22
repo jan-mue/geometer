@@ -324,9 +324,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
         if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
             return result
 
-        # TODO: fix
-
-        return TransformationTensor(result, copy=False)
+        return TransformationCollection.from_tensor(result)
 
     def inverse(self) -> TransformationTensor:
         """Calculates the inverse projective transformation.

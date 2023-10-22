@@ -207,9 +207,7 @@ class SegmentTensor(PolytopeTensor):
         if not isinstance(result, Tensor) or result.rank < 2 or result.shape[-2] != 2:
             return result
 
-        # TODO: fix
-
-        return SegmentTensor(result, copy=False)
+        return SegmentCollection.from_tensor(result)
 
     @property
     def vertices(self) -> list[PointTensor]:
