@@ -135,7 +135,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
             except NotCoplanar:
                 return PolytopeCollection.from_tensor(tensor)
         if pdim == 3:
-            return PolyhedronCollection.from_tensor(tensor)
+            return Polyhedron(tensor, copy=False)
 
         return PolytopeCollection.from_tensor(tensor)
 
@@ -264,7 +264,7 @@ class SegmentTensor(PolytopeTensor):
         return result & (~x_zero | ~y_zero) & (0 <= x + tol) & (x <= y + tol)
 
     def intersect(
-        self, other: LineTensor | PlaneTensor | SegmentTensor | PolygonTensor | PolyhedronTensor
+        self, other: LineTensor | PlaneTensor | SegmentTensor | PolygonTensor | Polyhedron
     ) -> list[PointTensor]:
         """Intersect the line segment with another object.
 
@@ -275,7 +275,7 @@ class SegmentTensor(PolytopeTensor):
             The points of intersection.
 
         """
-        if isinstance(other, (PolygonTensor, PolyhedronTensor)):
+        if isinstance(other, (PolygonTensor, Polyhedron)):
             return other.intersect(self)
 
         if isinstance(other, SegmentTensor):
@@ -330,7 +330,7 @@ class Simplex(Polytope):
     # TODO: return only instances of type Simplex
     def __new__(cls, *args: Point, **kwargs: Unpack[NDArrayParameters]) -> PolytopeTensor:
         if len(args) == 2:
-            return SegmentTensor(*args, **kwargs)
+            return Segment(*args, **kwargs)
 
         return super(PolytopeTensor, cls).__new__(cls)
 
@@ -507,7 +507,8 @@ class PolygonTensor(PolytopeTensor):
                 result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other._line)
                 return list(
                     result[
-                        PolygonTensor(self[~e.dependent_values], copy=False).contains(result) & other.contains(result)
+                        PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)
+                        & other.contains(result)
                     ]
                 )
             else:
@@ -519,7 +520,7 @@ class PolygonTensor(PolytopeTensor):
             if other.free_indices > 0:
                 other = other[~e.dependent_values]
             result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other)
-            return list(result[PolygonTensor(self[~e.dependent_values], copy=False).contains(result)])
+            return list(result[PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)])
         else:
             return list(result[self.contains(result)])
 
@@ -528,7 +529,7 @@ class PolygonTensor(PolytopeTensor):
 
         if self.dim > 2:
             e = self._plane
-            o = PointTensor(*[0] * self.dim)
+            o = Point(*[0] * self.dim)
             if e.free_indices > 0:
                 ind = ~e.contains(o)
                 e[ind] = cast(PlaneTensor, e[ind]).parallel(o)
@@ -611,9 +612,9 @@ class RegularPolygon(Polygon):
         return dist(self.center, self.vertices[0])
 
     @property
-    def center(self) -> PointTensor:
+    def center(self) -> Point:
         """The center of the polygon."""
-        return PointTensor(*np.sum(self.normalized_array[:, :-1], axis=0))
+        return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
 
     @property
     def inradius(self) -> npt.NDArray[np.float_]:
@@ -687,7 +688,7 @@ class Rectangle(Polygon):
         assert self.shape[-2] == 4, "Unexpected number of vertices."
 
 
-class PolyhedronTensor(PolytopeTensor):
+class Polyhedron(Polytope):
     """A class representing polyhedra (3-polytopes)."""
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
@@ -702,7 +703,7 @@ class PolyhedronTensor(PolytopeTensor):
     def edges(self) -> list[SegmentTensor]:
         """The edges of the polyhedron."""
         result = self._edges
-        return list(distinct(SegmentTensor(result[idx], copy=False) for idx in np.ndindex(*self.shape[:2])))
+        return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(*self.shape[:2])))
 
     @property
     def area(self) -> npt.NDArray[np.float_] | np.float_:
@@ -720,14 +721,6 @@ class PolyhedronTensor(PolytopeTensor):
 
         """
         return list(distinct(self.faces.intersect(other)))
-
-
-class Polyhedron(PolyhedronTensor, Polytope):
-    pass
-
-
-class PolyhedronCollection(PolyhedronTensor, PolytopeCollection[Polyhedron]):
-    _element_class = Polyhedron
 
 
 class Cuboid(Polyhedron):

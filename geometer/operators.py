@@ -330,7 +330,7 @@ def dist(
     if isinstance(p, PlaneTensor) and isinstance(q, SubspaceTensor):
         return dist(p, PointCollection.from_array(q.basis_matrix[0, :]))
 
-    from geometer.shapes import PolygonTensor, PolyhedronTensor, SegmentTensor
+    from geometer.shapes import PolygonTensor, Polyhedron, SegmentTensor
 
     if isinstance(p, PointTensor) and isinstance(q, SegmentTensor):
         return dist(q, p)
@@ -346,9 +346,9 @@ def dist(
             r = p._plane.project(q)
             return np.where(p.contains(r), dist(r, q), result)
         return result
-    if isinstance(p, PointTensor) and isinstance(q, PolyhedronTensor):
+    if isinstance(p, PointTensor) and isinstance(q, Polyhedron):
         return dist(q, p)
-    if isinstance(p, PolyhedronTensor) and isinstance(q, PointTensor):
+    if isinstance(p, Polyhedron) and isinstance(q, PointTensor):
         return np.min([dist(f, q) for f in p.faces], axis=0)
 
     raise TypeError(f"Unsupported types {type(p)} and {type(q)}.")

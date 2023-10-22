@@ -31,7 +31,6 @@ from geometer.shapes import (
     Polygon,
     PolygonCollection,
     Polyhedron,
-    PolyhedronCollection,
     Rectangle,
     RegularPolygon,
     Segment,
