@@ -1,9 +1,0 @@
-{
-    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-    "packages": {
-        ".": {
-            "changelog-path": "docs/changelog.rst",
-            "release-type": "python"
-        }
-    }
-}

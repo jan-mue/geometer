@@ -15,4 +15,5 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          config-file: .github/release-please-config.json
+          changelog-path: docs/changelog.rst
+          release-type: python
