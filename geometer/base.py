@@ -69,14 +69,14 @@ class Tensor:
 
         if len(args) == 1:
             if isinstance(args[0], Tensor):
-                self.array = np.array(args[0].array, **kwargs)
+                self.array = np.array(args[0].array, **kwargs)  # type: ignore[call-overload]
                 self._covariant_indices = args[0]._covariant_indices
                 self._contravariant_indices = args[0]._contravariant_indices
                 return
             else:
-                self.array = np.array(args[0], **kwargs)
+                self.array = np.array(args[0], **kwargs)  # type: ignore[call-overload]
         else:
-            self.array = np.array(args, **kwargs)
+            self.array = np.array(args, **kwargs)  # type: ignore[call-overload]
 
         if tensor_rank is None:
             tensor_rank = self.rank
@@ -271,7 +271,8 @@ class Tensor:
             # create advanced indices in front
             for i in advanced_indices:
                 index_mapping.remove(i)
-            return [None] * b.ndim + index_mapping
+            new_indices: list[int | None] = [None] * b.ndim
+            return new_indices + index_mapping
         else:
             # replace indices with broadcast shape
             return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
@@ -365,7 +366,7 @@ class Tensor:
         if isinstance(other, Tensor):
             other = other.array
         try:
-            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
+            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)  # type: ignore[arg-type]
         except TypeError:
             return NotImplemented
 
@@ -442,7 +443,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         if tensor.free_indices > 0:
             return cls(tensor, **kwargs)
         else:
-            return cls._element_class(tensor, **kwargs)
+            return cls._element_class(tensor, **kwargs)  # type: ignore[return-value]
 
     @classmethod
     def from_array(cls, array: npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> Self | T:
@@ -462,7 +463,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         try:
             return cls(array, **kwargs)
         except IncompatibleShapeError:
-            return cls._element_class(array, **kwargs)
+            return cls._element_class(array, **kwargs)  # type: ignore[return-value]
 
     def expand_dims(self, axis: int) -> Self:
         """Add a new index as a free index.

@@ -43,7 +43,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
     number of vertices and facets.
 
     Args:
-        *args: The polytopes defining the facets ot the polytope.
+        *args: The polytopes defining the facets of the polytope.
         pdim: The dimension of the polytope. Default is 0, i.e. an instance of this class is a point.
         **kwargs: Additional keyword arguments for the constructor of the numpy array as defined in `numpy.array`.
 
@@ -300,7 +300,7 @@ class SegmentTensor(PolytopeTensor):
         return harmonic_set(*self.vertices, l)
 
     @property
-    def length(self) -> npt.NDArray[np.float_]:
+    def length(self) -> npt.NDArray[np.float64]:
         """The length of the segment."""
         return dist(*self.vertices)
 
@@ -544,14 +544,14 @@ class PolygonTensor(PolytopeTensor):
         return self._normalize_array(points)
 
     @property
-    def area(self) -> npt.NDArray[np.float_]:
+    def area(self) -> npt.NDArray[np.float64]:
         """The area of the polygon."""
         points = self._normalized_projection()
         a = sum(det(points[..., [0, i, i + 1], :]) for i in range(1, points.shape[-2] - 1))
         return 1 / 2 * np.abs(a)
 
     @property
-    def angles(self) -> list[npt.NDArray[np.float_]]:
+    def angles(self) -> list[npt.NDArray[np.float64]]:
         """The interior angles of the polygon."""
         result = []
         a = cast(SegmentTensor, self.edges[-1])
@@ -609,7 +609,7 @@ class RegularPolygon(Polygon):
         super().__init__(*vertices, **kwargs)
 
     @property
-    def radius(self) -> npt.NDArray[np.float_]:
+    def radius(self) -> npt.NDArray[np.float64]:
         """The circumradius of the regular polygon."""
         return dist(self.center, self.vertices[0])
 
@@ -619,7 +619,7 @@ class RegularPolygon(Polygon):
         return Point(*np.sum(self.normalized_array[:, :-1], axis=0))
 
     @property
-    def inradius(self) -> npt.NDArray[np.float_]:
+    def inradius(self) -> npt.NDArray[np.float64]:
         """The inradius of the regular polygon."""
         return dist(self.center, cast(SegmentTensor, self.edges[0]).midpoint)
 
@@ -708,7 +708,7 @@ class Polyhedron(Polytope):
         return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(*self.shape[:2])))
 
     @property
-    def area(self) -> npt.NDArray[np.float_] | np.float_:
+    def area(self) -> npt.NDArray[np.float64] | np.float64:
         """The surface area of the polyhedron."""
         return np.sum(self.faces.area)
 

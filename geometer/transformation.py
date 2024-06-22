@@ -16,7 +16,7 @@ from geometer.base import (
     TensorDiagram,
 )
 from geometer.exceptions import NoIncidence
-from geometer.point import LineTensor, Point, PointTensor, Subspace, infty_hyperplane
+from geometer.point import LineTensor, Point, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
@@ -27,13 +27,11 @@ if TYPE_CHECKING:
 
 
 @overload
-def identity(dim: int, collection_dims: Literal[None] = None) -> Transformation:
-    ...
+def identity(dim: int, collection_dims: Literal[None] = None) -> Transformation: ...
 
 
 @overload
-def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationCollection:
-    ...
+def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationCollection: ...
 
 
 def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationTensor:
@@ -89,7 +87,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
     return Transformation(result, copy=False)
 
 
-def rotation(angle: float | np.float_, axis: Point | None = None) -> Transformation:
+def rotation(angle: float | np.float64, axis: Point | None = None) -> Transformation:
     """Returns a projective transformation that represents a rotation by the specified angle (and axis).
 
     Args:
@@ -199,8 +197,70 @@ class TransformationTensor(ProjectiveTensor, ABC):
     def __apply__(self, transformation: TransformationTensor) -> TransformationTensor:
         return TransformationCollection.from_array(matmul(transformation.array, self.array))
 
+    T = TypeVar("T", bound=Tensor)
+
+    def apply(self, other: T) -> T:
+        """Apply the transformation to another object.
+
+        Args:
+            other: The object to apply the transformation to.
+
+        Returns:
+            The result of applying this transformation to the supplied object.
+
+        """
+        if hasattr(other, "__apply__"):
+            return other.__apply__(self)
+        raise NotImplementedError(f"Object of type {type(other)} cannot be transformed.")
+
+    @overload
+    def __mul__(self, other: TransformationTensor) -> TransformationTensor: ...
+
+    @overload
+    def __mul__(self, other: T) -> T: ...
+
+    @overload
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
+
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        try:
+            return self.apply(other)
+        except NotImplementedError:
+            return super().__mul__(other)
+
+    def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
+        if power == 0:
+            if self.free_indices == 0:
+                return identity(self.dim)
+            return identity(self.dim, self.shape[: self.free_indices])
+        if power < 0:
+            return self.inverse().__pow__(-power, modulo)
+
+        result = super().__pow__(power, modulo)
+        return type(self)(result, copy=False)
+
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+        result = super().__getitem__(index)
+
+        if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
+            return result
+
+        return TransformationCollection.from_tensor(result)
+
+    def inverse(self) -> TransformationTensor:
+        """Calculates the inverse projective transformation.
+
+        Returns:
+            The inverse transformation.
+
+        """
+        return type(self)(inv(self.array), copy=False)
+
+
+class Transformation(TransformationTensor, BoundTensor):
+
     @classmethod
-    def from_points(cls, *args: tuple[PointTensor, PointTensor]) -> TransformationTensor:
+    def from_points(cls, *args: tuple[Point, Point]) -> Transformation:
         """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in general position.
 
         For two dimensional transformations, 4 pairs of points are required, of which no three points are collinear.
@@ -229,7 +289,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
     @classmethod
     def from_points_and_conics(
-        cls, points1: Sequence[PointTensor], points2: Sequence[PointTensor], conic1: Conic, conic2: Conic
+        cls, points1: Sequence[Point], points2: Sequence[Point], conic1: Conic, conic2: Conic
     ) -> TransformationTensor:
         """Constructs a projective transformation from two conics and the image of pairs of 3 points on the conics.
 
@@ -271,72 +331,6 @@ class TransformationTensor(ProjectiveTensor, ABC):
         d2 = p if q == c2 else q
 
         return cls.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
-
-    T = TypeVar("T", bound=Tensor)
-
-    def apply(self, other: T) -> T:
-        """Apply the transformation to another object.
-
-        Args:
-            other: The object to apply the transformation to.
-
-        Returns:
-            The result of applying this transformation to the supplied object.
-
-        """
-        if hasattr(other, "__apply__"):
-            return other.__apply__(self)
-        raise NotImplementedError(f"Object of type {type(other)} cannot be transformed.")
-
-    @overload
-    def __mul__(self, other: TransformationTensor) -> TransformationTensor:
-        ...
-
-    @overload
-    def __mul__(self, other: T) -> T:
-        ...
-
-    @overload
-    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        ...
-
-    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        try:
-            return self.apply(other)
-        except NotImplementedError:
-            return super().__mul__(other)
-
-    def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
-        if power == 0:
-            if self.free_indices == 0:
-                return identity(self.dim)
-            return identity(self.dim, self.shape[: self.free_indices])
-        if power < 0:
-            return self.inverse().__pow__(-power, modulo)
-
-        result = super().__pow__(power, modulo)
-        return type(self)(result, copy=False)
-
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
-            return result
-
-        return TransformationCollection.from_tensor(result)
-
-    def inverse(self) -> TransformationTensor:
-        """Calculates the inverse projective transformation.
-
-        Returns:
-            The inverse transformation.
-
-        """
-        return type(self)(inv(self.array), copy=False)
-
-
-class Transformation(TransformationTensor, BoundTensor):
-    pass
 
 
 class TransformationCollection(TransformationTensor, TensorCollection[Transformation]):

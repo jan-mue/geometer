@@ -219,7 +219,7 @@ Bug fixes
 ---------
 
 - Rotation in 3D now returns the correct transformation if the axis is not a normalized vector
-- Line.perpendicular now also works for points tha lie on the line
+- Line.perpendicular now also works for points that lie on the line
 
 0.1.1 - released (2.2.2019)
 ---------------------------
