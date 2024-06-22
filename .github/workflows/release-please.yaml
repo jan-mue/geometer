@@ -20,7 +20,7 @@ jobs:
           release-type: python
 
   build:
-    if: ${{ jobs.release-please.outputs.release_created }}
+    if: ${{ needs.release-please.outputs.release_created }}
     needs: release-please
     runs-on: ubuntu-latest
     steps:
@@ -40,8 +40,8 @@ jobs:
           path: dist/
 
   test-pypi-publish:
-    if: ${{ jobs.release-please.outputs.release_created }}
-    needs: build
+    if: ${{ needs.release-please.outputs.release_created }}
+    needs: [release-please, build]
     runs-on: ubuntu-latest
     environment:
       name: test-pypi
@@ -58,8 +58,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
   pypi-publish:
-    if: ${{ jobs.release-please.outputs.release_created }}
-    needs: test-pypi-publish
+    if: ${{ needs.release-please.outputs.release_created }}
+    needs: [release-please, test-pypi-publish]
     runs-on: ubuntu-latest
     environment:
       name: pypi
