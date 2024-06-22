@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0](https://github.com/jan-mue/geometer/compare/v0.3.0...v0.4.0) (2024-06-22)
+
+
+### Features
+
+* introduce semantic prs, codespell and add some type hints ([#130](https://github.com/jan-mue/geometer/issues/130)) ([366dcf9](https://github.com/jan-mue/geometer/commit/366dcf9d3f816f47fe0c9d3d57a0c0257aa0398d))
+* release package with github action ([bcdad1d](https://github.com/jan-mue/geometer/commit/bcdad1d5b6d0fd5440044872c24f1728811e0c90))
+* use release please ([#131](https://github.com/jan-mue/geometer/issues/131)) ([393504e](https://github.com/jan-mue/geometer/commit/393504e60415903196a6a8ac4cf3e458b6c7b4f8))
+
+
+### Bug Fixes
+
+* configure release please ([4fd5df1](https://github.com/jan-mue/geometer/commit/4fd5df186bc7877af4e848af25239a2901389454))
+* configure release please ([5b257bb](https://github.com/jan-mue/geometer/commit/5b257bbbe099e96152c84bfceac68b205a6f3073))
+
 ## 0.4 - unreleased
 
 ### New Features
