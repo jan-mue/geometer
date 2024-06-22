@@ -44,7 +44,6 @@ You can install the package directly from PyPI::
 
    quickstart
    source/modules
-   changelog
 
 
 Indices and tables
