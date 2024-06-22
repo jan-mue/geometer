@@ -25,7 +25,7 @@ from os.path import dirname, relpath
 import geometer
 
 project = "geometer"
-copyright = "2022, Jan Müller"
+copyright = "2024, Jan Müller"
 author = "Jan Müller"
 
 # The short X.Y version
@@ -246,3 +246,4 @@ epub_exclude_files = ["search.html"]
 # -- Extension configuration -------------------------------------------------
 autodoc_typehints = "description"
 autodoc_typehints_description_target = "documented"
+autodoc_type_aliases = {"npt.ArrayLike": "npt.ArrayLike"}

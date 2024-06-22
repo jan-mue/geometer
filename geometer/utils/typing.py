@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from numbers import Number
 from typing import TYPE_CHECKING, Literal, TypedDict, Union
 
@@ -23,6 +23,10 @@ class NDArrayParameters(TypedDict, total=False):
     subok: bool
     ndim: int
     like: npt.ArrayLike
+
+
+class TensorParameters(NDArrayParameters):
+    covariant: bool | Iterable[int]
 
 
 NumericalDType: TypeAlias = Union[np.number, np.bool_]

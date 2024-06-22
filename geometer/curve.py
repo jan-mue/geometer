@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from abc import ABC
 from itertools import combinations
-from typing import TYPE_CHECKING, Union, cast
+from typing import TYPE_CHECKING, Union, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -41,7 +41,7 @@ from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, 
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
-    from geometer.utils.typing import NDArrayParameters
+    from geometer.utils.typing import NDArrayParameters, TensorParameters
 
 
 class QuadricTensor(ProjectiveTensor, ABC):
@@ -69,7 +69,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
         matrix: Tensor | npt.ArrayLike,
         is_dual: bool = False,
         normalize_matrix: bool = False,
-        **kwargs: Unpack[NDArrayParameters],
+        **kwargs: Unpack[TensorParameters],
     ) -> None:
         self.is_dual = is_dual
 
@@ -400,6 +400,9 @@ class Conic(Quadric):
         matrix += matrix.T
 
         return cls(matrix, normalize_matrix=True)
+
+    @overload
+    def intersect(self, other: LineCollection) -> list[PointCollection]: ...
 
     def intersect(self, other: Line | Conic) -> list[Point]:
         """Calculates points of intersection with the conic.

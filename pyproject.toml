@@ -24,7 +24,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "numpy>=1.22"
+    "numpy>=1.22,<2.0"
 ]
 
 [project.optional-dependencies]
@@ -58,12 +58,17 @@ tests = "coverage run -m pytest {args:tests}"
 rtd-docs = "sphinx-build docs/ _readthedocs/html/"
 
 [tool.black]
-target-version = ["py39"]
+target-version = ["py39", "py310", "py311", "py312"]
 line-length = 120
 
 [tool.ruff]
 target-version = "py39"
 line-length = 120
+exclude = [
+    "docs"
+]
+
+[tool.ruff.lint]
 select = [
     "E", # pycodestyle errors
     "W", # pycodestyle warnings
@@ -105,21 +110,18 @@ ignore = [
     "D417", # TODO: fix
 ]
 unfixable = []
-exclude = [
-    "docs"
-]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/**" = ["D"]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["geometer"]
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.mypy]
@@ -142,3 +144,6 @@ exclude_also = [
     "@(abc\\.)?abstractmethod",
     "@(typing(_extensions)?\\.)?overload",
 ]
+
+[tool.codespell]
+ignore-words-list = "nin"

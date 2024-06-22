@@ -9,7 +9,7 @@ import numpy.typing as npt
 if TYPE_CHECKING:
     from typing_extensions import Literal, Unpack
 
-    from geometer.utils.typing import NDArrayParameters, TensorIndex
+    from geometer.utils.typing import NDArrayParameters, TensorIndex, TensorParameters
 
 from geometer.base import (
     EQ_TOL_ABS,
@@ -28,41 +28,37 @@ from geometer.utils import is_multiple, is_numerical_scalar, matmul, matvec, nul
 @overload
 def _join_meet_duality(
     *args: Unpack[tuple[SubspaceTensor, LineTensor]],
-    intersect_lines: Literal[True],
+    intersect_lines: Literal[True] = True,
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> PointTensor:
-    ...
+) -> PointTensor: ...
 
 
 @overload
 def _join_meet_duality(
     *args: Unpack[tuple[LineTensor, SubspaceTensor]],
-    intersect_lines: Literal[True],
+    intersect_lines: Literal[True] = True,
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> PointTensor:
-    ...
+) -> PointTensor: ...
 
 
 @overload
 def _join_meet_duality(
     *args: Unpack[tuple[PointTensor, PointTensor]],
-    intersect_lines: Literal[True],
+    intersect_lines: Literal[True] = True,
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> LineTensor:
-    ...
+) -> LineTensor: ...
 
 
 @overload
 def _join_meet_duality(
     *args: PointTensor | SubspaceTensor,
-    intersect_lines: Literal[False],
+    intersect_lines: Literal[False] = False,
     check_dependence: bool = True,
     normalize_result: bool = True,
-) -> SubspaceTensor:
-    ...
+) -> SubspaceTensor: ...
 
 
 def _join_meet_duality(
@@ -190,15 +186,13 @@ def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
 @overload
 def join(
     *args: Unpack[tuple[PointTensor, PointTensor]], _check_dependence: bool = True, _normalize_result: bool = True
-) -> LineTensor:
-    ...
+) -> LineTensor: ...
 
 
 @overload
 def join(
     *args: PointTensor | SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
-) -> SubspaceTensor:
-    ...
+) -> SubspaceTensor: ...
 
 
 def join(
@@ -223,22 +217,19 @@ def join(
 
 
 @overload
-def meet(*args: LineTensor, _check_dependence: bool = True, _normalize_result: bool = True) -> PointTensor:
-    ...
+def meet(*args: LineTensor, _check_dependence: bool = True, _normalize_result: bool = True) -> PointTensor: ...
 
 
 @overload
 def meet(
     *args: Unpack[tuple[SubspaceTensor, LineTensor]], _check_dependence: bool = True, _normalize_result: bool = True
-) -> PointTensor:
-    ...
+) -> PointTensor: ...
 
 
 @overload
 def meet(
     *args: Unpack[tuple[LineTensor, SubspaceTensor]], _check_dependence: bool = True, _normalize_result: bool = True
-) -> PointTensor:
-    ...
+) -> PointTensor: ...
 
 
 def meet(
@@ -365,14 +356,12 @@ class PointTensor(PointLikeTensor, ABC):
         return f"PointCollection({self.normalized_array.tolist()})"
 
     @overload
-    def join(self, *others: Unpack[tuple[PointTensor, PointTensor]]) -> LineTensor:
-        ...
+    def join(self, *others: Unpack[tuple[PointTensor, PointTensor]]) -> LineTensor: ...
 
     @overload
     def join(
         self, *others: Unpack[tuple[PointTensor, SubspaceTensor]] | Unpack[tuple[SubspaceTensor, PointTensor]]
-    ) -> SubspaceTensor:
-        ...
+    ) -> SubspaceTensor: ...
 
     def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
@@ -419,19 +408,15 @@ class SubspaceTensor(ProjectiveTensor, ABC):
 
     """
 
-    def __init__(
-        self, *args: Tensor | npt.ArrayLike, tensor_rank: int = 1, **kwargs: Unpack[NDArrayParameters]
-    ) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, tensor_rank: int = 1, **kwargs: Unpack[TensorParameters]) -> None:
         kwargs.setdefault("covariant", False)
         super().__init__(*args, tensor_rank=tensor_rank, **kwargs)
 
     @overload
-    def meet(self, other: LineTensor) -> PointTensor:
-        ...
+    def meet(self, other: LineTensor) -> PointTensor: ...
 
     @overload
-    def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor:
-        ...
+    def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor: ...
 
     def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor:
         return meet(self, other)
@@ -883,12 +868,10 @@ class PlaneTensor(SubspaceTensor):
         return m1.meet(m2)
 
     @overload
-    def perpendicular(self, through: PointTensor) -> LineTensor:
-        ...
+    def perpendicular(self, through: PointTensor) -> LineTensor: ...
 
     @overload
-    def perpendicular(self, through: LineTensor) -> PlaneTensor:
-        ...
+    def perpendicular(self, through: LineTensor) -> PlaneTensor: ...
 
     def perpendicular(self, through: PointTensor | LineTensor) -> LineTensor | PlaneTensor:
         """Construct the perpendicular lines though the given points or the perpendicular planes through the given lines.

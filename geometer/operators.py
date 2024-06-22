@@ -157,7 +157,7 @@ def harmonic_set(a: PointTensor, b: PointTensor, c: PointTensor) -> PointTensor:
     return result
 
 
-def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float_]:
+def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float64]:
     r"""Calculates the (oriented) angle between given points, lines or planes.
 
     The function uses the Laguerre formula to calculate angles in two or three-dimensional projective space
@@ -271,7 +271,7 @@ def angle_bisectors(l: LineTensor, m: LineTensor) -> tuple[LineTensor, LineTenso
     return join(o, r), join(o, s)
 
 
-def _point_dist(p: PointTensor, q: PointTensor) -> npt.NDArray[np.float_]:
+def _point_dist(p: PointTensor, q: PointTensor) -> npt.NDArray[np.float64]:
     if p.dim > 2:
         x = np.stack(np.broadcast_arrays(p.normalized_array, q.normalized_array), axis=-2)
         z = x[..., -1]
@@ -294,7 +294,7 @@ def _point_dist(p: PointTensor, q: PointTensor) -> npt.NDArray[np.float_]:
 
 def dist(
     p: PointTensor | SubspaceTensor | PolytopeTensor, q: PointTensor | SubspaceTensor | PolytopeTensor
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.float64]:
     r"""Calculates the (euclidean) distance between two objects.
 
     Instead of the usual formula for the euclidean distance this function uses

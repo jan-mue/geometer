@@ -378,7 +378,7 @@ def matmul(
         a = np.swapaxes(a, -1, -2)
     if transpose_b:
         b = np.swapaxes(b, -1, -2)
-    return np.matmul(a, b, out=out, **kwargs)
+    return np.matmul(a, b, out=out, **kwargs)  # type: ignore[call-overload]
 
 
 def matvec(
@@ -496,4 +496,4 @@ def outer(
 
     """
     a, b = np.asarray(a), np.asarray(b)
-    return np.multiply(a[..., None], b[..., None, :], out=out, **kwargs)
+    return np.multiply(a[..., None], b[..., None, :], out=out, **kwargs)  # type: ignore[call-overload]
