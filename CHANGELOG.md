@@ -1,60 +1,46 @@
+# Changelog
 
-Changelog
-=========
+## 0.4 - unreleased
 
-0.4 - unreleased
-----------------
-
-New Features
-------------
+### New Features
 
 - Add type hints to code base
 - Muted warnings for invalid values in crossratio and other functions
 - NumPy 1.22+ required
 - Dropped support for Python 3.5, 3.6 and 3.7
 
-0.3.4 - released (17.4.2022)
-----------------------------
+## 0.3.4 - released (17.4.2022)
 
-New Features
-------------
+### New Features
+
 - Point.normalized_array and PointCollection.normalized_array will return the original array if normalization is not required
 
-Bug fixes
----------
+### Bug fixes
 
 - Avoid introducing numerical errors in join/meet by normalizing arrays only by a power of two (#55)
 - Simplify code in Segment.contains to avoid integer overflow when normalized_array is an integer array
 
-0.3.3 - released (16.4.2022)
-----------------------------
+## 0.3.3 - released (16.4.2022)
 
-Bug fixes
----------
+### Bug fixes
 
 - Avoid division in Segment.contains for better numerical stability (#55)
 
-0.3.2 - released (22.1.2022)
-----------------------------
+## 0.3.2 - released (22.1.2022)
 
-Bug fixes
----------
+### Bug fixes
 
 - Removed an f-string that caused an error in Python 3.5
 
-0.3.1 - released (22.1.2022)
-----------------------------
+## 0.3.1 - released (22.1.2022)
 
-Bug fixes
----------
+### Bug fixes
 
 - Fixed numerical instability in is_multiple function (#54)
 
-0.3 - released (8.1.2022)
--------------------------
+## 0.3 - released (8.1.2022)
 
-New Features
-------------
+### New Features
 
 - Removed sympy as dependency
 - Added the TensorCollection class and the following subclasses:
@@ -82,17 +68,14 @@ New Features
 - Support numpy 1.20, 1.21 and numpy 1.22
 - Run tests on Python 3.9 and Python 3.10
 
-Bug fixes
----------
+### Bug fixes
 
 - Fixed a bug in the calculation of points of intersection of two conics (issue #36)
 
 
-0.2.3 - released (8.7.2020)
----------------------------
+## 0.2.3 - released (8.7.2020)
 
-New Features
-------------
+### New Features
 
 - Added Tensor.dtype property
 - Added parameters to Tensor class to control ndarray creation (e.g. for setting the dtype)
@@ -104,8 +87,7 @@ New Features
 - Added a determinant function that is faster for matrices in dimension 2 and 3
 - Updated dependencies (up to NumPy 1.19 and SymPy 1.6 now supported)
 
-Bug fixes
----------
+### Bug fixes
 
 - Fixed error that was raised when integer arrays are normalized in the join/meet function
 - Fixed issues caused by an array not being converted to a Point object in Line.base_point and Line.directions
@@ -114,17 +96,14 @@ Bug fixes
 - Equality of polytopes is determined correctly even if the vertices are in a different order
 
 
-0.2.2 - released (15.2.2020)
-----------------------------
+## 0.2.2 - released (15.2.2020)
 
-New Features
-------------
+### New Features
 
 - New adjugate function in utils.math
 - New algorithms for Segment.contains, Conic.intersect & Conic.from_crossratio
 
-Bug fixes
----------
+### Bug fixes
 
 - Fixed an issue with numerical stability when intersecting transformed polytopes (issue #24)
 - Conic.components uses a better algorithm that should give correct results in all cases
@@ -136,11 +115,9 @@ Bug fixes
 - The functions null_space and orth now use the same threshold values as Matlab for truncating the singular values
 
 
-0.2.1 - released (3.2.2020)
----------------------------
+## 0.2.1 - released (3.2.2020)
 
-New Features
-------------
+### New Features
 
 - Added properties shape, rank and T to Tensor class
 - Tensor instances can be raised to an arbitrary positive power
@@ -151,8 +128,7 @@ New Features
 - Added Polygon.centroid property
 - Updated numpy to version 1.18
 
-Bug fixes
----------
+### Bug fixes
 
 - Transformations are now applied correctly to quadrics and conics
 - Fixed bug that made transformation of Cuboid & RegularPolygon fail (issue #23)
@@ -165,17 +141,15 @@ Bug fixes
 - Indices passed to Tensor constructor are validated and negative indices converted
 - Fixed init method of Cone & Cylinder classes
 
-Deprecations
-------------
+### Deprecations
+
 - Deprecated AlgebraicCurve, Subspace.polygons, Plane.polygon, Quadric.polygon and the
   module utils.polynomial in preparation of removal of sympy as dependency
 
 
-0.2 - released (15.9.2019)
---------------------------
+## 0.2 - released (15.9.2019)
 
-New Features
-------------
+### New Features
 
 - New shapes module that implements line segments, polygons and general polytopes
 - New Sphere class (a subclass of Quadric) that works in any dimension
@@ -193,8 +167,7 @@ New Features
 - is_perpendicular now works with two planes
 - New function is_multiple in utils module
 
-Bug fixes
----------
+### Bug fixes
 
 - Plane.perpendicular now also works for points that lie on the plane
 - Addition/Subtraction of subspaces and points works in more cases
@@ -203,11 +176,9 @@ Bug fixes
 - Fixed Transformation.from_points
 
 
-0.1.2 - released (24.2.2019)
-----------------------------
+## 0.1.2 - released (24.2.2019)
 
-New Features
-------------
+### New Features
 
 - Optimized performance of Conic, LeviCivitaTensor and TensorDiagram
 - More operations are now compatible with higher-dimensional objects
@@ -215,11 +186,9 @@ New Features
 - New repr and copy methods of Tensor
 - scipy is no longer a dependency
 
-Bug fixes
----------
+### Bug fixes
 
 - Rotation in 3D now returns the correct transformation if the axis is not a normalized vector
 - Line.perpendicular now also works for points that lie on the line
 
-0.1.1 - released (2.2.2019)
----------------------------
+## 0.1.1 - released (2.2.2019)
