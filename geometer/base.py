@@ -107,7 +107,7 @@ class Tensor:
 
     def _validate_tensor(self) -> None:
         if not is_numerical_dtype(self.dtype):
-            raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
+            raise TypeError(f"The dtype of a Tensor must be a numeric dtype, not {self.dtype.name}")
 
     def __apply__(self, transformation: TransformationTensor) -> Self:
         ts = self.tensor_shape
@@ -508,6 +508,13 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     def __iter__(self) -> Iterator[T]:
         for i in range(len(self)):
             yield self[i]
+
+
+class BoundTensorCollection(TensorCollection[BoundTensor]):
+    """A collection of bound tensors."""
+
+    # TODO: move methods from TensorCollection to BoundTensorCollection
+    pass
 
 
 class LeviCivitaTensor(BoundTensor):

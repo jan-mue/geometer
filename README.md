@@ -128,6 +128,18 @@ E.meet(l)
 
 ```
 
+## Development
+
+To set up a development environment run:
+```bash
+hatch env create
+```
+
+Run the tests with:
+```bash
+hatch run tests
+```
+
 ## References
 
 Many of the algorithms and formulas implemented in the package are taken from
