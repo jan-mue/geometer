@@ -162,10 +162,10 @@ class Polytope(PolytopeTensor, ABC):
     pass
 
 
-SubspaceT = TypeVar("SubspaceT", bound=Polytope)
+PolytopeT = TypeVar("PolytopeT", bound=Polytope)
 
 
-class PolytopeCollection(PolytopeTensor, TensorCollection[SubspaceT], ABC):
+class PolytopeCollection(PolytopeTensor, TensorCollection[PolytopeT], ABC):
     def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices <= max(self.pdim - 1, 1):

@@ -405,7 +405,7 @@ T = TypeVar("T", bound=Tensor)
 
 
 class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
-    """A collection of tensors."""
+    """A collection of tensors of type T. The shape of axes after axis 0 must be compatible with tensors of type T."""
 
     _element_class: ClassVar[type[Tensor]] = Tensor
 
@@ -494,20 +494,17 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
-        if not isinstance(result, Tensor):
+        if not isinstance(result, Tensor) or result.free_indices == 0:
             return result
 
-        if result.free_indices > 0:
-            return TensorCollection(result, copy=False)
-
-        return self._element_class(result, copy=False)
+        return TensorCollection(result, copy=False)
 
     def __len__(self) -> int:
         return len(self.array)
 
     def __iter__(self) -> Iterator[T]:
         for i in range(len(self)):
-            yield self[i]
+            yield self._element_class(self[i], copy=False)  # type: ignore[misc]
 
 
 class BoundTensorCollection(TensorCollection[BoundTensor]):
@@ -773,14 +770,17 @@ class ProjectiveTensor(Tensor, ABC):
             raise ValueError(f"Only dimensions 1, 2 and 3 are supported, got dimension {self.dim}")
 
     def __eq__(self, other: object) -> bool:
-        if is_numerical_scalar(other):
+        try:
+            is_scalar = is_numerical_scalar(other)  # type: ignore[arg-type]
+        except TypeError:
+            # other is not an array-like
+            return NotImplemented
+
+        if is_scalar:
             return super().__eq__(other)
 
         if not isinstance(other, Tensor):
-            try:
-                other = Tensor(other)  # type: ignore[arg-type]
-            except TypeError:
-                return NotImplemented
+            other = Tensor(other)  # type: ignore[arg-type]
 
         if self.shape != other.shape:
             return False
