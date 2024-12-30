@@ -27,11 +27,11 @@ if TYPE_CHECKING:
 
 
 @overload
-def identity(dim: int, collection_dims: Literal[None] = None) -> Transformation: ...
+def identity(dim: int, collection_dims: Literal[None] = ...) -> Transformation: ...
 
 
 @overload
-def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationCollection: ...
+def identity(dim: int, collection_dims: tuple[int, ...] | None = ...) -> TransformationCollection: ...
 
 
 def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationTensor:

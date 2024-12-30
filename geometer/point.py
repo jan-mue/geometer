@@ -28,36 +28,36 @@ from geometer.utils import is_multiple, is_numerical_scalar, matmul, matvec, nul
 @overload
 def _join_meet_duality(
     *args: Unpack[tuple[SubspaceTensor, LineTensor]],
-    intersect_lines: Literal[True] = True,
-    check_dependence: bool = True,
-    normalize_result: bool = True,
+    intersect_lines: Literal[True] = ...,
+    check_dependence: bool = ...,
+    normalize_result: bool = ...,
 ) -> PointTensor: ...
 
 
 @overload
 def _join_meet_duality(
     *args: Unpack[tuple[LineTensor, SubspaceTensor]],
-    intersect_lines: Literal[True] = True,
-    check_dependence: bool = True,
-    normalize_result: bool = True,
+    intersect_lines: Literal[True] = ...,
+    check_dependence: bool = ...,
+    normalize_result: bool = ...,
 ) -> PointTensor: ...
 
 
 @overload
 def _join_meet_duality(
     *args: Unpack[tuple[PointTensor, PointTensor]],
-    intersect_lines: Literal[True] = True,
-    check_dependence: bool = True,
-    normalize_result: bool = True,
+    intersect_lines: Literal[True] = ...,
+    check_dependence: bool = ...,
+    normalize_result: bool = ...,
 ) -> LineTensor: ...
 
 
 @overload
 def _join_meet_duality(
     *args: PointTensor | SubspaceTensor,
-    intersect_lines: Literal[False] = False,
-    check_dependence: bool = True,
-    normalize_result: bool = True,
+    intersect_lines: Literal[False] = ...,
+    check_dependence: bool = ...,
+    normalize_result: bool = ...,
 ) -> SubspaceTensor: ...
 
 
@@ -83,11 +83,8 @@ def _join_meet_duality(
     # two lines/planes
     elif len(args) == 2:
         a, b = args
-        if (
-            isinstance(a, LineTensor)
-            and isinstance(b, PlaneTensor)
-            or isinstance(b, LineTensor)
-            and isinstance(a, PlaneTensor)
+        if (isinstance(a, LineTensor) and isinstance(b, PlaneTensor)) or (
+            isinstance(b, LineTensor) and isinstance(a, PlaneTensor)
         ):
             e = LeviCivitaTensor(n)
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
@@ -185,13 +182,13 @@ def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
 
 @overload
 def join(
-    *args: Unpack[tuple[PointTensor, PointTensor]], _check_dependence: bool = True, _normalize_result: bool = True
+    *args: Unpack[tuple[PointTensor, PointTensor]], _check_dependence: bool = ..., _normalize_result: bool = ...
 ) -> LineTensor: ...
 
 
 @overload
 def join(
-    *args: PointTensor | SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
+    *args: PointTensor | SubspaceTensor, _check_dependence: bool = ..., _normalize_result: bool = ...
 ) -> SubspaceTensor: ...
 
 
@@ -217,18 +214,18 @@ def join(
 
 
 @overload
-def meet(*args: LineTensor, _check_dependence: bool = True, _normalize_result: bool = True) -> PointTensor: ...
+def meet(*args: LineTensor, _check_dependence: bool = ..., _normalize_result: bool = ...) -> PointTensor: ...
 
 
 @overload
 def meet(
-    *args: Unpack[tuple[SubspaceTensor, LineTensor]], _check_dependence: bool = True, _normalize_result: bool = True
+    *args: Unpack[tuple[SubspaceTensor, LineTensor]], _check_dependence: bool = ..., _normalize_result: bool = ...
 ) -> PointTensor: ...
 
 
 @overload
 def meet(
-    *args: Unpack[tuple[LineTensor, SubspaceTensor]], _check_dependence: bool = True, _normalize_result: bool = True
+    *args: Unpack[tuple[LineTensor, SubspaceTensor]], _check_dependence: bool = ..., _normalize_result: bool = ...
 ) -> PointTensor: ...
 
 
