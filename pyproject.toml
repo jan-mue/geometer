@@ -24,7 +24,8 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "numpy>=1.22,<2.0"
+    "numpy>=1.22,<2.0",
+    "typing-extensions>=4.6.1,<5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -49,7 +50,6 @@ dependencies = [
     "pytest",
     "codecov",
     "pre-commit",
-    "typing-extensions",
     "mypy>=1.0.0"
 ]
 
