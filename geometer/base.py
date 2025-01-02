@@ -695,7 +695,7 @@ class TensorDiagram:
                 target_index = len(self._nodes)
                 free_target = self.add_node(target)[1]
 
-        if len(free_source) == 0 or len(free_target) == 0:  # type: ignore[possibly-undefined]
+        if len(free_source) == 0 or len(free_target) == 0:
             raise TensorComputationError("Could not add the edge because no indices are left.")
 
         # Third step: Pick some free indices

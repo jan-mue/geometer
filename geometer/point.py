@@ -25,42 +25,17 @@ from geometer.exceptions import GeometryException, LinearDependenceError, NotCop
 from geometer.utils import is_multiple, is_numerical_scalar, matmul, matvec, null_space
 
 
+# signature when called from meet
 @overload
 def _join_meet_duality(
-    *args: Unpack[tuple[SubspaceTensor, LineTensor]],
+    *args: SubspaceTensor,
     intersect_lines: Literal[True] = ...,
     check_dependence: bool = ...,
     normalize_result: bool = ...,
-) -> PointTensor: ...
+) -> PointTensor | LineTensor: ...
 
 
-@overload
-def _join_meet_duality(
-    *args: Unpack[tuple[LineTensor, SubspaceTensor]],
-    intersect_lines: Literal[True] = ...,
-    check_dependence: bool = ...,
-    normalize_result: bool = ...,
-) -> PointTensor: ...
-
-
-@overload
-def _join_meet_duality(
-    *args: Unpack[tuple[PointTensor, PointTensor]],
-    intersect_lines: Literal[True] = ...,
-    check_dependence: bool = ...,
-    normalize_result: bool = ...,
-) -> LineTensor: ...
-
-
-@overload
-def _join_meet_duality(
-    *args: Unpack[tuple[PointTensor, PointTensor, PointTensor]],
-    intersect_lines: Literal[True] = ...,
-    check_dependence: bool = ...,
-    normalize_result: bool = ...,
-) -> PlaneTensor: ...
-
-
+# signature when called from join
 @overload
 def _join_meet_duality(
     *args: PointTensor | SubspaceTensor,
@@ -68,15 +43,6 @@ def _join_meet_duality(
     check_dependence: bool = ...,
     normalize_result: bool = ...,
 ) -> SubspaceTensor: ...
-
-
-@overload
-def _join_meet_duality(
-    *args: PointTensor | SubspaceTensor,
-    intersect_lines: Literal[True] = ...,
-    check_dependence: bool = ...,
-    normalize_result: bool = ...,
-) -> PointTensor | SubspaceTensor: ...
 
 
 def _join_meet_duality(
@@ -206,20 +172,44 @@ def join(
 
 @overload
 def join(
-    *args: PointTensor | SubspaceTensor, _check_dependence: bool = ..., _normalize_result: bool = ...
+    *args: Unpack[tuple[PointTensor, PointTensor, PointTensor]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneTensor: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[LineTensor, PointTensor | LineTensor]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneTensor: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointTensor | LineTensor, LineTensor]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneTensor: ...
+
+
+@overload
+def join(
+    *args: PointTensor | LineTensor, _check_dependence: bool = ..., _normalize_result: bool = ...
 ) -> SubspaceTensor: ...
 
 
 def join(
-    *args: PointTensor | SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
+    *args: PointTensor | LineTensor, _check_dependence: bool = True, _normalize_result: bool = True
 ) -> SubspaceTensor:
-    """Joins a number of objects to form a line, plane or subspace.
+    """Joins a number of objects to form a line or plane.
 
     Args:
         *args: Objects to join, e.g. 2 points, lines, a point and a line or 3 points.
 
     Returns:
-        The resulting line, plane or subspace.
+        The resulting line or plane.
 
     Raises:
         LinearDependenceError: If two objects coincide.
@@ -256,12 +246,12 @@ def meet(
 @overload
 def meet(
     *args: SubspaceTensor, _check_dependence: bool = ..., _normalize_result: bool = ...
-) -> PointTensor | SubspaceTensor: ...
+) -> PointTensor | LineTensor: ...
 
 
 def meet(
     *args: SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
-) -> PointTensor | SubspaceTensor:
+) -> PointTensor | LineTensor:
     """Intersects a number of given objects.
 
     Args:
@@ -394,7 +384,10 @@ class PointTensor(PointLikeTensor, ABC):
     def join(self, *others: Unpack[tuple[PointTensor, PointTensor]]) -> PlaneTensor: ...
 
     @overload
-    def join(self, *others: Unpack[tuple[LineTensor]]) -> PlaneTensor: ...
+    def join(self, *others: LineTensor) -> PlaneTensor: ...
+
+    @overload
+    def join(self, *others: PointTensor) -> SubspaceTensor: ...
 
     def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
@@ -450,16 +443,10 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     def meet(self, other: LineTensor) -> PointTensor: ...
 
     @overload
-    def meet(self: LineTensor, other: SubspaceTensor) -> PointTensor: ...
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor: ...
 
-    @overload
-    def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor: ...
-
-    def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor:
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor:
         return meet(self, other)
-
-    def join(self, *others: PointTensor | SubspaceTensor) -> SubspaceTensor:
-        return join(self, *others)
 
     @override
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
@@ -560,14 +547,8 @@ class SubspaceTensor(ProjectiveTensor, ABC):
 
         """
 
-    @overload
-    def perpendicular(self, through: PointTensor) -> LineTensor: ...
-
-    @overload
-    def perpendicular(self, through: LineTensor) -> PlaneTensor: ...
-
     @abstractmethod
-    def perpendicular(self, through: PointTensor | LineTensor) -> SubspaceTensor:
+    def perpendicular(self, through: PointTensor) -> LineTensor:
         """Construct the perpendicular subspace though the given point or line.
 
         Args:
@@ -643,7 +624,11 @@ class LineTensor(SubspaceTensor, ABC):
 
     @override
     def meet(self, other: SubspaceTensor) -> PointTensor:
-        return super().meet(other)
+        result = super().meet(other)
+        return cast(PointTensor, result)
+
+    def join(self, *others: PointTensor | LineTensor) -> PlaneTensor:
+        return join(self, *others)
 
     @property
     def base_point(self) -> PointTensor:
@@ -759,7 +744,6 @@ class LineTensor(SubspaceTensor, ABC):
             e = join(self, pt)
 
             if self.dim == 3:
-                e = cast(PlaneTensor, e)
                 f = e.perpendicular(self)
                 return f.mirror(pt)
 
@@ -787,7 +771,7 @@ class LineTensor(SubspaceTensor, ABC):
 
         Args:
             through: The point through which the perpendicular is constructed.
-            plane: In three or higher dimensional spaces, the 2-dimensional subspace that the perpendicular line is
+            plane: In three-dimensional spaces, the 2-dimensional subspace that the perpendicular line is
                 supposed to lie in, can be specified.
 
         Returns:

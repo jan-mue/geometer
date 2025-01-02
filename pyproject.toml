@@ -129,8 +129,6 @@ warn_return_any = false # TODO
 enable_error_code = [
   "explicit-override",
   "ignore-without-code",
-  # "mutable-override", # causes error about _element_class attribute
-  "possibly-undefined",
   "redundant-expr",
   "redundant-self",
   "truthy-bool",
