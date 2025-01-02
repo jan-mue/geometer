@@ -3,11 +3,12 @@ from __future__ import annotations
 import math
 from abc import ABC
 from itertools import combinations
-from typing import TYPE_CHECKING, Union, cast, overload
+from typing import TYPE_CHECKING, Union, cast
 
 import numpy as np
 import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
+from typing_extensions import overload, override
 
 from geometer.base import (
     EQ_TOL_ABS,
@@ -39,7 +40,7 @@ from geometer.transformation import rotation, translation
 from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack, override
+    from typing_extensions import Unpack
 
     from geometer.utils.typing import NDArrayParameters, TensorParameters
 

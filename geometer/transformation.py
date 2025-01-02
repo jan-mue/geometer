@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import overload, override
 
 from geometer.base import (
     BoundTensor,
@@ -20,7 +21,7 @@ from geometer.point import LineTensor, Point, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack, override
+    from typing_extensions import Unpack
 
     from geometer.curve import Conic
     from geometer.utils.typing import NDArrayParameters, TensorIndex

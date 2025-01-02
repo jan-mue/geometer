@@ -34,6 +34,8 @@ class TestTensor:
         assert a[None, 1].tensor_shape == (0, 1)
         assert a[::-1, 0] == [3, 1]
         assert a[::-1, 0].tensor_shape == (1, 0)
+        assert a[True] == a
+        assert a[False] == 0
 
     def test_dtype(self):
         a = Tensor(2, 3, dtype=np.float32)

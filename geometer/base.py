@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, Typ
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import overload, override
 
 from geometer.exceptions import IncompatibleShapeError, TensorComputationError
 from geometer.utils import (
@@ -18,10 +19,19 @@ from geometer.utils import (
     sanitize_index,
 )
 from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
-from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
+from geometer.utils.typing import (
+    BooleanSlice1D,
+    IntegerSlice1D,
+    NDArrayParameters,
+    NumericalDType,
+    ScalarBoolean,
+    ScalarInteger,
+    Shape,
+    TensorIndex,
+)
 
 if TYPE_CHECKING:
-    from typing_extensions import Self, Unpack, override
+    from typing_extensions import Self, Unpack
 
     from geometer.transformation import TransformationTensor
 
@@ -278,7 +288,15 @@ class Tensor:
             # replace indices with broadcast shape
             return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
 
+    @overload
+    def __getitem__(self, index: ScalarBoolean) -> Self: ...
+
+    @overload
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic: ...
+
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+        # TODO: handle scalar boolean indexing
+
         result = self.array[index]
 
         if isinstance(result, np.generic):
@@ -495,11 +513,28 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         """The number of tensors in the tensor collection, i.e. the product of the size of all collection axes."""
         return np.prod([self.shape[i] for i in range(self.free_indices)], dtype=int)
 
+    @overload
+    def __getitem__(self, index: ScalarInteger) -> T: ...
+
+    @overload
+    def __getitem__(self, index: IntegerSlice1D | BooleanSlice1D) -> Self: ...
+
+    @overload
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic: ...
+
     @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
-        if not isinstance(result, Tensor) or result.free_indices == 0:
+        if not isinstance(result, Tensor):
+            return result
+
+        # TODO: return same class when index is a slice
+
+        if isinstance(index, (int, np.int_)):
+            return self._element_class(result, copy=False)
+
+        if result.free_indices == 0:
             return result
 
         return TensorCollection(result, copy=False)
@@ -511,14 +546,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     @override
     def __iter__(self) -> Iterator[T]:
         for i in range(len(self)):
-            yield self._element_class(self[i], copy=False)  # type: ignore[misc]
-
-
-class BoundTensorCollection(TensorCollection[BoundTensor]):
-    """A collection of bound tensors."""
-
-    # TODO: move methods from TensorCollection to BoundTensorCollection
-    pass
+            yield self[i]
 
 
 class LeviCivitaTensor(BoundTensor):

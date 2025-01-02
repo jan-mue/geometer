@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import override
 
 from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, Tensor, TensorCollection
 from geometer.exceptions import IncompatibleShapeError, LinearDependenceError, NotCoplanar
@@ -27,7 +28,7 @@ from geometer.transformation import TransformationTensor, rotation, translation
 from geometer.utils import det, distinct, is_multiple, matmul, matvec
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack, override
+    from typing_extensions import Unpack
 
     from geometer.utils.typing import NDArrayParameters, TensorIndex
 

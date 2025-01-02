@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, TypeVar, cast, overload
+from typing import TYPE_CHECKING, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import overload, override
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, Unpack, override
+    from typing_extensions import Literal, Unpack
 
     from geometer.utils.typing import NDArrayParameters, TensorIndex, TensorParameters
 
