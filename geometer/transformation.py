@@ -20,7 +20,7 @@ from geometer.point import LineTensor, Point, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack
+    from typing_extensions import Unpack, override
 
     from geometer.curve import Conic
     from geometer.utils.typing import NDArrayParameters, TensorIndex
@@ -194,6 +194,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
         if self.shape[-1] != self.shape[-2]:
             raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
 
+    @override
     def __apply__(self, transformation: TransformationTensor) -> TransformationTensor:
         return TransformationCollection.from_array(matmul(transformation.array, self.array))
 
@@ -222,12 +223,14 @@ class TransformationTensor(ProjectiveTensor, ABC):
     @overload
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
 
+    @override
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         try:
             return self.apply(other)
         except NotImplementedError:
             return super().__mul__(other)
 
+    @override
     def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
         if power == 0:
             if self.free_indices == 0:
@@ -239,6 +242,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
         result = super().__pow__(power, modulo)
         return type(self)(result, copy=False)
 
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 

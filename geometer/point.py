@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, Unpack
+    from typing_extensions import Literal, Unpack, override
 
     from geometer.utils.typing import NDArrayParameters, TensorIndex, TensorParameters
 
@@ -54,11 +54,29 @@ def _join_meet_duality(
 
 @overload
 def _join_meet_duality(
+    *args: Unpack[tuple[PointTensor, PointTensor, PointTensor]],
+    intersect_lines: Literal[True] = ...,
+    check_dependence: bool = ...,
+    normalize_result: bool = ...,
+) -> PlaneTensor: ...
+
+
+@overload
+def _join_meet_duality(
     *args: PointTensor | SubspaceTensor,
-    intersect_lines: Literal[False] = ...,
+    intersect_lines: Literal[False],
     check_dependence: bool = ...,
     normalize_result: bool = ...,
 ) -> SubspaceTensor: ...
+
+
+@overload
+def _join_meet_duality(
+    *args: PointTensor | SubspaceTensor,
+    intersect_lines: Literal[True] = ...,
+    check_dependence: bool = ...,
+    normalize_result: bool = ...,
+) -> PointTensor | SubspaceTensor: ...
 
 
 def _join_meet_duality(
@@ -229,6 +247,18 @@ def meet(
 ) -> PointTensor: ...
 
 
+@overload
+def meet(
+    *args: Unpack[tuple[PlaneTensor, PlaneTensor]], _check_dependence: bool = ..., _normalize_result: bool = ...
+) -> LineTensor: ...
+
+
+@overload
+def meet(
+    *args: SubspaceTensor, _check_dependence: bool = ..., _normalize_result: bool = ...
+) -> PointTensor | SubspaceTensor: ...
+
+
 def meet(
     *args: SubspaceTensor, _check_dependence: bool = True, _normalize_result: bool = True
 ) -> PointTensor | SubspaceTensor:
@@ -282,6 +312,7 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         """The coordinate array of the points with the last coordinates normalized to 1."""
         return self._normalize_array(self.array)
 
+    @override
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointLikeTensor):
             return super().__add__(other)
@@ -290,6 +321,7 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
         return PointCollection.from_array(result)
 
+    @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointLikeTensor):
             return super().__add__(other)
@@ -298,6 +330,7 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
         return PointCollection.from_array(result)
 
+    @override
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not is_numerical_scalar(other):
             return super().__mul__(other)
@@ -305,6 +338,7 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return PointCollection.from_array(result)
 
+    @override
     def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not is_numerical_scalar(other):
             return super().__truediv__(other)
@@ -344,6 +378,7 @@ class PointTensor(PointLikeTensor, ABC):
         else:
             super().__init__(*args, homogenize=homogenize, tensor_rank=tensor_rank, **kwargs)
 
+    @override
     def __repr__(self) -> str:
         if self.free_indices == 0:
             result = f"Point({', '.join(self.normalized_array[:-1].astype(str))})"
@@ -353,16 +388,18 @@ class PointTensor(PointLikeTensor, ABC):
         return f"PointCollection({self.normalized_array.tolist()})"
 
     @overload
-    def join(self, *others: Unpack[tuple[PointTensor, PointTensor]]) -> LineTensor: ...
+    def join(self, *others: Unpack[tuple[PointTensor]]) -> LineTensor: ...
 
     @overload
-    def join(
-        self, *others: Unpack[tuple[PointTensor, SubspaceTensor]] | Unpack[tuple[SubspaceTensor, PointTensor]]
-    ) -> SubspaceTensor: ...
+    def join(self, *others: Unpack[tuple[PointTensor, PointTensor]]) -> PlaneTensor: ...
+
+    @overload
+    def join(self, *others: Unpack[tuple[LineTensor]]) -> PlaneTensor: ...
 
     def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
 
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
@@ -413,6 +450,9 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     def meet(self, other: LineTensor) -> PointTensor: ...
 
     @overload
+    def meet(self: LineTensor, other: SubspaceTensor) -> PointTensor: ...
+
+    @overload
     def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor: ...
 
     def meet(self, other: SubspaceTensor) -> PointTensor | SubspaceTensor:
@@ -421,6 +461,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     def join(self, *others: PointTensor | SubspaceTensor) -> SubspaceTensor:
         return join(self, *others)
 
+    @override
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointTensor):
             return super().__add__(other)
@@ -429,6 +470,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
 
         return translation(other).apply(self)
 
+    @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, Tensor):
             other = Tensor(other, copy=False)
@@ -493,7 +535,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
         axes = tuple(result._covariant_indices) + tuple(result._contravariant_indices)
         return np.all(np.isclose(result.array, 0, atol=tol), axis=axes)
 
-    def is_parallel(self, other: SubspaceTensor) -> npt.NDArray[np.bool_]:
+    def is_parallel(self, other: LineTensor | PlaneTensor) -> npt.NDArray[np.bool_]:
         """Tests whether the given subspace is parallel to this subspace.
 
         Args:
@@ -517,6 +559,12 @@ class SubspaceTensor(ProjectiveTensor, ABC):
             The mirror point.
 
         """
+
+    @overload
+    def perpendicular(self, through: PointTensor) -> LineTensor: ...
+
+    @overload
+    def perpendicular(self, through: LineTensor) -> PlaneTensor: ...
 
     @abstractmethod
     def perpendicular(self, through: PointTensor | LineTensor) -> SubspaceTensor:
@@ -579,6 +627,7 @@ class LineTensor(SubspaceTensor, ABC):
         if self.dim == 3 and self.shape[-1] != self.shape[-2]:
             raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
 
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
@@ -587,13 +636,14 @@ class LineTensor(SubspaceTensor, ABC):
 
         return LineCollection.from_tensor(result)
 
+    @override
     def _matrix_transform(self, m: npt.ArrayLike) -> LineTensor:
         result = super()._matrix_transform(m)
         return cast(LineTensor, result)
 
+    @override
     def meet(self, other: SubspaceTensor) -> PointTensor:
-        result = super().meet(other)
-        return cast(PointTensor, result)
+        return super().meet(other)
 
     @property
     def base_point(self) -> PointTensor:
@@ -636,6 +686,7 @@ class LineTensor(SubspaceTensor, ABC):
 
         return PointCollection.from_array(result)
 
+    @override
     @property
     def basis_matrix(self) -> np.ndarray:
         """A matrix with orthonormal basis vectors as rows."""
@@ -688,6 +739,7 @@ class LineTensor(SubspaceTensor, ABC):
         d = TensorDiagram(*[(e, self)] * (self.dim - 1), *[(e, other)] * (self.dim - 1))
         return d.calculate().is_zero()
 
+    @override
     def mirror(self, pt: PointTensor) -> PointTensor:
         """Construct the reflection of points at the lines.
 
@@ -729,6 +781,7 @@ class LineTensor(SubspaceTensor, ABC):
             return result._matrix_transform(np.swapaxes(m, -1, -2))
         return result
 
+    @override
     def perpendicular(self, through: PointTensor, plane: PlaneTensor | None = None) -> LineTensor:
         """Construct the perpendicular line though a point.
 
@@ -807,6 +860,7 @@ class PlaneTensor(SubspaceTensor):
         if self.tensor_shape != (0, 1):
             raise ValueError(f"Expected tensor of type (0, 1), but is {self.tensor_shape}")
 
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
@@ -815,6 +869,7 @@ class PlaneTensor(SubspaceTensor):
 
         return PlaneCollection.from_tensor(result)
 
+    @override
     @property
     def basis_matrix(self) -> np.ndarray:
         n = self.dim + 1
@@ -830,6 +885,7 @@ class PlaneTensor(SubspaceTensor):
         q, r = np.linalg.qr(result)
         return np.swapaxes(q, -1, -2)
 
+    @override
     def mirror(self, pt: PointTensor) -> PointTensor:
         """Construct the reflections of a point at the plane.
 
@@ -870,6 +926,7 @@ class PlaneTensor(SubspaceTensor):
     @overload
     def perpendicular(self, through: LineTensor) -> PlaneTensor: ...
 
+    @override
     def perpendicular(self, through: PointTensor | LineTensor) -> LineTensor | PlaneTensor:
         """Construct the perpendicular lines though the given points or the perpendicular planes through the given lines.
 

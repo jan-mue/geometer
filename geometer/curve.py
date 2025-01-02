@@ -39,7 +39,7 @@ from geometer.transformation import rotation, translation
 from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, matvec, outer, roots
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack
+    from typing_extensions import Unpack, override
 
     from geometer.utils.typing import NDArrayParameters, TensorParameters
 
@@ -84,12 +84,14 @@ class QuadricTensor(ProjectiveTensor, ABC):
             kwargs.setdefault("covariant", False)
         super().__init__(matrix, tensor_rank=2, **kwargs)
 
+    @override
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointTensor):
             return super().__add__(other)
 
         return translation(other).apply(self)
 
+    @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointTensor):
             return super().__add__(other)
@@ -404,6 +406,7 @@ class Conic(Quadric):
     @overload
     def intersect(self, other: LineCollection) -> list[PointCollection]: ...
 
+    @override
     def intersect(self, other: Line | Conic) -> list[Point]:
         """Calculates points of intersection with the conic.
 

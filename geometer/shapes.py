@@ -27,7 +27,7 @@ from geometer.transformation import TransformationTensor, rotation, translation
 from geometer.utils import det, distinct, is_multiple, matmul, matvec
 
 if TYPE_CHECKING:
-    from typing_extensions import Unpack
+    from typing_extensions import Unpack, override
 
     from geometer.utils.typing import NDArrayParameters, TensorIndex
 
@@ -83,6 +83,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
         v2 = np.roll(v1, -1, axis=-2)
         return np.stack([v1, v2], axis=-2)
 
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PolytopeTensor):
             return super().__eq__(other)
@@ -110,11 +111,13 @@ class PolytopeTensor(PointLikeTensor, ABC):
 
         return False
 
+    @override
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointTensor):
             return super().__add__(other)
         return translation(other).apply(self)
 
+    @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         return self + (-other)
 
@@ -141,6 +144,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
 
         return PolytopeCollection.from_tensor(tensor)
 
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
@@ -198,11 +202,13 @@ class SegmentTensor(PolytopeTensor):
 
         self._line = join(*self.vertices)
 
+    @override
     def __apply__(self, transformation: TransformationTensor) -> SegmentTensor:
         result = super().__apply__(transformation)
         result._line = transformation.apply(result._line)
         return result
 
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
@@ -211,6 +217,7 @@ class SegmentTensor(PolytopeTensor):
 
         return SegmentCollection.from_tensor(result)
 
+    @override
     @property
     def vertices(self) -> list[PointTensor]:
         """The start and endpoint of the line segment."""
@@ -218,10 +225,12 @@ class SegmentTensor(PolytopeTensor):
         b = PointCollection.from_array(self.array[..., 1, :])
         return [a, b]
 
+    @override
     @property
     def facets(self) -> list[PointTensor]:
         return self.vertices
 
+    @override
     @property
     def _edges(self) -> np.ndarray:
         return self.array

@@ -21,7 +21,7 @@ from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
 from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
 
 if TYPE_CHECKING:
-    from typing_extensions import Self, Unpack
+    from typing_extensions import Self, Unpack, override
 
     from geometer.transformation import TransformationTensor
 
@@ -237,6 +237,7 @@ class Tensor:
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
         return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.array.tolist()})"
 
@@ -362,6 +363,7 @@ class Tensor:
     def __neg__(self) -> Tensor:
         return self * (-1)
 
+    @override
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Tensor):
             other = other.array
@@ -393,6 +395,7 @@ class Tensor:
 class BoundTensor(Tensor):
     """A tensor without free indices."""
 
+    @override
     def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices != 0:
@@ -418,6 +421,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     ) -> None:
         super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
 
+    @override
     def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices == 0:
@@ -491,6 +495,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         """The number of tensors in the tensor collection, i.e. the product of the size of all collection axes."""
         return np.prod([self.shape[i] for i in range(self.free_indices)], dtype=int)
 
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
@@ -499,9 +504,11 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
 
         return TensorCollection(result, copy=False)
 
+    @override
     def __len__(self) -> int:
         return len(self.array)
 
+    @override
     def __iter__(self) -> Iterator[T]:
         for i in range(len(self)):
             yield self._element_class(self[i], copy=False)  # type: ignore[misc]
@@ -688,7 +695,7 @@ class TensorDiagram:
                 target_index = len(self._nodes)
                 free_target = self.add_node(target)[1]
 
-        if len(free_source) == 0 or len(free_target) == 0:
+        if len(free_source) == 0 or len(free_target) == 0:  # type: ignore[possibly-undefined]
             raise TensorComputationError("Could not add the edge because no indices are left.")
 
         # Third step: Pick some free indices
@@ -769,6 +776,7 @@ class ProjectiveTensor(Tensor, ABC):
         if not 0 < self.dim <= 3:
             raise ValueError(f"Only dimensions 1, 2 and 3 are supported, got dimension {self.dim}")
 
+    @override
     def __eq__(self, other: object) -> bool:
         try:
             is_scalar = is_numerical_scalar(other)  # type: ignore[arg-type]
