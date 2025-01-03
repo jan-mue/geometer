@@ -796,7 +796,7 @@ class LineTensor(SubspaceTensor, ABC):
 
                 basis = plane.basis_matrix
                 line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
-                l = LineCollection.from_array(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]))
+                l = LineCollection.from_array(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]))  # type: ignore[arg-type]
 
             p = PointCollection.from_array(
                 np.append(l.array[..., :-1], np.zeros(l.shape[:-1] + (1,), dtype=l.dtype), axis=-1)
@@ -853,6 +853,16 @@ class PlaneTensor(SubspaceTensor):
             return result
 
         return PlaneCollection.from_tensor(result)
+
+    @overload
+    def meet(self, other: LineTensor) -> PointTensor: ...
+
+    @overload
+    def meet(self, other: PlaneTensor) -> LineTensor: ...
+
+    @override
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor:
+        return super().meet(other)
 
     @override
     @property
@@ -948,6 +958,14 @@ class PlaneCollection(PlaneTensor, SubspaceCollection[Plane]):
 I = Point([-1j, 1, 0])
 J = Point([1j, 1, 0])
 infty = Line(0, 0, 1)
+
+
+@overload
+def infty_hyperplane(dimension: Literal[2]) -> Line: ...
+
+
+@overload
+def infty_hyperplane(dimension: int) -> Plane: ...
 
 
 def infty_hyperplane(dimension: int) -> Line | Plane:

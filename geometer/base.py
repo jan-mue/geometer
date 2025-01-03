@@ -19,16 +19,7 @@ from geometer.utils import (
     sanitize_index,
 )
 from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
-from geometer.utils.typing import (
-    BooleanSlice1D,
-    IntegerSlice1D,
-    NDArrayParameters,
-    NumericalDType,
-    ScalarBoolean,
-    ScalarInteger,
-    Shape,
-    TensorIndex,
-)
+from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
 
 if TYPE_CHECKING:
     from typing_extensions import Self, Unpack
@@ -288,15 +279,7 @@ class Tensor:
             # replace indices with broadcast shape
             return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
 
-    @overload
-    def __getitem__(self, index: ScalarBoolean) -> Self: ...
-
-    @overload
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic: ...
-
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        # TODO: handle scalar boolean indexing
-
         result = self.array[index]
 
         if isinstance(result, np.generic):
@@ -515,10 +498,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         return np.prod([self.shape[i] for i in range(self.free_indices)], dtype=int)
 
     @overload
-    def __getitem__(self, index: ScalarInteger) -> T: ...
-
-    @overload
-    def __getitem__(self, index: IntegerSlice1D | BooleanSlice1D) -> Self: ...
+    def __getitem__(self, index: int | np.int_) -> T: ...
 
     @overload
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic: ...
@@ -529,8 +509,6 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
 
         if not isinstance(result, Tensor):
             return result
-
-        # TODO: return same class when index is a slice
 
         if isinstance(index, (int, np.int_)):
             return self._element_class(result, copy=False)
