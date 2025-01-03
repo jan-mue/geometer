@@ -26,6 +26,19 @@ class Test2D:
 
         assert 1e6 * p != 1e6 * q
 
+        assert p == Point([100, 0, 1])
+        assert p == Point([100, 0], homogenize=True)
+        assert p != [100, 0]
+        assert p == [100, 0, 1]
+        assert p != np.array([100, 0])
+        assert p == np.array([100, 0, 1])
+        assert p != 100
+
+        assert Point(1, 1) != 1
+        assert Point(1) != Point(1, 1)
+        assert Point(0, 0) != 0
+        assert Point(0) != 0
+
     def test_join(self):
         p = Point(1, 0)
         q = Point(0, 1)
@@ -90,6 +103,28 @@ class Test2D:
 
 
 class Test3D:
+    def test_eq(self):
+        p = Point(100, 0, 0)
+        q = Point(101, 0, 0)
+        assert p == p
+        assert p != q
+
+        assert 1e6 * p != 1e6 * q
+
+        assert p == Point([100, 0, 0, 1])
+        assert p == Point([100, 0, 0], homogenize=True)
+        assert p != [100, 0, 0]
+        assert p == [100, 0, 0, 1]
+        assert p != np.array([100, 0, 0])
+        assert p == np.array([100, 0, 0, 1])
+        assert p != 100
+
+        assert Point(1, 1, 1) != 1
+        assert Point(1, 1) != Point(1, 1, 0)
+        assert Point(0, 0, 0) != 0
+        assert Point(0, 0) != Point(0, 0, 0)
+        assert Point(1, 2) != []
+
     def test_join(self):
         p1 = Point(1, 1, 0)
         p2 = Point(2, 1, 0)

@@ -383,10 +383,11 @@ class Tensor:
 
     @override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Tensor):
-            other = other.array
+        other = np.asanyarray(other)
+        if self.shape != other.shape:
+            return False
         try:
-            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)  # type: ignore[arg-type]
+            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
         except TypeError:
             return NotImplemented
 
@@ -801,6 +802,8 @@ class ProjectiveTensor(Tensor, ABC):
         super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
         if self.rank == 0:
             raise ValueError("A projective tensor cannot be of rank 0")
+        if self.shape[-1] == 0:
+            raise ValueError("A projective tensor cannot have trailing dimension 0")
         if not 0 < self.dim <= 3:
             raise ValueError(f"Only dimensions 1, 2 and 3 are supported, got dimension {self.dim}")
 

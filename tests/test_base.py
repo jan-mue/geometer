@@ -4,6 +4,34 @@ from geometer.base import KroneckerDelta, LeviCivitaTensor, Tensor, TensorCollec
 
 
 class TestTensor:
+    def test_eq(self):
+        a = Tensor(1, 1)
+        b = Tensor(2, 3)
+
+        assert a == a
+        assert a == Tensor([1, 1])
+        assert a == [1, 1]
+        assert a == np.array([1, 1])
+        assert a != 1
+        assert a != np.array(1)
+        assert a != Tensor(1)
+        assert a != ["foo", "bar"]
+        assert a != ["1", "1"]
+        assert a != [None, None]
+
+        assert b != a
+        assert b != Tensor(3, 4, covariant=[0])
+        assert b != Tensor([])
+        assert b != np.array([])
+        assert b != []
+        assert b != Tensor([[2, 3]])
+        assert b != Tensor([[2], [3]])
+        assert b == b
+
+        assert Tensor([]) == Tensor([])
+        assert Tensor([]) == np.array([])
+        assert Tensor([]) == []
+
     def test_arithmetic(self):
         a = Tensor(2, 3)
         b = Tensor(5, 4)
@@ -34,8 +62,8 @@ class TestTensor:
         assert a[None, 1].tensor_shape == (0, 1)
         assert a[::-1, 0] == [3, 1]
         assert a[::-1, 0].tensor_shape == (1, 0)
-        assert a[True] == a
-        assert a[False] == 0
+        assert a[True] == Tensor([a])
+        assert a[False] == Tensor(np.empty((0, 2, 2)))
 
     def test_dtype(self):
         a = Tensor(2, 3, dtype=np.float32)
