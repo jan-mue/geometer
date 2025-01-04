@@ -25,7 +25,7 @@ class NDArrayParameters(TypedDict, total=False):
     like: npt.ArrayLike
 
 
-class TensorParameters(NDArrayParameters):
+class TensorParameters(NDArrayParameters, total=False):
     covariant: bool | Iterable[int]
 
 

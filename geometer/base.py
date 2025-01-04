@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Iterable, Iterator, Sized
+from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, TypeVar
 
@@ -279,7 +279,7 @@ class Tensor:
             # replace indices with broadcast shape
             return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
 
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Self | Tensor | np.generic:
         result = self.array[index]
 
         if isinstance(result, np.generic):
@@ -296,9 +296,22 @@ class Tensor:
             elif old_axis in self._contravariant_indices:
                 contravariant_indices.append(new_axis)
 
+        covariant_indices_set = set(covariant_indices)
+        contravariant_indices_set = set(contravariant_indices)
+
+        result_tensor: Self | Tensor
+        if (
+            self._covariant_indices == covariant_indices_set
+            and self._contravariant_indices == contravariant_indices_set
+        ):
+            result_tensor = self.copy()
+            result_tensor.array = result
+            result_tensor._validate_tensor()
+            return result_tensor
+
         result_tensor = Tensor(result, copy=False)
-        result_tensor._covariant_indices = set(covariant_indices)
-        result_tensor._contravariant_indices = set(contravariant_indices)
+        result_tensor._covariant_indices = covariant_indices_set
+        result_tensor._contravariant_indices = contravariant_indices_set
 
         return result_tensor
 
@@ -501,10 +514,13 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     def __getitem__(self, index: int | np.int_) -> T: ...
 
     @overload
+    def __getitem__(self, index: Sequence[int] | Sequence[np.int_] | Sequence[bool] | Sequence[np.bool_]) -> Self: ...
+
+    @overload
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic: ...
 
     @override
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Self | Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor):
@@ -513,7 +529,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         if isinstance(index, (int, np.int_)):
             return self._element_class(result, copy=False)
 
-        if result.free_indices == 0:
+        if result.free_indices == 0 or isinstance(result, type(self)):
             return result
 
         return TensorCollection(result, copy=False)

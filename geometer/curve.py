@@ -407,8 +407,14 @@ class Conic(Quadric):
     @overload
     def intersect(self, other: LineCollection) -> list[PointCollection]: ...
 
+    @overload
+    def intersect(self, other: Line | Conic) -> list[Point]: ...
+
+    @overload
+    def intersect(self, other: LineTensor) -> list[PointTensor]: ...
+
     @override
-    def intersect(self, other: Line | Conic) -> list[Point]:
+    def intersect(self, other: LineTensor | Conic) -> list[PointTensor]:
         """Calculates points of intersection with the conic.
 
         Args:

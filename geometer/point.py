@@ -10,7 +10,7 @@ from typing_extensions import overload, override
 if TYPE_CHECKING:
     from typing_extensions import Literal, Unpack
 
-    from geometer.utils.typing import NDArrayParameters, TensorIndex, TensorParameters
+    from geometer.utils.typing import NDArrayParameters, TensorParameters
 
 from geometer.base import (
     EQ_TOL_ABS,
@@ -166,6 +166,22 @@ def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
 
 
 @overload
+def join(*args: Unpack[tuple[Point, Point]], _check_dependence: bool = ..., _normalize_result: bool = ...) -> Line: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointCollection, PointTensor]], _check_dependence: bool = ..., _normalize_result: bool = ...
+) -> LineCollection: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointTensor, PointCollection]], _check_dependence: bool = ..., _normalize_result: bool = ...
+) -> LineCollection: ...
+
+
+@overload
 def join(
     *args: Unpack[tuple[PointTensor, PointTensor]], _check_dependence: bool = ..., _normalize_result: bool = ...
 ) -> LineTensor: ...
@@ -173,10 +189,37 @@ def join(
 
 @overload
 def join(
-    *args: Unpack[tuple[PointTensor, PointTensor, PointTensor]],
+    *args: Unpack[tuple[Point, Point, Point]],
     _check_dependence: bool = ...,
     _normalize_result: bool = ...,
-) -> PlaneTensor: ...
+) -> Plane: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointCollection, PointTensor, PointTensor]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneCollection: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointTensor, PointCollection, PointTensor]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneCollection: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointTensor, PointTensor, PointCollection]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneCollection: ...
+
+
+# TODO: add overloads for more non-collection and collection subtypes
 
 
 @overload
@@ -242,6 +285,9 @@ def meet(
 def meet(
     *args: Unpack[tuple[PlaneTensor, PlaneTensor]], _check_dependence: bool = ..., _normalize_result: bool = ...
 ) -> LineTensor: ...
+
+
+# TODO: add overloads for non-collection and collection subtypes
 
 
 @overload
@@ -392,15 +438,6 @@ class PointTensor(PointLikeTensor, ABC):
 
     def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
-
-    @override
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != (1, 0):
-            return result
-
-        return PointCollection.from_array(result)
 
     def _matrix_transform(self, m: npt.ArrayLike) -> PointTensor:
         if self.free_indices == 0:
@@ -608,15 +645,6 @@ class LineTensor(SubspaceTensor, ABC):
             raise ValueError(f"Unexpected tensor of type {self.tensor_shape}")
         if self.dim == 3 and self.shape[-1] != self.shape[-2]:
             raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
-
-    @override
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != self.tensor_shape:
-            return result
-
-        return LineCollection.from_tensor(result)
 
     @override
     def _matrix_transform(self, m: npt.ArrayLike) -> LineTensor:
@@ -844,15 +872,6 @@ class PlaneTensor(SubspaceTensor):
             super().__init__(*args, **kwargs)
         if self.tensor_shape != (0, 1):
             raise ValueError(f"Expected tensor of type (0, 1), but is {self.tensor_shape}")
-
-    @override
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != (0, 1):
-            return result
-
-        return PlaneCollection.from_tensor(result)
 
     @overload
     def meet(self, other: LineTensor) -> PointTensor: ...

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from typing_extensions import Unpack
 
     from geometer.curve import Conic
-    from geometer.utils.typing import NDArrayParameters, TensorIndex
+    from geometer.utils.typing import TensorParameters
 
 
 @overload
@@ -187,7 +187,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[TensorParameters]) -> None:
         kwargs.setdefault("covariant", [0])
         super().__init__(*args, tensor_rank=2, **kwargs)
         if self.tensor_shape != (1, 1):
@@ -242,15 +242,6 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
         result = super().__pow__(power, modulo)
         return type(self)(result, copy=False)
-
-    @override
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
-            return result
-
-        return TransformationCollection.from_tensor(result)
 
     def inverse(self) -> TransformationTensor:
         """Calculates the inverse projective transformation.
