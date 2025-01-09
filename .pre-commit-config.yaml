@@ -32,3 +32,4 @@ repos:
     hooks:
       - id: python-check-blanket-noqa
       - id: python-check-blanket-type-ignore
+      - id: text-unicode-replacement-char
