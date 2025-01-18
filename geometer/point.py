@@ -457,11 +457,38 @@ class PointTensor(PointLikeTensor, ABC):
 
 
 class Point(PointTensor, BoundTensor):
-    pass
+    @overload
+    def join(self, *others: Point) -> Line: ...
+
+    @overload
+    def join(self, *others: Line) -> Plane: ...
+
+    @overload
+    def join(self, *others: PointCollection) -> LineCollection: ...
+
+    @overload
+    def join(self, *others: LineCollection) -> PlaneCollection: ...
+
+    @overload
+    def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor: ...
+
+    @override
+    def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
+        return join(self, *others)
 
 
 class PointCollection(PointTensor, TensorCollection[Point]):
     _element_class = Point
+
+    @overload
+    def join(self, *others: PointTensor) -> LineCollection: ...
+
+    @overload
+    def join(self, *others: LineTensor) -> PlaneCollection: ...
+
+    @override
+    def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
+        return join(self, *others)
 
 
 class SubspaceTensor(ProjectiveTensor, ABC):
@@ -613,7 +640,24 @@ class SubspaceTensor(ProjectiveTensor, ABC):
 
 
 class Subspace(SubspaceTensor, BoundTensor, ABC):
-    pass
+    @overload
+    def meet(self, other: Line) -> Point: ...
+
+    @overload
+    def meet(self, other: Subspace) -> Point | Line: ...
+
+    @overload
+    def meet(self, other: LineCollection) -> PointCollection: ...
+
+    @overload
+    def meet(self, other: SubspaceCollection[SubspaceT]) -> PointCollection | LineCollection: ...
+
+    @overload
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor: ...
+
+    @override
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor:
+        return super().meet(other)
 
 
 SubspaceT = TypeVar("SubspaceT", bound=Subspace)
@@ -848,7 +892,31 @@ class LineTensor(SubspaceTensor, ABC):
 
 
 class Line(LineTensor, Subspace):
-    pass
+    @overload
+    def meet(self, other: Subspace) -> Point: ...
+
+    @overload
+    def meet(self, other: SubspaceCollection[SubspaceT]) -> PointCollection: ...
+
+    @overload
+    def meet(self, other: SubspaceTensor) -> PointTensor: ...
+
+    @override
+    def meet(self, other: SubspaceTensor) -> PointTensor:
+        return super().meet(other)
+
+    @overload
+    def join(self, *others: Point | Line) -> Plane: ...
+
+    @overload
+    def join(self, *others: PointCollection | LineCollection) -> PlaneCollection: ...
+
+    @overload
+    def join(self, *others: PointTensor | LineTensor) -> PlaneTensor: ...
+
+    @override
+    def join(self, *others: PointTensor | LineTensor) -> PlaneTensor:
+        return super().join(*others)
 
 
 class LineCollection(LineTensor, SubspaceCollection[Line]):
@@ -873,6 +941,19 @@ class PlaneTensor(SubspaceTensor):
             super().__init__(*args, **kwargs)
         if self.tensor_shape != (0, 1):
             raise ValueError(f"Expected tensor of type (0, 1), but is {self.tensor_shape}")
+
+    @overload
+    def meet(self, other: LineTensor) -> PointTensor: ...
+
+    @overload
+    def meet(self, other: PlaneTensor) -> LineTensor: ...
+
+    @overload
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor: ...
+
+    @override
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor:
+        return super().meet(other)
 
     @override
     @property
@@ -959,7 +1040,30 @@ class PlaneTensor(SubspaceTensor):
 
 
 class Plane(PlaneTensor, Subspace):
-    pass
+    @overload
+    def meet(self, other: Line) -> Point: ...
+
+    @overload
+    def meet(self, other: Plane) -> Line: ...
+
+    @overload
+    def meet(self, other: LineCollection) -> PointCollection: ...
+
+    @overload
+    def meet(self, other: PlaneCollection) -> LineCollection: ...
+
+    @overload
+    def meet(self, other: LineTensor) -> PointTensor: ...
+
+    @overload
+    def meet(self, other: PlaneTensor) -> LineTensor: ...
+
+    @overload
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor: ...
+
+    @override
+    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor:
+        return super().meet(other)
 
 
 class PlaneCollection(PlaneTensor, SubspaceCollection[Plane]):

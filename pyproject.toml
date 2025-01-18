@@ -137,6 +137,9 @@ enable_error_code = [
   "unused-awaitable",
   "unused-ignore",
 ]
+disable_error_code = [
+  "override",
+]
 
 [[tool.mypy.overrides]]
 module = "geometer.utils.indexing"

@@ -736,4 +736,4 @@ class Cylinder(Cone):
         **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         vertex = infty_plane.meet(Line(center, center + direction))
-        super().__init__(cast(Point, vertex), center, radius, **kwargs)
+        super().__init__(vertex, center, radius, **kwargs)
