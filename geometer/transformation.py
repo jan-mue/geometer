@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from typing_extensions import Unpack
 
     from geometer.curve import Conic
-    from geometer.utils.typing import TensorParameters
+    from geometer.utils.typing import NumericalDType, TensorParameters
 
 
 @overload
@@ -67,7 +67,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
 
     """
     n = 2
-    dtype = np.int_
+    dtype: np.dtype[NumericalDType] = np.dtype(np.int_)
 
     if not np.isscalar(offset):
         offset = np.asarray(offset)
@@ -196,12 +196,12 @@ class TransformationTensor(ProjectiveTensor, ABC):
             raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
 
     @override
-    def __apply__(self, transformation: TransformationTensor) -> TransformationTensor:
+    def __apply__(self, transformation: TransformationTensor) -> TransformationCollection | Transformation:
         return TransformationCollection.from_array(matmul(transformation.array, self.array))
 
     T = TypeVar("T", bound=Tensor)
 
-    def apply(self, other: T) -> T:
+    def apply(self, other: T) -> T | TensorCollection[T]:
         """Apply the transformation to another object.
 
         Args:
@@ -226,6 +226,8 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
     @override
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        if not isinstance(other, Tensor):
+            other = Tensor(other, copy=False)
         try:
             return self.apply(other)
         except NotImplementedError:

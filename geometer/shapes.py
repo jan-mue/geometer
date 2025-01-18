@@ -564,9 +564,8 @@ class PolygonTensor(PolytopeTensor):
     def angles(self) -> list[npt.NDArray[np.float64]]:
         """The interior angles of the polygon."""
         result = []
-        a = cast(SegmentTensor, self.edges[-1])
+        a = self.edges[-1]
         for b in self.edges:
-            b = cast(SegmentTensor, b)
             result.append(angle(a.vertices[1], a.vertices[0], b.vertices[1]))
             a = b
 

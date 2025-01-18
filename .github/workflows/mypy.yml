@@ -22,15 +22,9 @@ jobs:
         run: pip install hatch --upgrade
 
       - name: Set up reviewdog
-        if: github.event_name == 'pull_request'
         uses: reviewdog/action-setup@3f401fe1d58fe77e10d665ab713057375e39b887 # v1.3.0
 
       - name: Run mypy
-        if: github.event_name != 'pull_request'
-        run: hatch run mypy geometer
-
-      - name: Run mypy with reviewdog
-        if: github.event_name == 'pull_request'
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: hatch run mypy geometer | reviewdog -f=mypy -name=mypy -tee -reporter=github-pr-check -filter-mode nofilter
+        run: hatch run mypy geometer | reviewdog -f=mypy -name=mypy -tee -reporter=github-check -filter-mode nofilter

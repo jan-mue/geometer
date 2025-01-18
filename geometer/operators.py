@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -73,7 +73,6 @@ def crossratio(
         and isinstance(d, PlaneTensor)
     ):
         l = a.meet(b)
-        l = cast(LineTensor, l)
         e = PlaneCollection.from_array(l.direction.array)
         a, b, c, d = e.meet(a), e.meet(b), e.meet(c), e.meet(d)
         m = e.basis_matrix

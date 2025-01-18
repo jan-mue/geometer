@@ -24,7 +24,7 @@ from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, Tens
 if TYPE_CHECKING:
     from typing_extensions import Self, Unpack
 
-    from geometer.transformation import TransformationTensor
+    from geometer.transformation import Transformation, TransformationTensor
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
@@ -110,15 +110,28 @@ class Tensor:
         if not is_numerical_dtype(self.dtype):
             raise TypeError(f"The dtype of a Tensor must be a numeric dtype, not {self.dtype.name}")
 
-    def __apply__(self, transformation: TransformationTensor) -> Self:
+    @overload
+    def __apply__(self, transformation: Transformation) -> Self: ...
+
+    @overload
+    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Tensor]: ...
+
+    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Tensor]:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
             inv = transformation.inverse()
             edges.extend((inv.copy(), self) for _ in range(ts[1]))
         diagram = TensorDiagram(*edges)
+        result_tensor = diagram.calculate()
+        if (
+            result_tensor.shape != self.shape
+            or result_tensor._covariant_indices != self._covariant_indices
+            or result_tensor._contravariant_indices != self._contravariant_indices
+        ):
+            return result_tensor
         result = self.copy()
-        result.array = diagram.calculate().array
+        result.array = result_tensor.array
         return result
 
     @property
@@ -279,7 +292,7 @@ class Tensor:
             # replace indices with broadcast shape
             return index_mapping[:a0] + [None] * b.ndim + index_mapping[a1 + 1 :]
 
-    def __getitem__(self, index: TensorIndex) -> Self | Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = self.array[index]
 
         if isinstance(result, np.generic):
@@ -517,10 +530,13 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     def __getitem__(self, index: Sequence[int] | Sequence[np.int_] | Sequence[bool] | Sequence[np.bool_]) -> Self: ...
 
     @overload
+    def __getitem__(self, index: npt.NDArray[np.int_] | npt.NDArray[np.bool_]) -> Tensor: ...
+
+    @overload
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic: ...
 
     @override
-    def __getitem__(self, index: TensorIndex) -> Self | Tensor | np.generic:
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor):
@@ -732,7 +748,7 @@ class TensorDiagram:
 
         self._contraction_list.append((source_index, target_index, i, j))
 
-    def calculate(self) -> Tensor:
+    def calculate(self) -> BoundTensor | TensorCollection[Tensor]:
         """Calculates the result of the diagram.
 
         Returns:
@@ -768,7 +784,10 @@ class TensorDiagram:
         n_free = len(result_indices[0])
         n_cov = len(result_indices[1])
 
-        return Tensor(result, covariant=range(n_cov), tensor_rank=result.ndim - n_free, copy=False)
+        if n_free > 0:
+            return TensorCollection(result, covariant=range(n_cov), tensor_rank=result.ndim - n_free, copy=False)
+
+        return BoundTensor(result, covariant=range(n_cov), copy=False)
 
     def copy(self) -> TensorDiagram:
         result = TensorDiagram()

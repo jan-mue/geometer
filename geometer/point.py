@@ -56,6 +56,7 @@ def _join_meet_duality(
         raise ValueError(f"Expected at least 2 arguments, got {len(args)}.")
 
     n = args[0].dim + 1
+    result: Tensor
 
     # all arguments are 1-tensors, i.e. points or hypersurfaces (=lines in 2D)
     if all(o.tensor_shape == args[0].tensor_shape for o in args[1:]) and sum(args[0].tensor_shape) == 1:
@@ -439,7 +440,7 @@ class PointTensor(PointLikeTensor, ABC):
     def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
 
-    def _matrix_transform(self, m: npt.ArrayLike) -> PointTensor:
+    def _matrix_transform(self, m: npt.ArrayLike) -> PointCollection | Point:
         if self.free_indices == 0:
             return PointCollection.from_array(np.dot(m, self.array))
         return PointCollection.from_array(matvec(m, self.array))
@@ -956,12 +957,13 @@ class PlaneTensor(SubspaceTensor):
         if self.dim != 3 and isinstance(through, LineTensor):
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
 
-        p = self.array[..., :-1]
-        p = PointCollection.from_array(np.append(p, np.zeros(p.shape[:-1] + (1,), dtype=p.dtype), axis=-1))
-        return through.join(p)
+        direction_array = self.array[..., :-1]
+        direction_array = np.append(direction_array, np.zeros(self.shape[:-1] + (1,), dtype=self.dtype), axis=-1)
+        direction = PointCollection.from_array(direction_array)
+        return through.join(direction)
 
     @property
-    def isinf(self) -> npt.NDArray[np.bool_]:
+    def isinf(self) -> np.bool_ | npt.NDArray[np.bool_]:
         """Boolean array that indicates whether the plane is the hyperplane at infinity."""
         return is_multiple(self.array, infty_hyperplane(self.dim).array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
