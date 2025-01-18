@@ -114,9 +114,9 @@ class Tensor:
     def __apply__(self, transformation: Transformation) -> Self: ...
 
     @overload
-    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Tensor]: ...
+    def __apply__(self, transformation: TransformationTensor) -> Self | BoundTensor | TensorCollection[Tensor]: ...
 
-    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Tensor]:
+    def __apply__(self, transformation: TransformationTensor) -> Self | BoundTensor | TensorCollection[Tensor]:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:

@@ -874,16 +874,6 @@ class PlaneTensor(SubspaceTensor):
         if self.tensor_shape != (0, 1):
             raise ValueError(f"Expected tensor of type (0, 1), but is {self.tensor_shape}")
 
-    @overload
-    def meet(self, other: LineTensor) -> PointTensor: ...
-
-    @overload
-    def meet(self, other: PlaneTensor) -> LineTensor: ...
-
-    @override
-    def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor:
-        return super().meet(other)
-
     @override
     @property
     def basis_matrix(self) -> np.ndarray:

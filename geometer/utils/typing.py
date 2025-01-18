@@ -29,6 +29,15 @@ class TensorParameters(NDArrayParameters, total=False):
     covariant: bool | Iterable[int]
 
 
+class PolytopeParameters(NDArrayParameters, total=False):
+    pdim: int
+
+
+class QuadricParameters(NDArrayParameters, total=False):
+    is_dual: bool
+    normalize_matrix: bool
+
+
 NumericalDType: TypeAlias = Union[np.number, np.bool_]
 NumericalArray: TypeAlias = npt.NDArray[NumericalDType]
 NumericalScalar: TypeAlias = Union[Number, np.number, np.bool_, NumericalArray]  # TODO: restrict array shape

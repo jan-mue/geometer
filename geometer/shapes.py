@@ -30,7 +30,7 @@ from geometer.utils import det, distinct, is_multiple, matmul, matvec
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
-    from geometer.utils.typing import NDArrayParameters, TensorIndex
+    from geometer.utils.typing import NDArrayParameters, PolytopeParameters, TensorIndex
 
 
 class PolytopeTensor(PointLikeTensor, ABC):
@@ -60,6 +60,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
         self.pdim = pdim
         super().__init__(*args, **kwargs)
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({', '.join(str(v) for v in self.vertices)})"
 
@@ -72,7 +73,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
         return list(distinct(PointCollection.from_array(x) for x in np.moveaxis(array, -2, 0)))
 
     @property
-    def facets(self) -> list[PolytopeTensor]:
+    def facets(self) -> list[PolytopeTensor] | list[PointTensor]:
         """The facets of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         slices = (slice(None),) * first_polygon_index
@@ -171,6 +172,7 @@ PolytopeT = TypeVar("PolytopeT", bound=Polytope)
 
 
 class PolytopeCollection(PolytopeTensor, TensorCollection[PolytopeT], ABC):
+    @override
     def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices <= max(self.pdim - 1, 1):
@@ -322,6 +324,7 @@ class Segment(SegmentTensor, Polytope):
 class SegmentCollection(SegmentTensor, PolytopeCollection[Segment]):
     _element_class = Segment
 
+    @override
     def expand_dims(self, axis: int) -> SegmentCollection:
         result = super().expand_dims(axis)
         result._line = result._line.expand_dims(axis - self.dim + 3 if axis < -1 else axis)
@@ -340,7 +343,7 @@ class Simplex(Polytope):
     """
 
     # TODO: return only instances of type Simplex
-    def __new__(cls, *args: Point, **kwargs: Unpack[NDArrayParameters]) -> PolytopeTensor:
+    def __new__(cls, *args: Point, **kwargs: Unpack[PolytopeParameters]) -> PolytopeTensor:  # type: ignore[misc]
         if len(args) == 2:
             return Segment(*args, **kwargs)
 
@@ -399,16 +402,19 @@ class PolygonTensor(PolytopeTensor):
         super().__init__(*args, pdim=2, **kwargs)
         self._plane = join(*self.vertices[: self.dim]) if self.dim > 2 else None
 
+    @override
     def __apply__(self, transformation: TransformationTensor) -> PolygonTensor:
         result = super().__apply__(transformation)
         if result.dim > 2:
             result._plane = join(*result.vertices[: result.dim])
         return result
 
+    @override
     @property
     def vertices(self) -> list[PointTensor]:
         return [PointCollection.from_array(self.array[..., i, :]) for i in range(self.shape[-2])]
 
+    @override
     @property
     def facets(self) -> list[SegmentTensor]:
         return list(self.edges)
@@ -654,6 +660,7 @@ class Triangle(Polygon, Simplex):
         bisector2 = e2._line.perpendicular(e2.midpoint, plane=self._plane)
         return bisector1.meet(bisector2)
 
+    @override
     def contains(self, other: PointTensor) -> npt.NDArray[np.bool_]:
         # faster algorithm using barycentric coordinates
 

@@ -42,7 +42,7 @@ from geometer.utils import adjugate, det, hat_matrix, inv, is_multiple, matmul, 
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
-    from geometer.utils.typing import NDArrayParameters, TensorParameters
+    from geometer.utils.typing import NDArrayParameters, QuadricParameters, TensorParameters
 
 
 class QuadricTensor(ProjectiveTensor, ABC):
@@ -673,7 +673,7 @@ class Cone(Quadric):
         vertex: Point = Point(0, 0, 0),
         base_center: Point = Point(0, 0, 1),
         radius: float = 1,
-        **kwargs: Unpack[NDArrayParameters],
+        **kwargs: Unpack[QuadricParameters],
     ) -> None:
         if radius == 0:
             raise ValueError("The radius of a cone can not be zero.")
@@ -736,4 +736,4 @@ class Cylinder(Cone):
         **kwargs: Unpack[NDArrayParameters],
     ) -> None:
         vertex = infty_plane.meet(Line(center, center + direction))
-        super().__init__(vertex, center, radius, **kwargs)
+        super().__init__(cast(Point, vertex), center, radius, **kwargs)

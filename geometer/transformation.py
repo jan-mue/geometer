@@ -118,7 +118,7 @@ def rotation(angle: float | np.float64, axis: Point | None = None) -> Transforma
     return affine_transform(result)
 
 
-def translation(*coordinates: Tensor | npt.ArrayLike) -> Transformation:
+def translation(*coordinates: BoundTensor | npt.ArrayLike) -> Transformation:
     """Returns a projective transformation that represents a translation by the given coordinates.
 
     Args:
@@ -128,6 +128,7 @@ def translation(*coordinates: Tensor | npt.ArrayLike) -> Transformation:
         The translation.
 
     """
+    # TODO: support point collections
     offset = Point(*coordinates)
     return affine_transform(offset=offset.normalized_array[:-1])
 

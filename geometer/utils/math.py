@@ -221,7 +221,7 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number]:
     return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)
 
 
-def det(A: npt.ArrayLike) -> npt.NDArray[np.number]:
+def det(A: npt.ArrayLike) -> npt.NDArray[np.number] | np.number:
     """Computes the determinant of A.
 
     Args:
