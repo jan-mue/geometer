@@ -27,9 +27,3 @@ repos:
       - id: check-github-workflows
       - id: check-readthedocs
       - id: check-dependabot
-  - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
-    hooks:
-      - id: python-check-blanket-noqa
-      - id: python-check-blanket-type-ignore
-      - id: text-unicode-replacement-char
