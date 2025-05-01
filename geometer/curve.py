@@ -683,11 +683,8 @@ class Cone(Quadric):
         h = dist(vertex, base_center)
         c = (radius / h) ** 2
 
-        if np.isinf(h):
-            # cone with vertex at infinity is a cylinder with the center of the base as center
-            v = base_center.normalized_array
-        else:
-            v = vertex.normalized_array
+        # a cone with vertex at infinity is a cylinder with the center of the base as center
+        v = base_center.normalized_array if np.isinf(h) else vertex.normalized_array
 
         # first build a cone with axis parallel to the z-axis
         m = np.eye(4, dtype=np.promote_types(v.dtype, type(c)))

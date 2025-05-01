@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
@@ -21,6 +20,8 @@ from geometer.point import LineTensor, Point, Subspace, infty_hyperplane
 from geometer.utils import inv, matmul, outer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import Unpack
 
     from geometer.curve import Conic

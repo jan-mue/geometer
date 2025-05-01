@@ -19,12 +19,12 @@ from geometer.utils import (
     sanitize_index,
 )
 from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
-from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
 
 if TYPE_CHECKING:
     from typing_extensions import Self, Unpack
 
     from geometer.transformation import Transformation, TransformationTensor
+    from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8

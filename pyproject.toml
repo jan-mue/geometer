@@ -70,6 +70,7 @@ select = [
     "W", # pycodestyle warnings
     "F", # pyflakes
     "I", # isort
+    "A", # flake8-builtins
     "C4", # flake8-comprehensions
     "B", # flake8-bugbear
     "UP", # pyupgrade
@@ -82,6 +83,12 @@ select = [
     "PL", # pylint
     "RUF", # ruff-specific rules
     "D", # pydocstyle
+    "ERA", # no commented-out code
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "SIM", # flake8-simplify
+    "TC", # flake8-type-checking
+    "S101", # don't use assert
 ]
 ignore = [
     "E501", # line too long, handled by black
@@ -104,12 +111,13 @@ ignore = [
     "D105", # Missing docstring in magic method
     "D107", # Missing docstring in `__init__`
     "D417", # TODO: fix
+    "TC006", # Add quotes to type expression in `typing.cast()`
 ]
 unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/**" = ["D"]
+"tests/**" = ["D", "S101"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["geometer"]

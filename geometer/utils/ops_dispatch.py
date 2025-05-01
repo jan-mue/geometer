@@ -102,7 +102,8 @@ def maybe_dispatch_ufunc_to_dunder_op(
             meth = getattr(obj, name, not_implemented)
 
             if op_name in UNARY_UFUNCS:
-                assert len(inputs) == 1
+                if len(inputs) != 1:
+                    raise ValueError(f"Unary ufunc {op_name} requires 1 input, got {len(inputs)}")
                 return meth()
 
             return meth(inputs[1])

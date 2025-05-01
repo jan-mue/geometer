@@ -52,7 +52,7 @@ class TestTensor:
 
         assert a.transpose() == Tensor([[1, 3], [2, 4]])
         assert a.T._covariant_indices == {1}
-        assert a.T.T == a
+        assert a == a.T.T
 
     def test_getitem(self):
         a = Tensor([[1, 2], [3, 4]], covariant=[0])

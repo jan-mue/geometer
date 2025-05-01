@@ -275,7 +275,7 @@ class SegmentTensor(PolytopeTensor):
         y = w_r**2 + w_i**2
         x_zero = np.isclose(x, 0, atol=EQ_TOL_ABS)
         y_zero = np.isclose(y, 0, atol=EQ_TOL_ABS)
-        return result & (~x_zero | ~y_zero) & (0 <= x + tol) & (x <= y + tol)
+        return result & (~x_zero | ~y_zero) & (x + tol >= 0) & (x <= y + tol)
 
     def intersect(
         self, other: LineTensor | PlaneTensor | SegmentTensor | PolygonTensor | Polyhedron
@@ -650,7 +650,8 @@ class Triangle(Polygon, Simplex):
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]):
         super().__init__(*args, **kwargs)
-        assert self.shape[-2] == 3, "Unexpected number of vertices."
+        if self.shape[-2] != 3:
+            raise ValueError(f"Triangle must have exactly 3 vertices, but got {self.shape[-2]} vertices.")
 
     @property
     def circumcenter(self) -> Point:
@@ -703,7 +704,8 @@ class Rectangle(Polygon):
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         super().__init__(*args, **kwargs)
-        assert self.shape[-2] == 4, "Unexpected number of vertices."
+        if self.shape[-2] != 4:
+            raise ValueError(f"Rectangle must have exactly 4 vertices, but got {self.shape[-2]} vertices.")
 
 
 class Polyhedron(Polytope):
