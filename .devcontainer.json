@@ -28,7 +28,10 @@
         "github.copilot",
         "github.copilot-chat",
         "github.github-vscode-theme",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        // opt-out from auto-installed extensions
+        "-ms-python.autopep8",
+        "-dbaeumer.vscode-eslint"
     ],
 
     // Use 'postCreateCommand' to run commands after the container is created.
