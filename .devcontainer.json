@@ -5,7 +5,7 @@
     "image": "mcr.microsoft.com/vscode/devcontainers/python:3",
 
     "containerEnv": {
-        "HATCH_ENV_TYPE_VIRTUAL_PATH": ".venv/default/"
+        "HATCH_ENV_TYPE_VIRTUAL_PATH": ".venv/"
     },
 
     // Set *default* container specific settings.json values on container create.
