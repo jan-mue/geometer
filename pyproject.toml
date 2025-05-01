@@ -89,6 +89,7 @@ select = [
     "SIM", # flake8-simplify
     "TC", # flake8-type-checking
     "S101", # don't use assert
+    "PGH", # pygrep-hooks
 ]
 ignore = [
     "E501", # line too long, handled by black
