@@ -300,7 +300,7 @@ class TestCollections:
         assert a + Point(1, 0) == c
 
     def test_transform(self) -> None:
-        a = PointCollection([(1, 0), (0, 1)])
+        a = PointCollection([(1, 0), (0, 1)], homogenize=True)
 
         assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)], homogenize=True)
         assert rotation(np.pi / 2) * a == PointCollection([(0, 1), (-1, 0)], homogenize=True)
