@@ -18,7 +18,7 @@ from geometer import (
 
 
 class Test2D:
-    def test_eq(self):
+    def test_eq(self) -> None:
         p = Point(100, 0)
         q = Point(101, 0)
         assert p == p
@@ -39,17 +39,17 @@ class Test2D:
         assert Point(0, 0) != 0
         assert Point(0) != 0
 
-    def test_join(self):
+    def test_join(self) -> None:
         p = Point(1, 0)
         q = Point(0, 1)
         assert p.join(q) == Line(-1, -1, 1)
 
-    def test_meet(self):
+    def test_meet(self) -> None:
         l = Line(-1, -1, 2)
         m = Line(1, -1, 0)
         assert l.meet(m) == Point(1, 1)
 
-    def test_add(self):
+    def test_add(self) -> None:
         p = Point(1, 0)
         q = Point(0, 1)
         assert p + q == Point(1, 1)
@@ -58,7 +58,7 @@ class Test2D:
         q = Point(0, 1)
         assert 2 * p + 3 * q == Point(2, 3)
 
-    def test_parallel(self):
+    def test_parallel(self) -> None:
         p = Point(0, 1)
         q = Point(1, 1)
         r = Point(0, 0)
@@ -68,7 +68,7 @@ class Test2D:
         assert m == Line(0, 1, 0)
         assert l.is_parallel(m)
 
-    def test_perpendicular(self):
+    def test_perpendicular(self) -> None:
         p = Point(1, 1)
         l = Line(1, 1, 0)
         m = l.perpendicular(p)
@@ -85,7 +85,7 @@ class Test2D:
 
         assert is_perpendicular(l, m)
 
-    def test_isinf(self):
+    def test_isinf(self) -> None:
         assert not Point(1, -2).isinf
         assert not Point(0, 0).isinf
         assert Point([1, -2, 0]).isinf
@@ -93,7 +93,7 @@ class Test2D:
         assert I.isinf
         assert J.isinf
 
-    def test_isreal(self):
+    def test_isreal(self) -> None:
         assert Point(1, -2).isreal
         assert Point(0, 0).isreal
         assert Point([1, -2, 0]).isreal
@@ -103,7 +103,7 @@ class Test2D:
 
 
 class Test3D:
-    def test_eq(self):
+    def test_eq(self) -> None:
         p = Point(100, 0, 0)
         q = Point(101, 0, 0)
         assert p == p
@@ -125,7 +125,7 @@ class Test3D:
         assert Point(0, 0) != Point(0, 0, 0)
         assert Point(1, 2) != []
 
-    def test_join(self):
+    def test_join(self) -> None:
         p1 = Point(1, 1, 0)
         p2 = Point(2, 1, 0)
         p3 = Point(3, 4, 0)
@@ -146,7 +146,7 @@ class Test3D:
         p = join(l, p3)
         assert p.contains(p4)
 
-    def test_meet(self):
+    def test_meet(self) -> None:
         p1 = Plane(1, 0, 0, 0)
         p2 = Plane(0, 0, 1, 0)
         p3 = Plane(0, 1, 0, 0)
@@ -166,7 +166,7 @@ class Test3D:
         # plane and line
         assert p3.meet(l) == Point(0, 0, 0)
 
-    def test_contains(self):
+    def test_contains(self) -> None:
         p1 = Point(1, 1, 0)
         p2 = Point(2, 1, 0)
         p3 = Point(3, 4, 0)
@@ -177,13 +177,13 @@ class Test3D:
         assert p.contains(p4)
         assert p.contains(l)
 
-    def test_is_coplanar(self):
+    def test_is_coplanar(self) -> None:
         l = Line(Point(1, 1, 0), Point(2, 1, 0))
         m = Line(Point(0, 0, 0), Point(1, 2, 0))
 
         assert l.is_coplanar(m)
 
-    def test_project(self):
+    def test_project(self) -> None:
         p1 = Point(1, 1, 0)
         p2 = Point(2, 1, 0)
         l = Line(p1, p2)
@@ -192,7 +192,7 @@ class Test3D:
         e = Plane(0, 0, 1, 0)
         assert e.project(Point(1, 1, 5)) == p1
 
-    def test_parallel(self):
+    def test_parallel(self) -> None:
         p = Point(0, 0, 1)
         q = Point(1, 0, 1)
         r = Point(0, 1, 1)
@@ -201,7 +201,7 @@ class Test3D:
         assert f == Plane(0, 0, 1, 0)
         assert e.is_parallel(f)
 
-    def test_perpendicular(self):
+    def test_perpendicular(self) -> None:
         p = Point(1, 1, 0)
         q = Point(0, 0, 1)
         r = Point(1, 2, 3)
@@ -233,7 +233,7 @@ class Test3D:
 
 
 class TestCollections:
-    def test_join(self):
+    def test_join(self) -> None:
         # 2 points
         a = PointCollection([Point(0, 0), Point(0, 1)])
         b = PointCollection([Point(1, 0), Point(1, 1)])
@@ -255,7 +255,7 @@ class TestCollections:
         # point and line
         assert join(a, b.join(c)) == PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
 
-    def test_meet(self):
+    def test_meet(self) -> None:
         # three planes
         a = PlaneCollection([Plane(1, 0, 0, 0), Plane(1, 0, 0, -1)])
         b = PlaneCollection([Plane(0, 1, 0, 0), Plane(0, 1, 0, -1)])
@@ -282,13 +282,13 @@ class TestCollections:
         b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
 
-    def test_homogenize(self):
+    def test_homogenize(self) -> None:
         a = PointCollection([(0, 0), (0, 1)], homogenize=True)
         b = PointCollection([Point(0, 0), Point(0, 1)])
 
         assert a == b
 
-    def test_arithmetic(self):
+    def test_arithmetic(self) -> None:
         a = PointCollection([Point(0, 1), Point(0, 1)])
         b = PointCollection([Point(1, 0), Point(1, 0)])
         c = PointCollection([Point(1, 1), Point(1, 1)])
@@ -299,19 +299,19 @@ class TestCollections:
         assert (2 * a + 2 * b) / 2 == c
         assert a + Point(1, 0) == c
 
-    def test_transform(self):
-        a = PointCollection([(1, 0), (0, 1)], homogenize=True)
+    def test_transform(self) -> None:
+        a = PointCollection([(1, 0), (0, 1)])
 
         assert translation(1, 1) * a == PointCollection([(2, 1), (1, 2)], homogenize=True)
         assert rotation(np.pi / 2) * a == PointCollection([(0, 1), (-1, 0)], homogenize=True)
 
-    def test_basis_matrix(self):
+    def test_basis_matrix(self) -> None:
         a = PlaneCollection([Plane(1, 0, 0, 0), Plane(0, 1, 0, 0), Plane(0, 0, 1, 0)])
 
         assert a.basis_matrix.shape == (3, 3, 4)
         assert np.allclose(np.matmul(a.basis_matrix, a.array[..., None]), 0)
 
-    def test_project(self):
+    def test_project(self) -> None:
         p1 = PointCollection([(1, 1, 0), (1, 1, 5)], homogenize=True)
         p2 = PointCollection([(2, 1, 0), (2, 1, 5)], homogenize=True)
         p3 = PointCollection([(0, 0, 0), (0, 0, 5)], homogenize=True)
@@ -321,7 +321,7 @@ class TestCollections:
         e = PlaneCollection([(0, 1, 0, -1), (0, 1, 0, -2)])
         assert e.project(p3) == PointCollection([(0, 1, 0), (0, 2, 5)], homogenize=True)
 
-    def test_perpendicular(self):
+    def test_perpendicular(self) -> None:
         p1 = PointCollection([(1, 1, 0), (1, 1, 5)], homogenize=True)
         p2 = PointCollection([(2, 1, 0), (2, 1, 5)], homogenize=True)
         p3 = PointCollection([(0, 0, 0), (0, 0, 5)], homogenize=True)
@@ -351,11 +351,11 @@ class TestCollections:
         assert e.meet(f) == l
         assert all(is_perpendicular(e, f))
 
-    def test_isinf(self):
+    def test_isinf(self) -> None:
         assert np.all(~PointCollection([(1, -2), (0, 0)], homogenize=True).isinf)
         assert np.all(PointCollection([[1, -2, 0], [1j, -2, 0]]).isinf)
         assert np.all(PointCollection([I, J]).isinf)
 
-    def test_isreal(self):
+    def test_isreal(self) -> None:
         assert np.all(PointCollection([(1, -2, 1), (0, 0, 1), (1, -2, 0)]).isreal)
         assert np.all(~PointCollection([Point([1j, -2, 0]), I, J]).isreal)

@@ -17,7 +17,7 @@ from geometer.exceptions import NoIncidence
 
 
 class TestTransformation:
-    def test_from_points(self):
+    def test_from_points(self) -> None:
         p1 = Point(0, 0)
         p2 = Point(1, 0)
         p3 = Point(0, 1)
@@ -35,7 +35,7 @@ class TestTransformation:
         assert (M * l).contains(M * p1)
         assert (M * l).contains(M * p3)
 
-    def test_translation(self):
+    def test_translation(self) -> None:
         p = Point(0, 1)
         t = translation(0, -1)
         assert t * p == Point(0, 0)
@@ -44,12 +44,12 @@ class TestTransformation:
         t = translation(0, 0, -1)
         assert t * l == Line(Point(0, 0, 0), Point(1, 0, 0))
 
-    def test_inverse(self):
+    def test_inverse(self) -> None:
         E = Transformation(np.eye(4))
         M = rotation(np.pi, axis=Point(0, 1, 0))
         assert M.inverse() * M == E
 
-    def test_pow(self):
+    def test_pow(self) -> None:
         t = translation(1, 2)
 
         assert t**0 == Transformation(np.eye(3))
@@ -58,7 +58,7 @@ class TestTransformation:
         assert t**3 == translation(3, 6)
         assert t ** (-2) == translation(-2, -4)
 
-    def test_rotation(self):
+    def test_rotation(self) -> None:
         p = Point(0, 1)
         t = rotation(-np.pi)
         assert t * p == Point(0, -1)
@@ -72,19 +72,19 @@ class TestTransformation:
         t = rotation(a, axis=Point(1, 1, 2))
         assert np.isclose(angle(p, t * p), a)
 
-    def test_scaling(self):
+    def test_scaling(self) -> None:
         p = Point(1, 1, 2)
         s = scaling(3, -4.5, 5)
 
         assert s * p == Point(3, -4.5, 10)
 
-    def test_reflection(self):
+    def test_reflection(self) -> None:
         p = Point(-1, 1)
         r = reflection(Line(1, -1, 1))
 
         assert r * p == Point(0, 0)
 
-    def test_from_points_and_conics(self):
+    def test_from_points_and_conics(self) -> None:
         c1 = Circle()
         p1 = Point(0, -1)
         p2 = Point(0, 1)
@@ -113,12 +113,12 @@ class TestTransformation:
 
 
 class TestTransformationCollection:
-    def test_inverse(self):
+    def test_inverse(self) -> None:
         E = TransformationCollection([np.eye(4)] * 10)
         M = TransformationCollection([rotation(np.pi, axis=Point(0, 1, 0))] * 10)
         assert M.inverse() * M == E
 
-    def test_pow(self):
+    def test_pow(self) -> None:
         t = TransformationCollection([translation(1, 2)] * 10)
 
         assert t**0 == TransformationCollection([np.eye(3)] * 10)

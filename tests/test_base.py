@@ -4,7 +4,7 @@ from geometer.base import KroneckerDelta, LeviCivitaTensor, Tensor, TensorCollec
 
 
 class TestTensor:
-    def test_eq(self):
+    def test_eq(self) -> None:
         a = Tensor(1, 1)
         b = Tensor(2, 3)
 
@@ -32,7 +32,7 @@ class TestTensor:
         assert Tensor([]) == np.array([])
         assert Tensor([]) == []
 
-    def test_arithmetic(self):
+    def test_arithmetic(self) -> None:
         a = Tensor(2, 3)
         b = Tensor(5, 4)
 
@@ -47,14 +47,14 @@ class TestTensor:
         assert a * 6 == Tensor(12, 18)
         assert a / 6 == Tensor(1 / 3, 0.5)
 
-    def test_transpose(self):
+    def test_transpose(self) -> None:
         a = Tensor([[1, 2], [3, 4]], covariant=[0])
 
         assert a.transpose() == Tensor([[1, 3], [2, 4]])
         assert a.T._covariant_indices == {1}
         assert a == a.T.T
 
-    def test_getitem(self):
+    def test_getitem(self) -> None:
         a = Tensor([[1, 2], [3, 4]], covariant=[0])
 
         assert a[0, 1] == 2
@@ -65,7 +65,7 @@ class TestTensor:
         assert a[True] == Tensor([a])
         assert a[False] == Tensor(np.empty((0, 2, 2)))
 
-    def test_dtype(self):
+    def test_dtype(self) -> None:
         a = Tensor(2, 3, dtype=np.float32)
         assert a.dtype == np.float32
 
@@ -74,7 +74,7 @@ class TestTensor:
 
 
 class TestTensorCollection:
-    def test_init(self):
+    def test_init(self) -> None:
         # numpy array
         a = TensorCollection[Tensor](np.ones((1, 2, 3)), tensor_rank=1)
         assert len(a) == 1
@@ -98,14 +98,14 @@ class TestTensorCollection:
 
         # object with __array__ function
         class A:
-            def __array__(self):
+            def __array__(self) -> np.ndarray:
                 return np.array([Tensor(1, 2), Tensor(3, 4)])
 
         a = TensorCollection[Tensor](A(), tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
-    def test_getitem(self):
+    def test_getitem(self) -> None:
         a = TensorCollection[Tensor]([[1, 2], [3, 4]])
         b = TensorCollection[Tensor]([[5, 6], [7, 8]])
         c = TensorCollection[Tensor]([a, b], tensor_rank=1)
@@ -116,7 +116,7 @@ class TestTensorCollection:
         assert c[:, 1] == Tensor([Tensor([3, 4]), Tensor([7, 8])], tensor_rank=1)
         assert c[:, 0, 0] == [1, 5]
 
-    def test_expand_dims(self):
+    def test_expand_dims(self) -> None:
         a = TensorCollection[Tensor]([[1, 2], [3, 4]])
         b = a.expand_dims(0)
 
@@ -135,7 +135,7 @@ class TestTensorCollection:
 
 
 class TestTensorDiagram:
-    def test_add_edge(self):
+    def test_add_edge(self) -> None:
         a = Tensor([1, 0, 0, 0])
         b = Tensor(
             [
@@ -151,7 +151,7 @@ class TestTensorDiagram:
         diagram.add_edge(a.copy(), b)
         assert diagram.calculate() == 42
 
-    def test_tensor_product(self):
+    def test_tensor_product(self) -> None:
         e1 = Tensor(1, 0)
         e2 = Tensor(0, 1)
         a = Tensor([0, 1], [1, 0], covariant=[0])
@@ -166,7 +166,7 @@ class TestTensorDiagram:
         d.add_node(b)
         assert d.calculate() == a.tensor_product(b)
 
-    def test_epsilon_delta_rule(self):
+    def test_epsilon_delta_rule(self) -> None:
         e1 = LeviCivitaTensor(3, True)
         e2 = LeviCivitaTensor(3, False)
         d = KroneckerDelta(3)
@@ -176,7 +176,7 @@ class TestTensorDiagram:
         diagram = TensorDiagram((e1, e2.transpose()))
         assert diagram.calculate() == d1 - d2
 
-    def test_kronecker_delta(self):
+    def test_kronecker_delta(self) -> None:
         d = KroneckerDelta(4, 3)
         assert d.array.shape == (4,) * 6
         assert d.array[0, 1, 2, 0, 1, 2] == 1

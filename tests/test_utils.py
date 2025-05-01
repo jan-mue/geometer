@@ -3,7 +3,7 @@ import numpy as np
 from geometer.utils import adjugate, det, inv, is_multiple, null_space, orth, roots
 
 
-def test_is_multiple():
+def test_is_multiple() -> None:
     a = [1, 2, 3, 4]
     b = [2, 4, 6, 8]
     assert is_multiple(a, b)
@@ -30,7 +30,7 @@ def test_is_multiple():
     assert np.all(is_multiple(a, b, axis=[1]))
 
 
-def test_adjugate():
+def test_adjugate() -> None:
     a = np.array(
         [
             [2, 3, 4, 3],
@@ -44,7 +44,7 @@ def test_adjugate():
     assert np.allclose(np.linalg.inv(a) * np.linalg.det(a), adj)
 
 
-def test_det(rng):
+def test_det(rng: np.random.Generator) -> None:
     matrices = rng.random((10, 2, 2))
     assert np.allclose(np.linalg.det(matrices), det(matrices))
 
@@ -52,7 +52,7 @@ def test_det(rng):
     assert np.allclose(np.linalg.det(matrices), det(matrices))
 
 
-def test_inv(rng):
+def test_inv(rng: np.random.Generator) -> None:
     matrices = rng.random((64, 2, 2))
     assert np.allclose(np.linalg.inv(matrices), inv(matrices))
 
@@ -63,12 +63,12 @@ def test_inv(rng):
     assert np.allclose(np.linalg.inv(matrices), inv(matrices))
 
 
-def test_orth():
+def test_orth() -> None:
     a = np.eye(3)
     assert np.allclose(orth(a), a)
 
 
-def test_null_space():
+def test_null_space() -> None:
     a = np.array(
         [
             [2, 3, 4, 3],
@@ -80,7 +80,7 @@ def test_null_space():
     assert np.all(abs(a.dot(null_space(a))) < 1e-9)
 
 
-def test_roots(rng):
+def test_roots(rng: np.random.Generator) -> None:
     polys = rng.integers(-10, 10, size=(500, 4))
     for p in polys:
         sol = roots(p)
