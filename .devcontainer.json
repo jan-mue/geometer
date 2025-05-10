@@ -17,7 +17,8 @@
         "workbench.colorTheme": "GitHub Dark",
         "files.autoSave": "afterDelay",
         "chat.agent.enabled": true,
-        "git.autofetch": true
+        "git.autofetch": true,
+        "git.confirmSync": false
     },
 
     // Add the IDs of extensions you want installed when the container is created.
