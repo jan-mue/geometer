@@ -175,6 +175,7 @@ cython_debug/
 
 # VS Code
 .vscode/*
+!.vscode/settings.json
 !.vscode/launch.json
 
 # MacOS

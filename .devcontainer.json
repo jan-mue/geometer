@@ -12,11 +12,6 @@
     "settings": {
         "terminal.integrated.shell.linux": "/bin/bash",
         "python.defaultInterpreterPath": ".venv/bin/python",
-        "python.testing.pytestArgs": [
-            "tests"
-        ],
-        "python.testing.unittestEnabled": false,
-        "python.testing.pytestEnabled": true,
         "keyboard.layout": "com.apple.keylayout.German",
         "telemetry.telemetryLevel": "off",
         "workbench.colorTheme": "GitHub Dark",
