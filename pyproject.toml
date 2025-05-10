@@ -89,6 +89,7 @@ select = [
     "TC", # flake8-type-checking
     "S101", # don't use assert
     "PGH", # pygrep-hooks
+    "PIE", # flake8-pie
 ]
 ignore = [
     "E501", # line too long, handled by black
