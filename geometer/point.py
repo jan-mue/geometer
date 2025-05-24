@@ -109,10 +109,10 @@ def _join_meet_duality(
                     i = np.unravel_index(np.abs(array).argmax(), array.shape)
                     if not intersect_lines:
                         # extract the common subspace
-                        result = Tensor(array[i[0], ...], covariant=False, copy=False)
+                        result = Tensor(array[i[0], ...], covariant=False, copy=None)
                     else:
                         # extract the point of intersection
-                        result = Tensor(array[(slice(None),) + i[1:]], copy=False)
+                        result = Tensor(array[(slice(None),) + i[1:]], copy=None)
                 else:
                     max_ind = np.abs(array).reshape((np.prod(array.shape[: coplanar.ndim]), -1)).argmax(1)
                     i = np.unravel_index(max_ind, array.shape[coplanar.ndim :])
@@ -121,9 +121,9 @@ def _join_meet_duality(
                     if not intersect_lines:
                         result_array = array[(*indices, i[0], Ellipsis)]
                         result_rank = result_array.ndim - coplanar.ndim
-                        result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=False)
+                        result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=None)
                     else:
-                        result = Tensor(array[indices + (slice(None),) + i[1:]], tensor_rank=1, copy=False)
+                        result = Tensor(array[indices + (slice(None),) + i[1:]], tensor_rank=1, copy=None)
 
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
@@ -431,7 +431,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
 
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, Tensor):
-            other = Tensor(other, copy=False)
+            other = Tensor(other, copy=None)
         return self + (-other)
 
     @property
@@ -716,7 +716,7 @@ class LineTensor(SubspaceTensor, ABC):
             arr_sort = np.argsort(np.abs(arr), axis=-1)
             arr_ind = tuple(np.indices(arr.shape)[:-1])
             m = m[(*arr_ind, arr_sort, slice(None))]
-            pt = PointCollection(arr[(*arr_ind, arr_sort)], copy=False)
+            pt = PointCollection(arr[(*arr_ind, arr_sort)], copy=None)
             l = self._matrix_transform(m)
         l1 = join(I, pt, _normalize_result=False)
         l2 = join(J, pt, _normalize_result=False)

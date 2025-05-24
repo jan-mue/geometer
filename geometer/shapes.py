@@ -125,10 +125,10 @@ class PolytopeTensor(PointLikeTensor, ABC):
         if pdim == 2:
             if tensor.shape[-2] == 3:
                 # TODO: check if a collection can be returned here
-                return Triangle(tensor, copy=False)
+                return Triangle(tensor, copy=None)
             if tensor.shape[-2] == 4:
                 try:
-                    return Rectangle(tensor, copy=False)
+                    return Rectangle(tensor, copy=None)
                 except NotCoplanar:
                     return PolytopeCollection.from_tensor(tensor)
 
@@ -137,7 +137,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
             except NotCoplanar:
                 return PolytopeCollection.from_tensor(tensor)
         if pdim == 3:
-            return Polyhedron(tensor, copy=False)
+            return Polyhedron(tensor, copy=None)
 
         return PolytopeCollection.from_tensor(tensor)
 
@@ -406,7 +406,7 @@ class PolygonTensor(PolytopeTensor):
     @property
     def edges(self) -> SegmentCollection:
         """The edges of the polygon."""
-        return SegmentCollection(self._edges, copy=False)
+        return SegmentCollection(self._edges, copy=None)
 
     def contains(self, other: PointTensor) -> npt.NDArray[np.bool_]:
         """Tests whether a point is contained in the polygon.
@@ -441,17 +441,17 @@ class PolygonTensor(PolytopeTensor):
             arr = arr.reshape(s[:-1] + (-1,))
 
             if isinstance(other, Point) and i.ndim == 1:
-                other = Point(np.delete(other.array, i), copy=False)
+                other = Point(np.delete(other.array, i), copy=None)
             else:
                 s = other.shape[:-1] + (1, other.shape[-1])
                 other = np.delete(other.array, np.ravel_multi_index((*tuple(np.indices(s[:-1])), i), s))
-                other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=False)
+                other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=None)
 
             # TODO: only test coplanar points
             return coplanar & PolygonCollection.from_array(arr).contains(other)
 
         edges = self.edges
-        edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=False))
+        edge_points = edges.contains(PointCollection(np.expand_dims(other.array, -2), copy=None))
 
         if isinstance(other, PointCollection):
             direction = np.zeros_like(other.array)
@@ -459,10 +459,10 @@ class PolygonTensor(PolytopeTensor):
             direction[ind, 0] = other.array[ind, 1]
             direction[ind, 1] = -other.array[ind, 0]
             direction[~ind, 0] = 1
-            rays = SegmentCollection(np.stack([other.array, direction], axis=-2), copy=False).expand_dims(-3)
+            rays = SegmentCollection(np.stack([other.array, direction], axis=-2), copy=None).expand_dims(-3)
         else:
             direction = [other.array[1], -other.array[0], 0] if other.isinf else [1, 0, 0]
-            rays = Segment(np.stack([other.array, direction], axis=-2), copy=False)
+            rays = Segment(np.stack([other.array, direction], axis=-2), copy=None)
 
         intersections = meet(edges._line, rays._line, _check_dependence=False)
 
@@ -595,8 +595,8 @@ class RegularPolygon(Polygon):
         if axis is None:
             p = Point(1, 0)
         else:
-            e = Plane(np.append(axis.array[:-1], [0]), copy=False)
-            p = Point(*e.basis_matrix[0, :-1], copy=False)
+            e = Plane(np.append(axis.array[:-1], [0]), copy=None)
+            p = Point(*e.basis_matrix[0, :-1], copy=None)
 
         vertex = center + radius * p
 
@@ -701,13 +701,13 @@ class Polyhedron(Polytope):
     @property
     def faces(self) -> PolygonCollection:
         """The faces of the polyhedron."""
-        return PolygonCollection(self.array, copy=False)
+        return PolygonCollection(self.array, copy=None)
 
     @property
     def edges(self) -> list[SegmentTensor]:
         """The edges of the polyhedron."""
         result = self._edges
-        return list(distinct(Segment(result[idx], copy=False) for idx in np.ndindex(*self.shape[:2])))
+        return list(distinct(Segment(result[idx], copy=None) for idx in np.ndindex(*self.shape[:2])))
 
     @property
     def area(self) -> npt.NDArray[np.float64] | np.float64:

@@ -51,8 +51,8 @@ def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> Transf
         e = np.eye(dim + 1)
         e = e.reshape((1,) * len(collection_dims) + e.shape)
         e = np.tile(e, (*collection_dims, 1, 1))
-        return TransformationCollection(e, copy=False)
-    return Transformation(np.eye(dim + 1), copy=False)
+        return TransformationCollection(e, copy=None)
+    return Transformation(np.eye(dim + 1), copy=None)
 
 
 def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike = 0) -> Transformation:
@@ -85,7 +85,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
         result[:-1, :-1] = matrix
 
     result[:-1, -1] = offset
-    return Transformation(result, copy=False)
+    return Transformation(result, copy=None)
 
 
 def rotation(angle: float | np.float64, axis: Point | None = None) -> Transformation:
@@ -110,7 +110,7 @@ def rotation(angle: float | np.float64, axis: Point | None = None) -> Transforma
     e = LeviCivitaTensor(dimension, False)
     a = axis.normalized_array[:-1]
     a = a / np.linalg.norm(a)
-    d = TensorDiagram(*[(Tensor(a, copy=False), e) for _ in range(dimension - 2)])
+    d = TensorDiagram(*[(Tensor(a, copy=None), e) for _ in range(dimension - 2)])
     u = d.calculate().array
     v = outer(a, a)
     result = np.cos(angle) * np.eye(dimension) + np.sin(angle) * u + (1 - np.cos(angle)) * v
@@ -238,7 +238,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
             return self.inverse().__pow__(-power, modulo)
 
         result = super().__pow__(power, modulo)
-        return type(self)(result, copy=False)
+        return type(self)(result, copy=None)
 
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
@@ -255,7 +255,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
             The inverse transformation.
 
         """
-        return type(self)(inv(self.array), copy=False)
+        return type(self)(inv(self.array), copy=None)
 
 
 class Transformation(TransformationTensor, BoundTensor):
