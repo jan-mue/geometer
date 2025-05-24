@@ -15,7 +15,9 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
-      - uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
         with:
           token: ${{ secrets.RELEASE_PLEASE_PAT }}
           release-type: python
@@ -33,11 +35,14 @@ jobs:
         with:
           python-version-file: pyproject.toml
 
-      - name: Install hatch
-        run: pip install hatch --upgrade
+      - name: Install uv
+        uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+        with:
+          enable-cache: true
+          version: "0.7.8"
 
       - name: Build package
-        run: hatch build
+        run: uv build
 
       - name: Upload dists
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
@@ -47,7 +52,7 @@ jobs:
 
   test-pypi-publish:
     if: ${{ needs.release-please.outputs.release_created }}
-    needs: [ release-please, build ]
+    needs: [release-please, build]
     runs-on: ubuntu-latest
     environment:
       name: test-pypi
@@ -68,7 +73,7 @@ jobs:
 
   pypi-publish:
     if: ${{ needs.release-please.outputs.release_created }}
-    needs: [ release-please, test-pypi-publish ]
+    needs: [release-please, test-pypi-publish]
     runs-on: ubuntu-latest
     environment:
       name: pypi

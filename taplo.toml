@@ -1,0 +1,15 @@
+[formatting]
+column_width = 120
+array_auto_collapse = false
+align_comments = false
+indent_string = "    "
+
+[[rule]]
+include = ["pyproject.toml"]
+keys = [
+    "project",
+    "dependency-groups",
+]
+
+[rule.formatting]
+reorder_arrays = true

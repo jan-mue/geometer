@@ -37,8 +37,12 @@
     ],
 
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "pip install hatch && hatch env create && hatch run pre-commit install",
+    "postCreateCommand": "uv sync --frozen && uv tool install pre-commit && pre-commit install",
 
     // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-    "remoteUser": "vscode"
+    "remoteUser": "vscode",
+
+    "features": {
+        "ghcr.io/va-h/devcontainers-features/uv:1": {}
+    }
 }
