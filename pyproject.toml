@@ -7,7 +7,7 @@ name = "geometer"
 dynamic = ["version"]
 description = "Python geometry package based on projective geometry and numpy."
 readme = "README.md"
-requires-python = "<3.13,>=3.9"
+requires-python = ">=3.9"
 license = "MIT"
 keywords = ["geometry", "mathematics", "numpy", "projective geometry"]
 authors = [
