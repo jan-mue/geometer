@@ -258,7 +258,6 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
 
 class Transformation(TransformationTensor, BoundTensor):
-
     @classmethod
     def from_points(cls, *args: tuple[Point, Point]) -> Transformation:
         """Constructs a projective transformation in n-dimensional projective space from the image of n + 2 points in general position.
