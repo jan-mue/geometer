@@ -52,7 +52,7 @@ jobs:
 
   test-pypi-publish:
     if: ${{ needs.release-please.outputs.release_created }}
-    needs: [ release-please, build ]
+    needs: [release-please, build]
     runs-on: ubuntu-latest
     environment:
       name: test-pypi
@@ -73,7 +73,7 @@ jobs:
 
   pypi-publish:
     if: ${{ needs.release-please.outputs.release_created }}
-    needs: [ release-please, test-pypi-publish ]
+    needs: [release-please, test-pypi-publish]
     runs-on: ubuntu-latest
     environment:
       name: pypi

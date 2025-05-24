@@ -9,35 +9,35 @@ description = "Python geometry package based on projective geometry and numpy."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
-keywords = ["geometry", "numpy", "mathematics", "projective geometry"]
+keywords = ["geometry", "mathematics", "numpy", "projective geometry"]
 authors = [
     { name = "Jan Müller", email = "" },
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python",
 ]
 dependencies = [
-    "numpy>=1.22,<2.0"
+    "numpy>=1.22,<2.0",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest==8.3.5",
-    "mypy==1.15.0",
     "coverage==7.8.2",
+    "mypy==1.15.0",
+    "pytest==8.3.5",
 ]
 docs = [
-    "sphinx==8.2.3; python_version >= '3.11'",
-    "sphinx==8.1.3; python_version == '3.10.*'",
+    "sphinx-rtd-theme==3.0.2",
     "sphinx==7.4.7; python_version < '3.10'",
-    "sphinx-rtd-theme==3.0.2"
+    "sphinx==8.1.3; python_version == '3.10.*'",
+    "sphinx==8.2.3; python_version >= '3.11'",
 ]
 
 [project.urls]
@@ -57,7 +57,7 @@ line-length = 120
 target-version = "py39"
 line-length = 120
 exclude = [
-    "docs"
+    "docs",
 ]
 
 [tool.ruff.lint]

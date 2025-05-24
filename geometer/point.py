@@ -83,11 +83,8 @@ def _join_meet_duality(
     # two lines/planes
     elif len(args) == 2:
         a, b = args
-        if (
-            isinstance(a, LineTensor)
-            and isinstance(b, PlaneTensor)
-            or isinstance(b, LineTensor)
-            and isinstance(a, PlaneTensor)
+        if (isinstance(a, LineTensor) and isinstance(b, PlaneTensor)) or (
+            isinstance(b, LineTensor) and isinstance(a, PlaneTensor)
         ):
             e = LeviCivitaTensor(n)
             result = TensorDiagram(*[(e, a)] * a.tensor_shape[1], *[(e, b)] * b.tensor_shape[1]).calculate()
