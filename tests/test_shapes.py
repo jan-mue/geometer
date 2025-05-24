@@ -20,7 +20,7 @@ from geometer import (
 
 
 class TestSegment:
-    def test_contains(self):
+    def test_contains(self) -> None:
         # both points finite
         p = Point(0, 0)
         q = Point(2, 1)
@@ -59,7 +59,7 @@ class TestSegment:
         assert not s.contains(p - q)
         assert not s.contains(Point(0, 0))
 
-    def test_equal(self):
+    def test_equal(self) -> None:
         p = Point(0, 0)
         q = Point(2, 1)
         s = Segment(p, q)
@@ -69,17 +69,17 @@ class TestSegment:
         assert s == Segment([(0, 0), (2, 1)], homogenize=True)
         assert s != Segment([(0, 0), (1, 2)], homogenize=True)
 
-    def test_intersect(self):
+    def test_intersect(self) -> None:
         a = Point(0, 0)
         b = Point(0, 2)
         c = Point(2, 2)
         d = Point(2, 0)
-        s1 = Segment(a, c)
-        s2 = Segment(b, d)
+        s1 = Segment([a, c])
+        s2 = Segment([b, d])
 
         assert s1.intersect(s2) == [Point(1, 1)]
 
-    def test_midpoint(self):
+    def test_midpoint(self) -> None:
         p = Point(0, 0)
         q = Point(2, 2)
         s = Segment(p, q)
@@ -90,7 +90,7 @@ class TestSegment:
         s = Segment(p, q)
         assert s.midpoint == Point(0, 1, 0)
 
-    def test_transformation(self):
+    def test_transformation(self) -> None:
         p = Point(0, 0)
         q = Point(2, 2)
         s = Segment(p, q)
@@ -99,7 +99,7 @@ class TestSegment:
         assert r * s == Segment(p, Point(-2, 2))
         assert r.apply(s)._line == r.apply(s._line)
 
-    def test_getitem(self):
+    def test_getitem(self) -> None:
         p = Point(0, 0)
         q = Point(2, 2)
         s = Segment(p, q)
@@ -109,7 +109,7 @@ class TestSegment:
 
 
 class TestPolygon:
-    def test_equal(self, rng):
+    def test_equal(self, rng: np.random.Generator) -> None:
         points = rng.random((50, 3))
 
         p1 = Polygon(points)
@@ -121,7 +121,7 @@ class TestPolygon:
         assert p1 == p3
         assert p1 == p4
 
-    def test_intersect(self):
+    def test_intersect(self) -> None:
         a = Point(0, 0)
         b = Point(0, 2)
         c = Point(2, 2)
@@ -154,7 +154,7 @@ class TestPolygon:
         assert square.intersect(line1) == [p3, p4]
         assert len(square.intersect(line2)) == 2
 
-    def test_edges(self):
+    def test_edges(self) -> None:
         a = Point(0, 0)
         b = Point(0, 2)
         c = Point(2, 2)
@@ -162,7 +162,7 @@ class TestPolygon:
         r = Rectangle(a, b, c, d)
         assert r.edges == [Segment(a, b), Segment(b, c), Segment(c, d), Segment(d, a)]
 
-    def test_contains(self):
+    def test_contains(self) -> None:
         a = Point(0, 0)
         b = Point(0, 2)
         c = Point(2, 2)
@@ -197,7 +197,7 @@ class TestPolygon:
         assert p.contains(Point([0, 0, 1, 0]))
         assert not p.contains(Point([1, 1, 1, 0]))
 
-    def test_transformation(self):
+    def test_transformation(self) -> None:
         a = Point(0, 0)
         b = Point(0, 1)
         c = Point(2, 1)
@@ -215,7 +215,7 @@ class TestPolygon:
         assert r.intersect(l) == [Point(0, 0, 0)]
         assert (t * r).intersect(l) == [Point(0, 0, 0)]
 
-    def test_copy(self):
+    def test_copy(self) -> None:
         a = Point(0, 0)
         b = Point(0, 2)
         c = Point(2, 2)
@@ -234,7 +234,7 @@ class TestPolygon:
         assert p1 is not p2
         assert p1.vertices == p2.vertices
 
-    def test_centroid(self):
+    def test_centroid(self) -> None:
         a = Point(0, 0, 1)
         b = Point(2, 0, 1)
         c = Point(2, 2, 1)
@@ -243,7 +243,7 @@ class TestPolygon:
 
         assert r.centroid == Point(1, 1, 1)
 
-    def test_getitem(self):
+    def test_getitem(self) -> None:
         a = Point(0, 0, 1)
         b = Point(2, 0, 1)
         c = Point(2, 2, 1)
@@ -257,7 +257,7 @@ class TestPolygon:
 
 
 class TestTriangle:
-    def test_contains(self):
+    def test_contains(self) -> None:
         a = Point(0, 0)
         b = Point(0, 2)
         c = Point(2, 1)
@@ -268,14 +268,14 @@ class TestTriangle:
         assert not t.contains(Point(-1, 1))
         assert not t.contains(Point([1, 1, 0]))
 
-    def test_area(self):
+    def test_area(self) -> None:
         a = Point(0, 0)
         b = Point(2, 0)
         c = Point(0, 2)
         t = Triangle(a, b, c)
         assert np.isclose(t.area, 2)
 
-    def test_centroid(self):
+    def test_centroid(self) -> None:
         a = Point(0, 0, 1)
         b = Point(2, 0, 1)
         c = Point(2, 2, 1)
@@ -288,7 +288,7 @@ class TestTriangle:
         assert t.centroid == (a + b + c) / 3
         assert t.centroid == l1.meet(l2)
 
-    def test_circumcenter(self):
+    def test_circumcenter(self) -> None:
         a = Point(0, 0, 1)
         b = Point(2, 0, 1)
         c = Point(2, 2, 1)
@@ -298,7 +298,7 @@ class TestTriangle:
 
 
 class TestRegularPolygon:
-    def test_init(self):
+    def test_init(self) -> None:
         a = Point(0, 0, 0)
         p = RegularPolygon(a, 1, 6, axis=Point(0, 0, 1))
 
@@ -310,13 +310,13 @@ class TestRegularPolygon:
         assert np.allclose(p.angles, np.pi / 3)
         assert p.center == a
 
-    def test_radius(self):
+    def test_radius(self) -> None:
         p = RegularPolygon(Point(0, 0, 0), 1, 6, axis=Point(0, 0, 1))
 
         assert np.isclose(p.radius, 1)
         assert np.isclose(p.inradius, np.cos(np.pi / 6))
 
-    def test_transform(self):
+    def test_transform(self) -> None:
         p = RegularPolygon(Point(0, 0, 0), 1, 6, axis=Point(0, 0, 1))
         t = translation(1, 1, 0)
 
@@ -325,7 +325,7 @@ class TestRegularPolygon:
 
 
 class TestSimplex:
-    def test_volume(self):
+    def test_volume(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -337,7 +337,7 @@ class TestSimplex:
         triangle = Simplex(a, b, c)
         assert np.isclose(triangle.volume, 1 / 2)
 
-    def test_transform(self):
+    def test_transform(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -350,7 +350,7 @@ class TestSimplex:
 
 
 class TestCuboid:
-    def test_intersect(self):
+    def test_intersect(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -362,7 +362,7 @@ class TestCuboid:
         l = Line(a, Point(-1, 0, 0))
         assert cube.intersect(l) == [Point(0, 0, 0), Point(1, 0, 0)]
 
-    def test_edges(self):
+    def test_edges(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -371,7 +371,7 @@ class TestCuboid:
 
         assert len(cube.edges) == 12
 
-    def test_area(self):
+    def test_area(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -381,7 +381,7 @@ class TestCuboid:
         assert len(cube.vertices) == 8
         assert cube.area == 6
 
-    def test_transform(self):
+    def test_transform(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -393,7 +393,7 @@ class TestCuboid:
         assert t * cube == Cuboid(a + x, b + x, c + x, d + x)
         assert isinstance(t * cube, Cuboid)
 
-    def test_add(self):
+    def test_add(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -404,7 +404,7 @@ class TestCuboid:
         assert cube + p == Cuboid(a + p, b + p, c + p, d + p)
         assert cube - p == Cuboid(a - p, b - p, c - p, d - p)
 
-    def test_getitem(self):
+    def test_getitem(self) -> None:
         a = Point(0, 0, 0)
         b = Point(1, 0, 0)
         c = Point(0, 1, 0)
@@ -424,7 +424,7 @@ class TestCuboid:
 
 
 class TestSegmentCollection:
-    def test_contains(self):
+    def test_contains(self) -> None:
         p = PointCollection([(0, 0), (1, 0)], homogenize=True)
         q = PointCollection([(2, 1), (3, 1)], homogenize=True)
         s = SegmentCollection(p, q)
@@ -435,7 +435,7 @@ class TestSegmentCollection:
         assert not any(s.contains(p - q))
         assert not any(s.contains(Point([2, 1, 0])))
 
-    def test_midpoint(self):
+    def test_midpoint(self) -> None:
         p = PointCollection([(0, 0), (2, 1)], homogenize=True)
         q = PointCollection([(2, 2), (4, 1)], homogenize=True)
         s = SegmentCollection(p, q)
@@ -446,7 +446,7 @@ class TestSegmentCollection:
         s = SegmentCollection(p, q)
         assert s.midpoint == PointCollection([(0, 1, 0), (2, 2, 2)], homogenize=True)
 
-    def test_intersect(self):
+    def test_intersect(self) -> None:
         a = PointCollection([(0, 0), (0, 0)], homogenize=True)
         b = PointCollection([(2, 0), (4, 0)], homogenize=True)
         c = PointCollection([(2, 2), (4, 4)], homogenize=True)
@@ -459,7 +459,7 @@ class TestSegmentCollection:
 
 
 class TestPolygonCollection:
-    def test_equal(self, rng):
+    def test_equal(self, rng: np.random.Generator) -> None:
         points = rng.random((60, 50, 3))
 
         p1 = PolygonCollection(points)
