@@ -212,7 +212,7 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number]:
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
-    tensors = [Tensor(A, tensor_rank=2, copy=False) for _ in range(n - 1)]
+    tensors = [Tensor(A, tensor_rank=2, copy=None) for _ in range(n - 1)]
     diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
 
     return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)

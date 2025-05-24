@@ -228,10 +228,10 @@ class QuadricTensor(ProjectiveTensor, ABC):
 
                 if isinstance(other, Line):
                     i = arr.nonzero()[0][0]
-                    m = Plane(arr[i], copy=False).basis_matrix
+                    m = Plane(arr[i], copy=None).basis_matrix
                 else:
                     i = np.any(arr, axis=-1).argmax(-1)
-                    m = PlaneCollection(arr[(*tuple(np.indices(i.shape)), i)], copy=False).basis_matrix
+                    m = PlaneCollection(arr[(*tuple(np.indices(i.shape)), i)], copy=None).basis_matrix
                 line = other._matrix_transform(m)
                 projected_quadric = QuadricCollection.from_array(matmul(matmul(m, self.array), m, transpose_b=True))
                 return [
@@ -258,7 +258,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
     @property
     def dual(self) -> QuadricTensor:
         """The dual quadric."""
-        return type(self)(inv(self.array), is_dual=not self.is_dual, copy=False)
+        return type(self)(inv(self.array), is_dual=not self.is_dual, copy=None)
 
 
 class Quadric(QuadricTensor, BoundTensor):
@@ -343,8 +343,8 @@ class Conic(Quadric):
         c1 = csqrt(a2b1 * a2b2)
         c2 = csqrt(a1b1 * a1b2)
 
-        x = Point(c1 * a1 + c2 * a2, copy=False)
-        y = Point(c1 * a1 - c2 * a2, copy=False)
+        x = Point(c1 * a1 + c2 * a2, copy=None)
+        y = Point(c1 * a1 - c2 * a2, copy=None)
 
         conic = cls.from_points(a, b, c, d, x)
         if np.all(np.isreal(conic.array)):
@@ -367,10 +367,10 @@ class Conic(Quadric):
         t2 = join(f1, J, _normalize_result=False)
         t3 = join(f2, I, _normalize_result=False)
         t4 = join(f2, J, _normalize_result=False)
-        p1, p2 = Point(t1.array, copy=False), Point(t2.array, copy=False)
-        p3, p4 = Point(t3.array, copy=False), Point(t4.array, copy=False)
-        c = cls.from_tangent(Line(bound.array, copy=False), p1, p2, p3, p4)
-        return cls(np.linalg.inv(c.array), copy=False)
+        p1, p2 = Point(t1.array, copy=None), Point(t2.array, copy=None)
+        p3, p4 = Point(t3.array, copy=None), Point(t4.array, copy=None)
+        c = cls.from_tangent(Line(bound.array, copy=None), p1, p2, p3, p4)
+        return cls(np.linalg.inv(c.array), copy=None)
 
     @classmethod
     def from_crossratio(cls, cr: float, a: Point, b: Point, c: Point, d: Point) -> Conic:
@@ -430,7 +430,7 @@ class Conic(Quadric):
 
                 sol = roots([alpha, beta, gamma, delta])
 
-                c = Conic(sol[0] * self.array + other.array, is_dual=self.is_dual, copy=False)
+                c = Conic(sol[0] * self.array + other.array, is_dual=self.is_dual, copy=None)
                 g, h = c.components
 
             result = self.intersect(g)
@@ -464,7 +464,7 @@ class Conic(Quadric):
             The polar line.
 
         """
-        return Line(self.array.dot(pt.array), copy=False)
+        return Line(self.array.dot(pt.array), copy=None)
 
     @property
     def foci(self) -> tuple[Point, ...]:
@@ -614,7 +614,7 @@ class Sphere(Quadric):
     @property
     def center(self) -> Point:
         """The center of the sphere."""
-        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=False)
+        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=None)
 
     @property
     def radius(self) -> float:
@@ -681,7 +681,7 @@ class Cone(Quadric):
             m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2] ** 2 * c)
 
         # rotate the axis of the cone
-        v = Point(v, copy=False)
+        v = Point(v, copy=None)
         axis = Line(v, v + Point(0, 0, 1))
         new_axis = Line(vertex, base_center)
 
