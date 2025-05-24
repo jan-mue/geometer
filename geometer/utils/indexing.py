@@ -1,4 +1,4 @@
-# Most of this file is taken from https://github.com/dask/dask/blob/master/dask/array/slicing.py
+# Most of this file is taken from https://github.com/dask/dask/blob/main/dask/array/slicing.py
 # See license at https://github.com/dask/dask/blob/master/LICENSE.txt
 
 import math
@@ -53,7 +53,7 @@ def sanitize_index(ind):
         return _sanitize_index_element(ind)
     index_array = np.asanyarray(ind)
     if index_array.dtype == bool:
-        nonzero = np.nonzero(index_array)
+        nonzero = np.atleast_1d(index_array).nonzero()
         if len(nonzero) == 1:
             # If a 1-element tuple, unwrap the element
             nonzero = nonzero[0]

@@ -185,7 +185,7 @@ class Tensor:
 
         result = np.tensordot(self.array, other.array, 0)  # type: ignore[arg-type]
         result = np.transpose(result, axes=covariant + contravariant)
-        return Tensor(result, covariant=range(len(covariant)), copy=False)
+        return Tensor(result, covariant=range(len(covariant)), copy=None)
 
     def transpose(self, perm: Iterable[int] | None = None) -> Tensor:
         """Permute the indices of the tensor. Free indices are not permuted.
@@ -220,7 +220,7 @@ class Tensor:
             elif j in self._contravariant_indices:
                 contravariant_indices.append(i)
 
-        result = Tensor(self.array.transpose(perm), copy=False)
+        result = Tensor(self.array.transpose(perm), copy=None)
         result._covariant_indices = set(covariant_indices)
         result._contravariant_indices = set(contravariant_indices)
 
@@ -322,7 +322,7 @@ class Tensor:
             result_tensor._validate_tensor()
             return result_tensor
 
-        result_tensor = Tensor(result, copy=False)
+        result_tensor = Tensor(result, copy=None)
         result_tensor._covariant_indices = covariant_indices_set
         result_tensor._contravariant_indices = contravariant_indices_set
 
@@ -338,16 +338,16 @@ class Tensor:
 
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if is_numerical_scalar(other):
-            return Tensor(self.array * other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
+            return Tensor(self.array * other, covariant=self._covariant_indices, copy=None)  # type: ignore[operator]
         if not isinstance(other, Tensor):
-            other = Tensor(other, copy=False)
+            other = Tensor(other, copy=None)
         return TensorDiagram((other, self)).calculate()
 
     def __rmul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if is_numerical_scalar(other):
             return self * other  # type: ignore[operator]
         if not isinstance(other, Tensor):
-            other = Tensor(other, copy=False)
+            other = Tensor(other, copy=None)
         return TensorDiagram((self, other)).calculate()
 
     def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
@@ -368,13 +368,13 @@ class Tensor:
 
     def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if is_numerical_scalar(other):
-            return Tensor(self.array / other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
+            return Tensor(self.array / other, covariant=self._covariant_indices, copy=None)  # type: ignore[operator]
         return NotImplemented
 
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if isinstance(other, Tensor):
             other = other.array
-        return Tensor(self.array + other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
+        return Tensor(self.array + other, covariant=self._covariant_indices, copy=None)  # type: ignore[operator]
 
     def __radd__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         return self + other
@@ -382,7 +382,7 @@ class Tensor:
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if isinstance(other, Tensor):
             other = other.array
-        return Tensor(self.array - other, covariant=self._covariant_indices, copy=False)  # type: ignore[operator]
+        return Tensor(self.array - other, covariant=self._covariant_indices, copy=None)  # type: ignore[operator]
 
     def __rsub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         return -self + other
@@ -543,12 +543,12 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
             return result
 
         if isinstance(index, (int, np.int_)):
-            return self._element_class(result, copy=False)
+            return self._element_class(result, copy=None)
 
         if result.free_indices == 0 or isinstance(result, type(self)):
             return result
 
-        return TensorCollection(result, copy=False)
+        return TensorCollection(result, copy=None)
 
     @override
     def __len__(self) -> int:
@@ -598,7 +598,7 @@ class LeviCivitaTensor(BoundTensor):
             array[tuple(indices)] = np.prod(diff, axis=0)
 
             self._cache[size] = array
-        super().__init__(array, covariant=bool(covariant), copy=False)
+        super().__init__(array, covariant=bool(covariant), copy=None)
 
 
 class KroneckerDelta(BoundTensor):
@@ -651,7 +651,7 @@ class KroneckerDelta(BoundTensor):
             f = np.vectorize(calc)
             array = np.fromfunction(f, tuple(2 * p * [n]), dtype=int)
 
-        super().__init__(array, covariant=range(p), copy=False)
+        super().__init__(array, covariant=range(p), copy=None)
 
 
 class TensorDiagram:
@@ -787,7 +787,7 @@ class TensorDiagram:
         if n_free > 0:
             return TensorCollection(result, covariant=range(n_cov), tensor_rank=result.ndim - n_free, copy=False)
 
-        return BoundTensor(result, covariant=range(n_cov), copy=False)
+        return BoundTensor(result, covariant=range(n_cov), copy=None)
 
     def copy(self) -> TensorDiagram:
         result = TensorDiagram()

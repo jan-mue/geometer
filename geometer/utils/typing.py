@@ -18,7 +18,7 @@ Shape: TypeAlias = tuple[int, ...]
 
 class NDArrayParameters(TypedDict, total=False):
     dtype: npt.DTypeLike
-    copy: bool
+    copy: bool | None
     order: Literal["K", "A", "C", "F"]
     subok: bool
     ndim: int
