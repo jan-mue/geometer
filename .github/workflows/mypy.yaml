@@ -18,8 +18,11 @@ jobs:
         with:
           python-version-file: pyproject.toml
 
-      - name: Install hatch
-        run: pip install hatch --upgrade
+      - name: Install uv
+        uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+        with:
+          enable-cache: true
+          version: "0.7.8"
 
       - name: Set up reviewdog
         uses: reviewdog/action-setup@3f401fe1d58fe77e10d665ab713057375e39b887 # v1.3.0
@@ -27,4 +30,4 @@ jobs:
       - name: Run mypy
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: hatch run mypy geometer tests | reviewdog -f=mypy -name=mypy -tee -reporter=github-check -filter-mode nofilter
+        run: uv run mypy geometer tests | reviewdog -f=mypy -name=mypy -tee -reporter=github-check -filter-mode nofilter
