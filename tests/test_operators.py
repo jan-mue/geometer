@@ -24,7 +24,7 @@ from geometer import (
 )
 
 
-def test_is_collinear():
+def test_is_collinear() -> None:
     p1 = Point(1, 0)
     p2 = Point(2, 0)
     p3 = Point(3, 0)
@@ -40,7 +40,7 @@ def test_is_collinear():
     assert all(is_collinear(p1, p2, p3, p4))
 
 
-def test_dist():
+def test_dist() -> None:
     p = Point(0, 0)
     q = Point(1, 0)
     assert np.isclose(dist(p, q), 1)
@@ -102,7 +102,7 @@ def test_dist():
     assert np.allclose(dist(p, s), [0, 1])
 
 
-def test_angle():
+def test_angle() -> None:
     a = Point(0, 0)
     b = Point(1, 1)
     c = Point(1, 0)
@@ -143,7 +143,7 @@ def test_angle():
     assert np.allclose(angle(e1, e2), [np.arccos(1 / np.sqrt(3)), np.pi / 2])
 
 
-def test_angle_bisectors():
+def test_angle_bisectors() -> None:
     a = Point(0, 0)
     b = Point(1, 1)
     c = Point(1, 0)
@@ -172,7 +172,7 @@ def test_angle_bisectors():
     assert np.allclose(angle(l, q), angle(q, m))
 
 
-def test_is_cocircular():
+def test_is_cocircular() -> None:
     p = Point(0, 1)
     t = rotation(np.pi / 3)
 
@@ -184,7 +184,7 @@ def test_is_cocircular():
     assert all(is_cocircular(p, t * p, t * t * p, t * t * t * p))
 
 
-def test_is_coplanar():
+def test_is_coplanar() -> None:
     p1 = Point(1, 1, 0)
     p2 = Point(2, 1, 0)
     p3 = Point(3, 4, 0)
@@ -200,7 +200,7 @@ def test_is_coplanar():
     assert all(is_coplanar(p1, p2, p3, p4))
 
 
-def test_is_perpendicular():
+def test_is_perpendicular() -> None:
     l = Line(0, 1, 0)
     m = Line(1, 0, 0)
     assert is_perpendicular(l, m)
@@ -225,7 +225,7 @@ def test_is_perpendicular():
     assert all(is_perpendicular(e1, e2))
 
 
-def test_pappos():
+def test_pappos() -> None:
     a1 = Point(0, 1)
     b1 = Point(1, 2)
     c1 = Point(2, 3)
@@ -241,7 +241,7 @@ def test_pappos():
     assert is_collinear(p, q, r)
 
 
-def test_cp1():
+def test_cp1() -> None:
     p = Point(1 + 0j)
     q = Point(0 + 1j)
     m = Transformation([[np.e ** (np.pi / 2 * 1j), 0], [0, 1]])
@@ -250,7 +250,7 @@ def test_cp1():
     assert np.isclose(np.real(c), c)
 
 
-def test_harmonic_set():
+def test_harmonic_set() -> None:
     a = Point(0, 0)
     b = Point(1, 1)
     c = Point(3, 3)
