@@ -4,10 +4,6 @@
     "name": "Python 3",
     "image": "mcr.microsoft.com/vscode/devcontainers/python:3",
 
-    "containerEnv": {
-        "HATCH_ENV_TYPE_VIRTUAL_PATH": ".venv/"
-    },
-
     // Set *default* container specific settings.json values on container create.
     "settings": {
         "terminal.integrated.shell.linux": "/bin/bash",
