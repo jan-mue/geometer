@@ -120,10 +120,7 @@ def hat_matrix(*args: npt.ArrayLike) -> np.ndarray:
         The resulting antisymmetric matrix.
 
     """
-    if len(args) == 1:
-        x = np.asarray(args[0])
-    else:
-        x = np.asarray(args)
+    x = np.asarray(args[0]) if len(args) == 1 else np.asarray(args)
 
     n = int(1 + np.sqrt(1 + 8 * x.shape[-1])) // 2
 

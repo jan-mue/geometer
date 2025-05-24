@@ -90,7 +90,7 @@ def maybe_dispatch_ufunc_to_dunder_op(
     op_name = ufunc.__name__
     op_name = UFUNC_ALIASES.get(op_name, op_name)
 
-    def not_implemented(*args, **kwargs):  # type: ignore # noqa: ARG001
+    def not_implemented(*args, **kwargs):  # type: ignore[no-untyped-def] # noqa: ARG001
         return NotImplemented
 
     if kwargs or ufunc.nin > 2:
@@ -102,7 +102,8 @@ def maybe_dispatch_ufunc_to_dunder_op(
             meth = getattr(obj, name, not_implemented)
 
             if op_name in UNARY_UFUNCS:
-                assert len(inputs) == 1
+                if len(inputs) != 1:
+                    raise ValueError(f"Unary ufunc {op_name} requires 1 input, got {len(inputs)}")
                 return meth()
 
             return meth(inputs[1])
