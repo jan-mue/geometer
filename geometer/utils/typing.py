@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 IntegerIndex1D: TypeAlias = Union[int, np.int_, slice, Sequence[int], Sequence[np.int_], npt.NDArray[np.int_]]
 BooleanIndex1D: TypeAlias = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
 TensorIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
-Shape: TypeAlias = tuple[int, ...]
 
 
 class NDArrayParameters(TypedDict, total=False):

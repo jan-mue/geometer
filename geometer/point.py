@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import overload, override
 
+from geometer.utils.typing import NumericalDType
+
 if TYPE_CHECKING:
-    from typing_extensions import Literal, Unpack
+    from typing_extensions import Unpack
 
     from geometer.utils.typing import NDArrayParameters, TensorParameters
 
@@ -16,8 +18,10 @@ from geometer.base import (
     EQ_TOL_ABS,
     EQ_TOL_REL,
     BoundTensor,
+    DTypeT,
     LeviCivitaTensor,
     ProjectiveTensor,
+    ShapeT,
     Tensor,
     TensorCollection,
     TensorDiagram,
@@ -318,7 +322,7 @@ def meet(
     )
 
 
-class PointLikeTensor(ProjectiveTensor, ABC):
+class PointLikeTensor(ProjectiveTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], ABC):
     """Base class for point tensors and polytopes implementing arithmetic operations."""
 
     def __init__(
@@ -385,7 +389,7 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         return PointCollection.from_array(result)
 
 
-class PointTensor(PointLikeTensor, ABC):
+class PointTensor(PointLikeTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], ABC):
     """Represents points in a projective space of arbitrary dimension.
 
     The number of supplied coordinates determines the dimension of the space that the point lives in.
@@ -456,7 +460,7 @@ class PointTensor(PointLikeTensor, ABC):
         return np.all(np.isreal(self.normalized_array), axis=-1)
 
 
-class Point(PointTensor, BoundTensor):
+class Point(PointTensor[tuple[Literal[1, 2, 3]], NumericalDType], BoundTensor):
     @overload
     def join(self, *others: Point) -> Line: ...
 
@@ -491,7 +495,7 @@ class PointCollection(PointTensor, TensorCollection[Point]):
         return join(self, *others)
 
 
-class SubspaceTensor(ProjectiveTensor, ABC):
+class SubspaceTensor(ProjectiveTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], ABC):
     """Abstract base class for subspaces of a projective space. Line and Plane are subclasses.
 
     Args:

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, Typ
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import overload, override
+from _numtype import Shape
+from typing_extensions import TypeAlias, Unpack, overload, override
 
 from geometer.exceptions import IncompatibleShapeError, TensorComputationError
 from geometer.utils import (
@@ -19,18 +20,22 @@ from geometer.utils import (
     sanitize_index,
 )
 from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
+from geometer.utils.typing import NumericalDType
 
 if TYPE_CHECKING:
-    from typing_extensions import Self, Unpack
+    from typing_extensions import Self
 
     from geometer.transformation import Transformation, TransformationTensor
-    from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
+    from geometer.utils.typing import NDArrayParameters, TensorIndex
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
 
+ShapeT = TypeVar("ShapeT", bound=Shape)
+DTypeT = TypeVar("DTypeT", bound=NumericalDType)
 
-class Tensor:
+
+class Tensor(Generic[ShapeT, DTypeT]):
     """Wrapper class around a numpy array that keeps track of covariant and contravariant indices.
 
     Covariant indices are the lower indices (subscripts) and contravariant indices are the upper indices (superscripts)
@@ -54,7 +59,7 @@ class Tensor:
 
     """
 
-    array: npt.NDArray[NumericalDType]
+    array: np.ndarray[ShapeT, DTypeT]
     _covariant_indices: set[int]
     _contravariant_indices: set[int]
 
@@ -114,9 +119,9 @@ class Tensor:
     def __apply__(self, transformation: Transformation) -> Self: ...
 
     @overload
-    def __apply__(self, transformation: TransformationTensor) -> Self | BoundTensor | TensorCollection[Tensor]: ...
+    def __apply__(self, transformation: TransformationTensor) -> Self: ...
 
-    def __apply__(self, transformation: TransformationTensor) -> Self | BoundTensor | TensorCollection[Tensor]:
+    def __apply__(self, transformation: TransformationTensor) -> Self:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
@@ -135,12 +140,12 @@ class Tensor:
         return result
 
     @property
-    def shape(self) -> Shape:
+    def shape(self) -> ShapeT:
         """The shape of the underlying numpy array, same as ``self.array.shape``."""
         return self.array.shape
 
     @property
-    def dtype(self) -> np.dtype[NumericalDType]:
+    def dtype(self) -> np.dtype[DTypeT]:
         """The dtype of the underlying numpy array, same as ``self.array.dtype``."""
         return self.array.dtype
 
@@ -420,7 +425,10 @@ class Tensor:
         return NotImplemented
 
 
-class BoundTensor(Tensor):
+AnyTensor: TypeAlias = Tensor[tuple[int, ...], NumericalDType]
+
+
+class BoundTensor(Tensor[ShapeT, DTypeT]):
     """A tensor without free indices."""
 
     @override
@@ -432,11 +440,16 @@ class BoundTensor(Tensor):
             )
 
 
-T = TypeVar("T", bound=Tensor)
+AnyBoundTensor: TypeAlias = BoundTensor[tuple[int, ...], NumericalDType]
+
+SizeT = TypeVar("SizeT", bound=int)
+TensorT = TypeVar("TensorT", bound=Tensor, covariant=True)
 
 
-class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
-    """A collection of tensors of type T. The shape of axes after axis 0 must be compatible with tensors of type T."""
+class TensorCollection(
+    Tensor[tuple[SizeT, Unpack[ShapeT]], DTypeT], Generic[SizeT, TensorT, ShapeT, DTypeT], Sized, Iterable[TensorT]
+):
+    """A collection of tensors of type TensorT. The shape of axes after axis 0 must be compatible with tensors of type TensorT."""
 
     _element_class: ClassVar[type[Tensor]] = Tensor
 
@@ -458,8 +471,8 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
             )
 
     @classmethod
-    def from_tensor(cls, tensor: Tensor, **kwargs: Unpack[NDArrayParameters]) -> Self | T:
-        """Construct an object from another tensor. If the tensor has no free indices, an object of type T is returned.
+    def from_tensor(cls, tensor: Tensor, **kwargs: Unpack[NDArrayParameters]) -> Self | TensorT:
+        """Construct an object from another tensor. If the tensor has no free indices, an object of type TensorT is returned.
 
         By default the array in the tensor is not copied.
 
@@ -478,8 +491,8 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
             return cls._element_class(tensor, **kwargs)  # type: ignore[return-value]
 
     @classmethod
-    def from_array(cls, array: npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> Self | T:
-        """Try to construct a new collection from an array. If the rank is too low, an object of type T is returned.
+    def from_array(cls, array: npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> Self | TensorT:
+        """Try to construct a new collection from an array. If the rank is too low, an object of type TensorT is returned.
 
         By default the array is not copied.
 
@@ -524,7 +537,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         return np.prod([self.shape[i] for i in range(self.free_indices)], dtype=int)
 
     @overload
-    def __getitem__(self, index: int | np.int_) -> T: ...
+    def __getitem__(self, index: int | np.int_) -> TensorT: ...
 
     @overload
     def __getitem__(self, index: Sequence[int] | Sequence[np.int_] | Sequence[bool] | Sequence[np.bool_]) -> Self: ...
@@ -551,16 +564,19 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         return TensorCollection(result, copy=None)
 
     @override
-    def __len__(self) -> int:
+    def __len__(self) -> SizeT:
         return len(self.array)
 
     @override
-    def __iter__(self) -> Iterator[T]:
+    def __iter__(self) -> Iterator[TensorT]:
         for i in range(len(self)):
             yield self[i]
 
 
-class LeviCivitaTensor(BoundTensor):
+AnyTensorCollection: TypeAlias = TensorCollection[int, AnyTensor, tuple[int, ...], NumericalDType]
+
+
+class LeviCivitaTensor(BoundTensor[tuple[int, ...], np.int8]):
     r"""This class can be used to construct a tensor representing the Levi-Civita symbol.
 
     The Levi-Civita symbol is also called :math:`\varepsilon`-Tensor and is defined as follows:
@@ -601,7 +617,7 @@ class LeviCivitaTensor(BoundTensor):
         super().__init__(array, covariant=bool(covariant), copy=None)
 
 
-class KroneckerDelta(BoundTensor):
+class KroneckerDelta(BoundTensor[tuple[int, ...], np.int8]):
     r"""This class can be used to construct a (p, p)-tensor representing the Kronecker delta tensor.
 
     The following generalized definition of the Kronecker delta is used:
@@ -748,7 +764,7 @@ class TensorDiagram:
 
         self._contraction_list.append((source_index, target_index, i, j))
 
-    def calculate(self) -> BoundTensor | TensorCollection[Tensor]:
+    def calculate(self) -> AnyBoundTensor | AnyTensorCollection:
         """Calculates the result of the diagram.
 
         Returns:
@@ -802,7 +818,11 @@ class TensorDiagram:
         return self.copy()
 
 
-class ProjectiveTensor(Tensor, ABC):
+ProjectiveShape: TypeAlias = tuple[Unpack[tuple[int, ...]], Literal[1, 2, 3]]
+ProjectiveShapeT = TypeVar("ProjectiveShapeT", bound=ProjectiveShape)
+
+
+class ProjectiveTensor(Tensor[ProjectiveShapeT, DTypeT], Generic[ProjectiveShapeT, DTypeT], ABC):
     """Base class for all projective tensors, i.e. all objects that identify scalar multiples."""
 
     def __init__(
