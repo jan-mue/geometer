@@ -11,7 +11,7 @@ from numpy.lib.scimath import sqrt as csqrt
 if TYPE_CHECKING:
     from typing_extensions import TypeGuard, Unpack
 
-    from geometer.utils.typing import NumericalScalar, NumericalScalarType
+    from geometer.utils.typing import NumericalDType, NumericalScalar
 
 
 def is_numerical_scalar(element: npt.ArrayLike) -> TypeGuard[NumericalScalar]:
@@ -31,7 +31,7 @@ def is_numerical_scalar(element: npt.ArrayLike) -> TypeGuard[NumericalScalar]:
     return a.ndim == 0 and is_numerical_dtype(a.dtype)
 
 
-def is_numerical_dtype(dtype: npt.DTypeLike) -> TypeGuard[NumericalScalarType]:
+def is_numerical_dtype(dtype: npt.DTypeLike) -> TypeGuard[NumericalDType]:
     """Checks whether a dtype is a numerical dtype i.e. a number or a bool.
 
     Args:
@@ -202,7 +202,7 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number]:
     if n >= 5 or A.size >= n * n * 64:
         indices = _minor_indices(n, n)
         minors = A[..., indices[0], indices[1]]
-        result = det(minors).reshape(A.shape)
+        result = det(minors).reshape(A.shape)  # type: ignore[assignment]
         result = np.swapaxes(result, -1, -2)
         result[..., 1::2, ::2] *= -1
         result[..., ::2, 1::2] *= -1
@@ -268,7 +268,7 @@ def inv(A: npt.ArrayLike) -> npt.NDArray[np.number]:
         if np.any(d == 0):
             raise np.linalg.LinAlgError("Singular matrix")
 
-        return adjugate(A) / d[..., None, None]
+        return adjugate(A) / d[..., None, None]  # type: ignore[index]
 
     return np.linalg.inv(A)
 
