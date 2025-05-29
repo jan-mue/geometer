@@ -7,8 +7,6 @@ import numpy as np
 import numpy.typing as npt
 from typing_extensions import overload, override
 
-from geometer.utils.typing import NumericalDType
-
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
@@ -18,10 +16,9 @@ from geometer.base import (
     EQ_TOL_ABS,
     EQ_TOL_REL,
     BoundTensor,
-    DTypeT,
     LeviCivitaTensor,
     ProjectiveTensor,
-    ShapeT,
+    ScalarT,
     Tensor,
     TensorCollection,
     TensorDiagram,
@@ -322,7 +319,7 @@ def meet(
     )
 
 
-class PointLikeTensor(ProjectiveTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], ABC):
+class PointLikeTensor(ProjectiveTensor[ScalarT], Generic[ScalarT], ABC):
     """Base class for point tensors and polytopes implementing arithmetic operations."""
 
     def __init__(
@@ -389,7 +386,7 @@ class PointLikeTensor(ProjectiveTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT],
         return PointCollection.from_array(result)
 
 
-class PointTensor(PointLikeTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], ABC):
+class PointTensor(PointLikeTensor[ScalarT], Generic[ScalarT], ABC):
     """Represents points in a projective space of arbitrary dimension.
 
     The number of supplied coordinates determines the dimension of the space that the point lives in.
@@ -460,7 +457,7 @@ class PointTensor(PointLikeTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], ABC)
         return np.all(np.isreal(self.normalized_array), axis=-1)
 
 
-class Point(PointTensor[tuple[Literal[1, 2, 3]], NumericalDType], BoundTensor):
+class Point(PointTensor[ScalarT], BoundTensor[ScalarT], Generic[ScalarT]):
     @overload
     def join(self, *others: Point) -> Line: ...
 
@@ -481,7 +478,7 @@ class Point(PointTensor[tuple[Literal[1, 2, 3]], NumericalDType], BoundTensor):
         return join(self, *others)
 
 
-class PointCollection(PointTensor, TensorCollection[Point]):
+class PointCollection(PointTensor[ScalarT], TensorCollection[Point, ScalarT], Generic[ScalarT]):
     _element_class = Point
 
     @overload
@@ -495,7 +492,7 @@ class PointCollection(PointTensor, TensorCollection[Point]):
         return join(self, *others)
 
 
-class SubspaceTensor(ProjectiveTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], ABC):
+class SubspaceTensor(ProjectiveTensor[ScalarT], Generic[ScalarT], ABC):
     """Abstract base class for subspaces of a projective space. Line and Plane are subclasses.
 
     Args:
@@ -643,7 +640,7 @@ class SubspaceTensor(ProjectiveTensor[ShapeT, DTypeT], Generic[ShapeT, DTypeT], 
         return self.meet(l)
 
 
-class Subspace(SubspaceTensor, BoundTensor, ABC):
+class Subspace(SubspaceTensor[ScalarT], BoundTensor[ScalarT], Generic[ScalarT], ABC):
     @overload
     def meet(self, other: Line) -> Point: ...
 
@@ -654,7 +651,7 @@ class Subspace(SubspaceTensor, BoundTensor, ABC):
     def meet(self, other: LineCollection) -> PointCollection: ...
 
     @overload
-    def meet(self, other: SubspaceCollection[SubspaceT]) -> PointCollection | LineCollection: ...
+    def meet(self, other: SubspaceCollection[SubspaceT, ScalarT]) -> PointCollection | LineCollection: ...
 
     @overload
     def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor: ...
@@ -667,11 +664,13 @@ class Subspace(SubspaceTensor, BoundTensor, ABC):
 SubspaceT = TypeVar("SubspaceT", bound=Subspace)
 
 
-class SubspaceCollection(SubspaceTensor, TensorCollection[SubspaceT], ABC):
+class SubspaceCollection(
+    SubspaceTensor[ScalarT], TensorCollection[SubspaceT, ScalarT], Generic[SubspaceT, ScalarT], ABC
+):
     pass
 
 
-class LineTensor(SubspaceTensor, ABC):
+class LineTensor(SubspaceTensor[ScalarT], Generic[ScalarT], ABC):
     """Represents a line in a projective space of arbitrary dimension.
 
     Args:
@@ -895,7 +894,7 @@ class LineTensor(SubspaceTensor, ABC):
         return LineCollection.from_array(np.real_if_close(result.array))
 
 
-class Line(LineTensor, Subspace):
+class Line(LineTensor[ScalarT], Subspace[ScalarT], Generic[ScalarT]):
     @overload
     def meet(self, other: Subspace) -> Point: ...
 
@@ -923,11 +922,11 @@ class Line(LineTensor, Subspace):
         return super().join(*others)
 
 
-class LineCollection(LineTensor, SubspaceCollection[Line]):
+class LineCollection(LineTensor[ScalarT], SubspaceCollection[Line, ScalarT], Generic[ScalarT]):
     _element_class = Line
 
 
-class PlaneTensor(SubspaceTensor):
+class PlaneTensor(SubspaceTensor[ScalarT], Generic[ScalarT]):
     """Represents a hyperplane in a projective space of arbitrary dimension.
 
     Args:
@@ -1043,7 +1042,7 @@ class PlaneTensor(SubspaceTensor):
         return is_multiple(self.array, infty_hyperplane(self.dim).array, axis=-1, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
 
 
-class Plane(PlaneTensor, Subspace):
+class Plane(PlaneTensor[ScalarT], Subspace[ScalarT], Generic[ScalarT]):
     @overload
     def meet(self, other: Line) -> Point: ...
 
@@ -1070,7 +1069,7 @@ class Plane(PlaneTensor, Subspace):
         return super().meet(other)
 
 
-class PlaneCollection(PlaneTensor, SubspaceCollection[Plane]):
+class PlaneCollection(PlaneTensor[ScalarT], SubspaceCollection[Plane, ScalarT], Generic[ScalarT]):
     _element_class = Plane
 
 

@@ -11,7 +11,7 @@ from numpy.lib.scimath import sqrt as csqrt
 if TYPE_CHECKING:
     from typing_extensions import TypeGuard, Unpack
 
-    from geometer.utils.typing import NumericalDType, NumericalScalar
+    from geometer.utils.typing import NumericalScalar, NumericalScalarType
 
 
 def is_numerical_scalar(element: npt.ArrayLike) -> TypeGuard[NumericalScalar]:
@@ -31,7 +31,7 @@ def is_numerical_scalar(element: npt.ArrayLike) -> TypeGuard[NumericalScalar]:
     return a.ndim == 0 and is_numerical_dtype(a.dtype)
 
 
-def is_numerical_dtype(dtype: npt.DTypeLike) -> TypeGuard[NumericalDType]:
+def is_numerical_dtype(dtype: npt.DTypeLike) -> TypeGuard[NumericalScalarType]:
     """Checks whether a dtype is a numerical dtype i.e. a number or a bool.
 
     Args:
@@ -215,7 +215,7 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number]:
     tensors = [Tensor(A, tensor_rank=2, copy=None) for _ in range(n - 1)]
     diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
 
-    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)
+    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)  # type: ignore[operator]
 
 
 def det(A: npt.ArrayLike) -> npt.NDArray[np.number] | np.number:

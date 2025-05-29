@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from typing_extensions import Unpack
 
     from geometer.curve import Conic
-    from geometer.utils.typing import NumericalDType, TensorParameters
+    from geometer.utils.typing import NumericalScalarType, TensorParameters
 
 
 @overload
@@ -68,7 +68,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
 
     """
     n = 2
-    dtype: np.dtype[NumericalDType] = np.dtype(np.int_)
+    dtype: np.dtype[NumericalScalarType] = np.dtype(np.int_)
 
     if not np.isscalar(offset):
         offset = np.asarray(offset)

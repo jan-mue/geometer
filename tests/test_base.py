@@ -76,22 +76,22 @@ class TestTensor:
 class TestTensorCollection:
     def test_init(self) -> None:
         # numpy array
-        a = TensorCollection[Tensor](np.ones((1, 2, 3)), tensor_rank=1)
+        a = TensorCollection(np.ones((1, 2, 3)), tensor_rank=1)
         assert len(a) == 1
         assert a.size == 2
 
         # nested list of numbers
-        a = TensorCollection[Tensor]([[1, 2], [3, 4]], tensor_rank=1)
+        a = TensorCollection([[1, 2], [3, 4]], tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
         # nested tuple of numbers
-        a = TensorCollection[Tensor](((1, 2), (3, 4)), tensor_rank=1)
+        a = TensorCollection(((1, 2), (3, 4)), tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
         # nested list of Tensor objects
-        a = TensorCollection[Tensor]([[Tensor(1, 2, 3), Tensor(3, 4, 5)]], tensor_rank=1)
+        a = TensorCollection([[Tensor(1, 2, 3), Tensor(3, 4, 5)]], tensor_rank=1)
         assert a.shape == (1, 2, 3)
         assert len(a) == 1
         assert a.size == 2
@@ -101,14 +101,14 @@ class TestTensorCollection:
             def __array__(self) -> np.ndarray:
                 return np.array([Tensor(1, 2), Tensor(3, 4)])
 
-        a = TensorCollection[Tensor](A(), tensor_rank=1)
+        a = TensorCollection(A(), tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
     def test_getitem(self) -> None:
-        a = TensorCollection[Tensor]([[1, 2], [3, 4]])
-        b = TensorCollection[Tensor]([[5, 6], [7, 8]])
-        c = TensorCollection[Tensor]([a, b], tensor_rank=1)
+        a = TensorCollection([[1, 2], [3, 4]])
+        b = TensorCollection([[5, 6], [7, 8]])
+        c = TensorCollection([a, b], tensor_rank=1)
 
         assert c[0] == a
         assert c[1] == b
@@ -117,7 +117,7 @@ class TestTensorCollection:
         assert c[:, 0, 0] == [1, 5]
 
     def test_expand_dims(self) -> None:
-        a = TensorCollection[Tensor]([[1, 2], [3, 4]])
+        a = TensorCollection([[1, 2], [3, 4]])
         b = a.expand_dims(0)
 
         assert b.shape == (1, 2, 2)

@@ -7,7 +7,7 @@ name = "geometer"
 dynamic = ["version"]
 description = "Python geometry package based on projective geometry and numpy."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 license = "MIT"
 keywords = ["geometry", "mathematics", "numpy", "projective geometry"]
 authors = [
@@ -15,16 +15,17 @@ authors = [
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python",
 ]
 dependencies = [
-    "numpy>=2.2.6",
+    "numpy>=2.0",
     "typing-extensions>=4.6.1,<5.0.0",
 ]
 
@@ -32,16 +33,14 @@ dependencies = [
 dev = [
     "coverage==7.8.2",
     "mypy==1.15.0",
-    "numtype==2.2.6.0.dev0",
     "pytest==8.3.5",
 ]
 docs = [
     "sphinx-rtd-theme==3.0.2",
-    "sphinx==8.2.3",
+    "sphinx==7.4.7; python_version < '3.10'",
+    "sphinx==8.1.3; python_version == '3.10.*'",
+    "sphinx==8.2.3; python_version >= '3.11'",
 ]
-
-[tool.uv.sources]
-numtype = { git = "https://github.com/numpy/numtype", branch = "main" }
 
 [project.urls]
 Documentation = "https://github.com/jan-mue/geometer#readme"
@@ -53,7 +52,7 @@ Changelog = "https://github.com/jan-mue/geometer/releases"
 path = "geometer/__version__.py"
 
 [tool.black]
-target-version = ["py39", "py310", "py311", "py312"]
+target-version = ["py39", "py310", "py311", "py312", "py313"]
 line-length = 120
 
 [tool.ruff]
