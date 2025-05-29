@@ -3,11 +3,11 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import Unpack, overload, override
+from typing_extensions import TypeVar, Unpack, overload, override
 
 from geometer.exceptions import IncompatibleShapeError, TensorComputationError
 from geometer.utils import (
