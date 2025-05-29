@@ -583,6 +583,7 @@ class LeviCivitaTensor(BoundTensor):
 
     """
 
+    array: npt.NDArray[np.int8]
     _cache: ClassVar[dict[int, np.ndarray]] = {}
 
     def __init__(self, size: int, covariant: bool = True) -> None:
@@ -623,6 +624,7 @@ class KroneckerDelta(BoundTensor):
 
     """
 
+    array: npt.NDArray[np.int_]
     _cache: ClassVar[dict[tuple[int, int], np.ndarray]] = {}
 
     def __init__(self, n: int, p: int = 1) -> None:

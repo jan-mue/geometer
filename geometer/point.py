@@ -858,14 +858,14 @@ class LineTensor(SubspaceTensor, ABC):
         if np.any(contains):
             l = self
             if self.free_indices > 0:
-                l = self[contains]
+                l = self[contains]  # type: ignore[assignment]
 
             if n > 3:
                 if plane is None:
                     # additional point is required to determine the exact line
                     plane = join(l, l.general_point)
                 elif isinstance(plane, PlaneCollection):
-                    plane = plane[contains]
+                    plane = plane[contains]  # type: ignore[assignment]
 
                 basis = plane.basis_matrix
                 line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
