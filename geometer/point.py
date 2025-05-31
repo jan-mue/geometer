@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, Literal, Self, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import overload, override
+from typing_extensions import Self, overload, override
 
 if TYPE_CHECKING:
     from typing_extensions import Unpack
