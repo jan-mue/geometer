@@ -13,21 +13,21 @@ def test_is_multiple() -> None:
     assert not is_multiple(a, b)
 
     a = [0, 0, 0]
-    b = np.ones(3)
+    b = np.ones(3)  # type: ignore[assignment]
     assert is_multiple(a, b)
     assert is_multiple(b, a)
 
-    a = [np.eye(3), np.ones((3, 3))]
-    b = [2 * np.eye(3), 2 * np.ones((3, 3))]
+    a = [np.eye(3), np.ones((3, 3))]  # type: ignore[list-item]
+    b = [2 * np.eye(3), 2 * np.ones((3, 3))]  # type: ignore[list-item]
     assert np.all(is_multiple(a, b, axis=(1, 2)))
 
-    a = [np.ones((3, 3)), 2 * np.ones((3, 3))]
-    b = [3 * np.ones((3, 1)), 6 * np.ones((3, 1))]
+    a = [np.ones((3, 3)), 2 * np.ones((3, 3))]  # type: ignore[list-item]
+    b = [3 * np.ones((3, 1)), 6 * np.ones((3, 1))]  # type: ignore[list-item]
     assert np.all(is_multiple(a, b, axis=(1, 2)))
 
-    a = [[-0.62996052, 0.62996052, 0.31498026], [0, 0, 2.5198421]]
-    b = [[-2, 2, 1], [0, 0, 1]]
-    assert np.all(is_multiple(a, b, axis=[1]))
+    a = [[-0.62996052, 0.62996052, 0.31498026], [0, 0, 2.5198421]]  # type: ignore[list-item]
+    b = [[-2, 2, 1], [0, 0, 1]]  # type: ignore[list-item]
+    assert np.all(is_multiple(a, b, axis=[1]))  # type: ignore[arg-type]
 
 
 def test_adjugate() -> None:

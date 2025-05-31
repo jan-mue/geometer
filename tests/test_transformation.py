@@ -25,10 +25,10 @@ class TestTransformation:
         l = Line(p1, p3)
 
         M = Transformation.from_points(
-            (p1, p1 + Point(1, 1)),
-            (p2, p2 + Point(1, 1)),
-            (p3, p3 + Point(1, 1)),
-            (p4, p4 + Point(1, 1)),
+            (p1, p1 + Point(1, 1)),  # type: ignore[arg-type]
+            (p2, p2 + Point(1, 1)),  # type: ignore[arg-type]
+            (p3, p3 + Point(1, 1)),  # type: ignore[arg-type]
+            (p4, p4 + Point(1, 1)),  # type: ignore[arg-type]
         )
 
         assert M * p3 == Point(1, 2)

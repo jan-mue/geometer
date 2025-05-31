@@ -202,7 +202,7 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number]:
     if n >= 5 or A.size >= n * n * 64:
         indices = _minor_indices(n, n)
         minors = A[..., indices[0], indices[1]]
-        result = det(minors).reshape(A.shape)
+        result = det(minors).reshape(A.shape)  # type: ignore[assignment]
         result = np.swapaxes(result, -1, -2)
         result[..., 1::2, ::2] *= -1
         result[..., ::2, 1::2] *= -1
@@ -215,10 +215,10 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number]:
     tensors = [Tensor(A, tensor_rank=2, copy=None) for _ in range(n - 1)]
     diagram = TensorDiagram(*[(t, e1) for t in tensors], *[(t, e2) for t in tensors])
 
-    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)
+    return np.swapaxes(diagram.calculate().array, -1, -2) / math.factorial(n - 1)  # type: ignore[operator]
 
 
-def det(A: npt.ArrayLike) -> npt.NDArray[np.number]:
+def det(A: npt.ArrayLike) -> npt.NDArray[np.number] | np.number:
     """Computes the determinant of A.
 
     Args:
@@ -268,7 +268,7 @@ def inv(A: npt.ArrayLike) -> npt.NDArray[np.number]:
         if np.any(d == 0):
             raise np.linalg.LinAlgError("Singular matrix")
 
-        return adjugate(A) / d[..., None, None]
+        return adjugate(A) / d[..., None, None]  # type: ignore[index]
 
     return np.linalg.inv(A)
 

@@ -32,9 +32,9 @@ def test_is_collinear() -> None:
     assert l.contains(p3)
     assert is_collinear(p1, p2, p3)
 
-    p1 = PointCollection([(1, 0), (1, 1)], homogenize=True)
-    p2 = PointCollection([(2, 0), (2, 1)], homogenize=True)
-    p3 = PointCollection([(3, 0), (3, 1)], homogenize=True)
+    p1 = PointCollection([(1, 0), (1, 1)], homogenize=True)  # type: ignore[assignment]
+    p2 = PointCollection([(2, 0), (2, 1)], homogenize=True)  # type: ignore[assignment]
+    p3 = PointCollection([(3, 0), (3, 1)], homogenize=True)  # type: ignore[assignment]
     p4 = PointCollection([(4, 0), (4, 1)], homogenize=True)
 
     assert all(is_collinear(p1, p2, p3, p4))
@@ -92,8 +92,8 @@ def test_dist() -> None:
     assert np.isclose(dist(Point(-1, 0, 0), cube), 1)
     assert np.isclose(dist(Point(0.5, 0.5, 2), cube), 1)
 
-    p = PointCollection([(1, 0, 1), (1, 1, 0)], homogenize=True)
-    e = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
+    p = PointCollection([(1, 0, 1), (1, 1, 0)], homogenize=True)  # type: ignore[assignment]
+    e = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])  # type: ignore[assignment]
     s = Segment(Point(1, 0, 1), Point(1, 2, 1))
     # TODO: speed this up
     assert np.allclose(dist(e, p), 1)
@@ -126,19 +126,19 @@ def test_angle() -> None:
 
     assert np.isclose(abs(angle(l, m)), np.pi / 2)
 
-    p1 = PointCollection([(0, 0), (0, 0)], homogenize=True)
-    p2 = PointCollection([(1, 1), (0, 1)], homogenize=True)
-    p3 = PointCollection([(1, 0), (1, 1)], homogenize=True)
+    p1 = PointCollection([(0, 0), (0, 0)], homogenize=True)  # type: ignore[assignment]
+    p2 = PointCollection([(1, 1), (0, 1)], homogenize=True)  # type: ignore[assignment]
+    p3 = PointCollection([(1, 0), (1, 1)], homogenize=True)  # type: ignore[assignment]
 
     assert np.allclose(angle(p1, p2, p3), np.pi / 4)
 
-    l = LineCollection(p1, p2)
-    m = LineCollection(p1, p3)
+    l = LineCollection(p1, p2)  # type: ignore[assignment]
+    m = LineCollection(p1, p3)  # type: ignore[assignment]
 
     assert np.allclose(angle(l, m), np.pi / 4)
 
-    e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
-    e2 = PlaneCollection([(1, 1, 1, 0), (0, 1, 0, 0)])
+    e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])  # type: ignore[assignment]
+    e2 = PlaneCollection([(1, 1, 1, 0), (0, 1, 0, 0)])  # type: ignore[assignment]
 
     assert np.allclose(angle(e1, e2), [np.arccos(1 / np.sqrt(3)), np.pi / 2])
 
@@ -162,11 +162,11 @@ def test_angle_bisectors() -> None:
     assert is_perpendicular(q, r)
     assert np.isclose(angle(l, q), angle(q, m))
 
-    p1 = PointCollection([(0, 0), (0, 0)], homogenize=True)
-    p2 = PointCollection([(1, 1), (0, 1)], homogenize=True)
-    p3 = PointCollection([(1, 0), (1, 1)], homogenize=True)
-    l = LineCollection(p1, p2)
-    m = LineCollection(p1, p3)
+    p1 = PointCollection([(0, 0), (0, 0)], homogenize=True)  # type: ignore[assignment]
+    p2 = PointCollection([(1, 1), (0, 1)], homogenize=True)  # type: ignore[assignment]
+    p3 = PointCollection([(1, 0), (1, 1)], homogenize=True)  # type: ignore[assignment]
+    l = LineCollection(p1, p2)  # type: ignore[assignment]
+    m = LineCollection(p1, p3)  # type: ignore[assignment]
     q, r = angle_bisectors(l, m)
     assert all(is_perpendicular(q, r))
     assert np.allclose(angle(l, q), angle(q, m))
@@ -176,12 +176,12 @@ def test_is_cocircular() -> None:
     p = Point(0, 1)
     t = rotation(np.pi / 3)
 
-    assert is_cocircular(p, t * p, t * t * p, t * t * t * p)
+    assert is_cocircular(p, t * p, t * t * p, t * t * t * p)  # type: ignore[arg-type]
 
-    p = PointCollection([(0, 1), (1, 0)], homogenize=True)
+    p = PointCollection([(0, 1), (1, 0)], homogenize=True)  # type: ignore[assignment]
     t = rotation(np.pi / 3)
 
-    assert all(is_cocircular(p, t * p, t * t * p, t * t * t * p))
+    assert all(is_cocircular(p, t * p, t * t * p, t * t * t * p))  # type: ignore[arg-type]
 
 
 def test_is_coplanar() -> None:
@@ -192,10 +192,10 @@ def test_is_coplanar() -> None:
 
     assert is_coplanar(p1, p2, p3, p4)
 
-    p1 = PointCollection([(1, 0), (1, 1)], homogenize=True)
-    p2 = PointCollection([(2, 0), (2, 1)], homogenize=True)
-    p3 = PointCollection([(3, 0), (3, 1)], homogenize=True)
-    p4 = PointCollection([(4, 0), (4, 1)], homogenize=True)
+    p1 = PointCollection([(1, 0), (1, 1)], homogenize=True)  # type: ignore[assignment]
+    p2 = PointCollection([(2, 0), (2, 1)], homogenize=True)  # type: ignore[assignment]
+    p3 = PointCollection([(3, 0), (3, 1)], homogenize=True)  # type: ignore[assignment]
+    p4 = PointCollection([(4, 0), (4, 1)], homogenize=True)  # type: ignore[assignment]
 
     assert all(is_coplanar(p1, p2, p3, p4))
 
@@ -216,12 +216,12 @@ def test_is_perpendicular() -> None:
     e2 = Plane(p1, p2, Point(0, 0, 1))
     assert is_perpendicular(e1, e2)
 
-    l = LineCollection([(0, 1, 0), (0, 1, 0)])
-    m = LineCollection([(1, 0, 0), (1, -1, 0)])
+    l = LineCollection([(0, 1, 0), (0, 1, 0)])  # type: ignore[assignment]
+    m = LineCollection([(1, 0, 0), (1, -1, 0)])  # type: ignore[assignment]
     assert list(is_perpendicular(l, m)) == [True, False]
 
-    e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])
-    e2 = PlaneCollection([(0, 1, 0, 0), (0, 0, 1, 0)])
+    e1 = PlaneCollection([(0, 0, 1, 0), (1, 0, 0, 0)])  # type: ignore[assignment]
+    e2 = PlaneCollection([(0, 1, 0, 0), (0, 0, 1, 0)])  # type: ignore[assignment]
     assert all(is_perpendicular(e1, e2))
 
 
@@ -244,7 +244,7 @@ def test_pappos() -> None:
 def test_cp1() -> None:
     p = Point(1 + 0j)
     q = Point(0 + 1j)
-    m = Transformation([[np.e ** (np.pi / 2 * 1j), 0], [0, 1]])
+    m = Transformation([[np.e ** (np.pi / 2 * 1j), 0], [0, 1]])  # type: ignore[arg-type]
     assert m * p == q
     c = crossratio(p, q, m * q, m * m * q)
     assert np.isclose(np.real(c), c)

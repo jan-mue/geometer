@@ -18,6 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
@@ -25,6 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=2.0",
+    "typing-extensions>=4.6.1,<5.0.0",
 ]
 
 [dependency-groups]
@@ -48,10 +50,6 @@ Changelog = "https://github.com/jan-mue/geometer/releases"
 
 [tool.hatch.version]
 path = "geometer/__version__.py"
-
-[tool.black]
-target-version = ["py39", "py310", "py311", "py312"]
-line-length = 120
 
 [tool.ruff]
 target-version = "py39"
@@ -131,6 +129,20 @@ strict = true
 implicit_reexport = true
 disallow_any_generics = false # TODO
 warn_return_any = false # TODO
+enable_error_code = [
+    "explicit-override",
+    "ignore-without-code",
+    "redundant-expr",
+    "redundant-self",
+    "truthy-bool",
+    "truthy-iterable",
+    "unimported-reveal",
+    "unused-awaitable",
+    "unused-ignore",
+]
+disable_error_code = [
+    "override",
+]
 
 [[tool.mypy.overrides]]
 module = "geometer.utils.indexing"
