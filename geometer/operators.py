@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -96,17 +96,17 @@ def crossratio(
             raise NotCollinear("The points are not collinear: " + str([a, b, c, d]))
 
         basis = np.stack([a.array, b.array], axis=-2)
-        a = matvec(basis, a.array)
-        b = matvec(basis, b.array)
-        c = matvec(basis, c.array)
-        d = matvec(basis, d.array)
+        a = matvec(basis, a.array)  # type: ignore[assignment]
+        b = matvec(basis, b.array)  # type: ignore[assignment]
+        c = matvec(basis, c.array)  # type: ignore[assignment]
+        d = matvec(basis, d.array)  # type: ignore[assignment]
         o = []
 
     elif from_point is not None:
-        a, b, c, d, from_point = np.broadcast_arrays(a.array, b.array, c.array, d.array, from_point.array)
+        a, b, c, d, from_point = np.broadcast_arrays(a.array, b.array, c.array, d.array, from_point.array)  # type: ignore[assignment]
         o = [from_point]
     else:
-        a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)
+        a, b, c, d = np.broadcast_arrays(a.array, b.array, c.array, d.array)  # type: ignore[assignment]
         o = []
 
     ac = det(np.stack([*o, a, c], axis=-2))
@@ -142,13 +142,13 @@ def harmonic_set(a: PointTensor, b: PointTensor, c: PointTensor) -> PointTensor:
         a = a._matrix_transform(basis)
         b = b._matrix_transform(basis)
         c = c._matrix_transform(basis)
-        o = o._matrix_transform(basis)
+        o = cast(PointCollection, o._matrix_transform(basis))
 
         l = join(a, b)
 
     m = join(o, c)
     p = o + 1 / 2 * m.direction
-    result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))
+    result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))  # type: ignore[call-arg]
 
     if n > 3:
         return result._matrix_transform(np.swapaxes(basis, -1, -2))
@@ -184,11 +184,11 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
     if len(args) == 3:
         a, b, c = args
         if a.dim > 2:
-            e = join(*args)
+            e = join(*args)  # type: ignore[call-arg, misc]
             basis = e.basis_matrix
-            a = a._matrix_transform(basis)
-            b = b._matrix_transform(basis)
-            c = c._matrix_transform(basis)
+            a = a._matrix_transform(basis)  # type: ignore[assignment]
+            b = b._matrix_transform(basis)  # type: ignore[assignment]
+            c = c._matrix_transform(basis)  # type: ignore[assignment]
 
     elif len(args) == 2:
         x, y = args
@@ -211,12 +211,12 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
         else:
             a = Point(*(x.dim * [0]))
             if isinstance(x, PointTensor):
-                x = a.join(x)
+                x = a.join(x)  # type: ignore[assignment]
             if isinstance(y, PointTensor):
-                y = a.join(y)
+                y = a.join(y)  # type: ignore[assignment]
 
         if a.dim > 2:
-            e = join(x, y)
+            e = join(x, y)  # type: ignore[call-arg, assignment]
             basis = e.basis_matrix
             a = a._matrix_transform(basis)
             b = x.meet(infty_plane)._matrix_transform(basis)
@@ -249,9 +249,9 @@ def angle_bisectors(l: LineTensor, m: LineTensor) -> tuple[LineTensor, LineTenso
         M = m.meet(infty_plane)._matrix_transform(basis)
 
     else:
-        L, M = l.meet(infty), m.meet(infty)
+        L, M = l.meet(infty), m.meet(infty)  # type: ignore[assignment]
 
-    p, L, M, i, j = np.broadcast_arrays([0, 0, 1], L.array, M.array, I.array, J.array)
+    p, L, M, i, j = np.broadcast_arrays([0, 0, 1], L.array, M.array, I.array, J.array)  # type: ignore[assignment]
     li = det(np.stack([p, L, i], axis=-2))
     lj = det(np.stack([p, L, j], axis=-2))
     mi = det(np.stack([p, M, i], axis=-2))
@@ -278,9 +278,9 @@ def _point_dist(p: PointTensor, q: PointTensor) -> npt.NDArray[np.float64]:
         m = orth(np.swapaxes(x, -1, -2), 2)
         x = np.matmul(x, m)
         x = np.concatenate([x, np.expand_dims(z, -1)], axis=-1)
-        p, q, i, j = np.broadcast_arrays(x[..., 0, :], x[..., 1, :], I.array, J.array)
+        p, q, i, j = np.broadcast_arrays(x[..., 0, :], x[..., 1, :], I.array, J.array)  # type: ignore[assignment]
     else:
-        p, q, i, j = np.broadcast_arrays(p.array, q.array, I.array, J.array)
+        p, q, i, j = np.broadcast_arrays(p.array, q.array, I.array, J.array)  # type: ignore[assignment]
 
     pqi = det(np.stack([p, q, i], axis=-2))
     pqj = det(np.stack([p, q, j], axis=-2))
@@ -326,7 +326,7 @@ def dist(
     if isinstance(p, PlaneTensor) and isinstance(q, LineTensor):
         return dist(p, q.base_point)
     if isinstance(p, PlaneTensor) and isinstance(q, SubspaceTensor):
-        return dist(p, PointCollection.from_array(q.basis_matrix[0, :]))
+        return dist(p, cast(PointCollection, PointCollection.from_array(q.basis_matrix[0, :])))
 
     from geometer.shapes import PolygonTensor, Polyhedron, SegmentTensor
 

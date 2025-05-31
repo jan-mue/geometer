@@ -27,7 +27,7 @@ class TestSegment:
         s = Segment(p, q)
         assert s.contains(p)
         assert s.contains(q)
-        assert s.contains(0.5 * (p + q))
+        assert s.contains(0.5 * (p + q))  # type: ignore[arg-type]
         assert not s.contains(p - q)
         assert not s.contains(Point([2, 1, 0]))
 
@@ -37,8 +37,8 @@ class TestSegment:
         s = Segment(p, q)
         assert s.contains(p)
         assert s.contains(q)
-        assert s.contains(0.5 * q)
-        assert not s.contains(2 * q)
+        assert s.contains(0.5 * q)  # type: ignore[arg-type]
+        assert not s.contains(2 * q)  # type: ignore[arg-type]
 
         # second point at infinity
         p = Point(0, 0)
@@ -55,7 +55,7 @@ class TestSegment:
         s = Segment(p, q)
         assert s.contains(p)
         assert s.contains(q)
-        assert s.contains(0.5 * (p + q))
+        assert s.contains(0.5 * (p + q))  # type: ignore[arg-type]
         assert not s.contains(p - q)
         assert not s.contains(Point(0, 0))
 
@@ -66,8 +66,8 @@ class TestSegment:
 
         assert s == Segment(q, p)
         assert s == s
-        assert s == Segment([(0, 0), (2, 1)], homogenize=True)
-        assert s != Segment([(0, 0), (1, 2)], homogenize=True)
+        assert s == Segment([(0, 0), (2, 1)], homogenize=True)  # type: ignore[call-arg]
+        assert s != Segment([(0, 0), (1, 2)], homogenize=True)  # type: ignore[call-arg]
 
     def test_intersect(self) -> None:
         a = Point(0, 0)
@@ -302,11 +302,11 @@ class TestRegularPolygon:
         a = Point(0, 0, 0)
         p = RegularPolygon(a, 1, 6, axis=Point(0, 0, 1))
 
-        d = p.edges[0].length
+        d = p.edges[0].length  # type: ignore[union-attr]
 
         assert len(p.vertices) == 6
         assert np.isclose(dist(a, p.vertices[0]), 1)
-        assert all(np.isclose(p.edges[1:].length, d))
+        assert all(np.isclose(p.edges[1:].length, d))  # type: ignore[union-attr, arg-type]
         assert np.allclose(p.angles, np.pi / 3)
         assert p.center == a
 
@@ -346,7 +346,7 @@ class TestSimplex:
         x = Point(1, 1, 1)
         t = translation(x)
 
-        assert t * s == Simplex(a + x, b + x, c + x, d + x)
+        assert t * s == Simplex(a + x, b + x, c + x, d + x)  # type: ignore[arg-type]
 
 
 class TestCuboid:
@@ -390,7 +390,7 @@ class TestCuboid:
         x = Point(1, 1, 1)
         t = translation(x)
 
-        assert t * cube == Cuboid(a + x, b + x, c + x, d + x)
+        assert t * cube == Cuboid(a + x, b + x, c + x, d + x)  # type: ignore[arg-type]
         assert isinstance(t * cube, Cuboid)
 
     def test_add(self) -> None:
@@ -401,8 +401,8 @@ class TestCuboid:
         cube = Cuboid(a, b, c, d)
         p = Point(1, 2, 3)
 
-        assert cube + p == Cuboid(a + p, b + p, c + p, d + p)
-        assert cube - p == Cuboid(a - p, b - p, c - p, d - p)
+        assert cube + p == Cuboid(a + p, b + p, c + p, d + p)  # type: ignore[arg-type]
+        assert cube - p == Cuboid(a - p, b - p, c - p, d - p)  # type: ignore[arg-type]
 
     def test_getitem(self) -> None:
         a = Point(0, 0, 0)
@@ -431,7 +431,7 @@ class TestSegmentCollection:
 
         assert all(s.contains(p))
         assert all(s.contains(q))
-        assert all(s.contains(0.5 * (p + q)))
+        assert all(s.contains(0.5 * (p + q)))  # type: ignore[arg-type]
         assert not any(s.contains(p - q))
         assert not any(s.contains(Point([2, 1, 0])))
 

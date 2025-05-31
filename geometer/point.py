@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, Literal, Self, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +10,7 @@ from typing_extensions import overload, override
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
-    from geometer.utils.typing import NDArrayParameters, TensorParameters
+    from geometer.utils.typing import NDArrayParameters, NumericalScalar, TensorParameters
 
 from geometer.base import (
     EQ_TOL_ABS,
@@ -350,6 +350,12 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         """The coordinate array of the points with the last coordinates normalized to 1."""
         return self._normalize_array(self.array)
 
+    @overload
+    def __add__(self, other: PointLikeTensor) -> PointCollection | Point: ...
+
+    @overload
+    def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
+
     @override
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointLikeTensor):
@@ -358,6 +364,12 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         result = a[..., :-1] + b[..., :-1]
         result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
         return PointCollection.from_array(result)
+
+    @overload
+    def __sub__(self, other: PointLikeTensor) -> PointCollection | Point: ...
+
+    @overload
+    def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
 
     @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
@@ -368,7 +380,13 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)
         return PointCollection.from_array(result)
 
-    @override
+    @overload
+    def __mul__(self, other: NumericalScalar) -> PointCollection | Point: ...
+
+    @overload
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
+
+    @override  # type: ignore[misc]
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not is_numerical_scalar(other):
             return super().__mul__(other)
@@ -376,7 +394,13 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return PointCollection.from_array(result)
 
-    @override
+    @overload
+    def __truediv__(self, other: NumericalScalar) -> PointCollection | Point: ...
+
+    @overload
+    def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
+
+    @override  # type: ignore[misc]
     def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not is_numerical_scalar(other):
             return super().__truediv__(other)
@@ -514,6 +538,12 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     def meet(self, other: SubspaceTensor) -> PointTensor | LineTensor:
         return meet(self, other)
 
+    @overload
+    def __add__(self, other: PointTensor) -> Self: ...
+
+    @overload
+    def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
+
     @override
     def __add__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointTensor):
@@ -522,6 +552,12 @@ class SubspaceTensor(ProjectiveTensor, ABC):
         from geometer.transformation import translation
 
         return translation(other).apply(self)
+
+    @overload
+    def __sub__(self, other: PointTensor) -> Self: ...
+
+    @overload
+    def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
 
     @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
@@ -553,6 +589,12 @@ class SubspaceTensor(ProjectiveTensor, ABC):
             if not np.any(ind):
                 break
         return p
+
+    @overload
+    def parallel(self, through: Point) -> Self: ...
+
+    @overload
+    def parallel(self, through: PointTensor) -> SubspaceTensor: ...
 
     def parallel(self, through: PointTensor) -> SubspaceTensor:
         """Returns the subspace through given point that is parallel to this subspace.
@@ -878,11 +920,11 @@ class LineTensor(SubspaceTensor, ABC):
             if n > 3:
                 p = p._matrix_transform(np.swapaxes(basis, -1, -2))
 
-            result[contains] = join(through if through.free_indices == 0 else through[contains], p)
+            result[contains] = join(through if through.free_indices == 0 else through[contains], p)  # type: ignore[call-arg, arg-type]
 
         if np.any(~contains):
             if through.free_indices > 0:
-                through = through[~contains]
+                through = through[~contains]  # type: ignore[assignment]
             if self.free_indices > 0:
                 result[~contains] = cast(LineTensor, self[~contains]).mirror(through).join(through)
             else:
@@ -936,7 +978,7 @@ class PlaneTensor(SubspaceTensor):
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if all(isinstance(o, (LineTensor, PointTensor)) for o in args):
             kwargs["copy"] = False
-            super().__init__(join(*args), **kwargs)
+            super().__init__(join(*args), **kwargs)  # type: ignore[arg-type, call-arg]
         else:
             super().__init__(*args, **kwargs)
         if self.tensor_shape != (0, 1):
@@ -967,8 +1009,8 @@ class PlaneTensor(SubspaceTensor):
         a = tuple(np.delete(ind, np.ravel_multi_index((*tuple(np.indices(s)[:-1]), i), s)).reshape(s[:-1] + (-1,)))
         result[(*ind_short, i.squeeze())] = self.array[a]
         b = np.arange(n - 1).reshape((1,) * (len(self.shape) - 1) + (n - 1,))
-        result[(*a, b)] = -self.array[(*ind_short, i.squeeze(), None)]
-        q, r = np.linalg.qr(result)
+        result[(*a, b)] = -self.array[(*ind_short, i.squeeze(), None)]  # type: ignore[misc, index]
+        q, r = np.linalg.qr(result)  # type: ignore[arg-type]
         return np.swapaxes(q, -1, -2)
 
     @override
@@ -1004,7 +1046,7 @@ class PlaneTensor(SubspaceTensor):
         q2 = self.meet(l2)
         m1 = q1.join(p2)
         m2 = q2.join(p1)
-        return m1.meet(m2)
+        return m1.meet(m2)  # type: ignore[return-value]
 
     @overload
     def perpendicular(self, through: PointTensor) -> LineTensor: ...

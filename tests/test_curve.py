@@ -69,7 +69,7 @@ class TestConic:
 
         conic1 = Conic.from_points(a, b, c, d, e)
         cr = crossratio(a, b, c, d, e)
-        conic2 = Conic.from_crossratio(cr, a, b, c, d)
+        conic2 = Conic.from_crossratio(cr, a, b, c, d)  # type: ignore[arg-type]
 
         assert conic1 == conic2
 
@@ -131,7 +131,7 @@ class TestCircle:
         assert c.intersect(l) == [Point(-2, 2), Point(2, 2)]
         assert c.intersect(l - Point(0, 2)) == [Point(0, 0)]
 
-        l = LineCollection([Line(Point(-1, 2), Point(1, 2)), Line(Point(0, 2), Point(0, 0))])
+        l = LineCollection([Line(Point(-1, 2), Point(1, 2)), Line(Point(0, 2), Point(0, 0))])  # type: ignore[assignment]
         assert c.intersect(l) == [
             PointCollection([Point(-2, 2), Point(0, 0)]),
             PointCollection([Point(2, 2), Point(0, 4)]),
@@ -202,7 +202,7 @@ class TestSphere:
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
         assert s.intersect(l - Point(0, 0, 2)) == [Point(0, 0, 0)]
 
-        l = LineCollection([Line(Point(-1, 0, 2), Point(1, 0, 2)), Line(Point(0, 0, 0), Point(0, 0, 2))])
+        l = LineCollection([Line(Point(-1, 0, 2), Point(1, 0, 2)), Line(Point(0, 0, 0), Point(0, 0, 2))])  # type: ignore[assignment]
         assert s.intersect(l) == [
             PointCollection([Point(-2, 0, 2), Point(0, 0, 0)]),
             PointCollection([Point(2, 0, 2), Point(0, 0, 4)]),
@@ -227,7 +227,7 @@ class TestSphere:
         p = Point(0, 0, 2)
 
         assert s + p == Sphere(p)
-        assert s - p == Sphere(-p)
+        assert s - p == Sphere(-p)  # type: ignore[arg-type]
 
 
 class TestCone:
@@ -312,10 +312,10 @@ class TestQuadricCollection:
 
         e = Plane(1, 2, 3, 4)
         f = Plane(4, 3, 2, 1)
-        g = Plane(5, 6, 7, 8)
-        h = Plane(8, 7, 6, 5)
+        g = Plane(5, 6, 7, 8)  # type: ignore[assignment]
+        h = Plane(8, 7, 6, 5)  # type: ignore[assignment]
 
-        q = QuadricCollection([Quadric.from_planes(e, f), Quadric.from_planes(g, h)])
+        q = QuadricCollection([Quadric.from_planes(e, f), Quadric.from_planes(g, h)])  # type: ignore[arg-type]
         assert q.components == [PlaneCollection([e, g]), PlaneCollection([f, h])]
 
     def test_intersect(self) -> None:

@@ -58,10 +58,10 @@ class TestTensor:
         a = Tensor([[1, 2], [3, 4]], covariant=[0])
 
         assert a[0, 1] == 2
-        assert a[None, 1] == [[3, 4]]
-        assert a[None, 1].tensor_shape == (0, 1)
+        assert a[None, 1] == [[3, 4]]  # type: ignore[index]
+        assert a[None, 1].tensor_shape == (0, 1)  # type: ignore[union-attr, index]
         assert a[::-1, 0] == [3, 1]
-        assert a[::-1, 0].tensor_shape == (1, 0)
+        assert a[::-1, 0].tensor_shape == (1, 0)  # type: ignore[union-attr]
         assert a[True] == Tensor([a])
         assert a[False] == Tensor(np.empty((0, 2, 2)))
 

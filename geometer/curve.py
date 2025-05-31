@@ -250,7 +250,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
             else:
                 m = hat_matrix(other.array)
                 b = matmul(matmul(m, self.array, transpose_a=True), m)
-                p, q = QuadricCollection.from_array(b, is_dual=not self.is_dual).components
+                p, q = QuadricCollection.from_array(b, is_dual=not self.is_dual).components  # type: ignore[call-arg]
         else:
             if self.is_dual:
                 e, f = cast(PointTensor, e), cast(PointTensor, f)
@@ -260,9 +260,9 @@ class QuadricTensor(ProjectiveTensor, ABC):
                 p, q = e.meet(other), f.meet(other)
 
         if p.free_indices == 0 and p == q:
-            return [p]
+            return [p]  # type: ignore[return-value]
 
-        return [p, q]
+        return [p, q]  # type: ignore[return-value]
 
     @property
     def dual(self) -> QuadricTensor:
@@ -293,11 +293,11 @@ class Conic(Quadric):
 
         """
         a, b, c, d, e = (
-            a.normalized_array,
-            b.normalized_array,
-            c.normalized_array,
-            d.normalized_array,
-            e.normalized_array,
+            a.normalized_array,  # type: ignore[assignment]
+            b.normalized_array,  # type: ignore[assignment]
+            c.normalized_array,  # type: ignore[assignment]
+            d.normalized_array,  # type: ignore[assignment]
+            e.normalized_array,  # type: ignore[assignment]
         )
         ace = det([a, c, e])
         bde = det([b, d, e])
@@ -450,11 +450,11 @@ class Conic(Quadric):
                 c = Conic(sol[0] * self.array + other.array, is_dual=self.is_dual, copy=None)
                 g, h = c.components
 
-            result = self.intersect(g)
-            result += [x for x in self.intersect(h) if x not in result]
+            result = self.intersect(g)  # type: ignore[arg-type]
+            result += [x for x in self.intersect(h) if x not in result]  # type: ignore[arg-type]
             return result
 
-        return super().intersect(other)
+        return super().intersect(other)  # type: ignore[return-value]
 
     @override
     def tangent(self, at: Point) -> Line | tuple[Line, Line]:
@@ -485,7 +485,7 @@ class Conic(Quadric):
         return Line(self.array.dot(pt.array), copy=None)
 
     @property
-    def foci(self) -> tuple[Point, ...]:
+    def foci(self) -> tuple[Point, Point] | tuple[Point]:
         """The foci of the conic."""
         # Algorithm from Perspectives on Projective Geometry, Section 19.4
         i = self.tangent(at=I)
@@ -632,7 +632,7 @@ class Sphere(Quadric):
     @property
     def center(self) -> Point:
         """The center of the sphere."""
-        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=None)
+        return Point(np.append(-self.array[:-1, -1], [self.array[0, 0]]), copy=None)  # type: ignore[misc]
 
     @property
     def radius(self) -> float:
@@ -699,15 +699,15 @@ class Cone(Quadric):
             m[3, 3] = v[:2].dot(v[:2]) - (radius**2 if np.isinf(h) else v[2] ** 2 * c)
 
         # rotate the axis of the cone
-        v = Point(v, copy=None)
+        v = Point(v, copy=None)  # type: ignore[assignment]
         axis = Line(v, v + Point(0, 0, 1))
         new_axis = Line(vertex, base_center)
 
         if new_axis != axis:
             a = angle(axis, new_axis)
             e = axis.join(new_axis)
-            t = rotation(a, axis=Point(*e.array[:3]))
-            t = translation(v) * t * translation(-v)
+            t = rotation(a, axis=Point(*e.array[:3]))  # type: ignore[arg-type]
+            t = translation(v) * t * translation(-v)  # type: ignore[assignment]
             m = t.array.T.dot(m).dot(t.array)
 
         kwargs["normalize_matrix"] = True

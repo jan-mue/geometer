@@ -268,17 +268,17 @@ class TestCollections:
         assert l == m
 
         # two lines in 2D
-        a = LineCollection([Line(0, 1, 0), Line(0, 1, -1)])
-        b = LineCollection([Line(1, 0, 0), Line(1, 0, -1)])
+        a = LineCollection([Line(0, 1, 0), Line(0, 1, -1)])  # type: ignore[assignment]
+        b = LineCollection([Line(1, 0, 0), Line(1, 0, -1)])  # type: ignore[assignment]
         assert a.meet(b) == PointCollection([Point(0, 0), Point(1, 1)])
 
         # two lines in 3D
-        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
-        b = LineCollection([Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))])
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])  # type: ignore[assignment]
+        b = LineCollection([Line(Point(0, 0, 0), Point(0, 1, 0)), Line(Point(1, 0, 0), Point(1, 1, 0))])  # type: ignore[assignment]
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 0)])
 
         # plane and line
-        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])
+        a = LineCollection([Line(Point(0, 0, 0), Point(0, 0, 1)), Line(Point(1, 0, 0), Point(1, 0, 1))])  # type: ignore[assignment]
         b = PlaneCollection([Plane(0, 0, 1, 0), Plane(0, 0, 1, -1)])
         assert a.meet(b) == PointCollection([Point(0, 0, 0), Point(1, 0, 1)])
 
@@ -353,7 +353,7 @@ class TestCollections:
 
     def test_isinf(self) -> None:
         assert np.all(~PointCollection([(1, -2), (0, 0)], homogenize=True).isinf)
-        assert np.all(PointCollection([[1, -2, 0], [1j, -2, 0]]).isinf)
+        assert np.all(PointCollection([[1, -2, 0], [1j, -2, 0]]).isinf)  # type: ignore[arg-type]
         assert np.all(PointCollection([I, J]).isinf)
 
     def test_isreal(self) -> None:

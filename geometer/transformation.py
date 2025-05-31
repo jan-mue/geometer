@@ -173,7 +173,7 @@ def reflection(axis: Subspace) -> Transformation:
     x = base[ind, :-1] / base[ind, -1]
     x = Point(*x)
 
-    return translation(x) * p * translation(-x)
+    return translation(x) * p * translation(-x)  # type: ignore[return-value]
 
 
 class TransformationTensor(ProjectiveTensor, ABC):
@@ -203,7 +203,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
     T = TypeVar("T", bound=Tensor)
 
-    def apply(self, other: T) -> T | TensorCollection[T]:
+    def apply(self, other: T) -> BoundTensor | TensorCollection | T:
         """Apply the transformation to another object.
 
         Args:
@@ -330,6 +330,12 @@ class Transformation(TransformationTensor, BoundTensor):
         d2 = p if q == c2 else q
 
         return cls.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
+
+    T = TypeVar("T", bound=Tensor)
+
+    @override
+    def apply(self, other: T) -> T:
+        return super().apply(other)  # type: ignore[return-value]
 
 
 class TransformationCollection(TransformationTensor, TensorCollection[Transformation]):
