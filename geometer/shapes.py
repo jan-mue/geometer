@@ -543,12 +543,7 @@ class PolygonTensor(PolytopeTensor):
             if other.free_indices > 0:
                 other = cast(LineTensor | SegmentTensor, other[~e.dependent_values])
             result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other)
-            return list(
-                cast(
-                    Tensor,
-                    result[PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)],
-                )
-            )
+            return list(result[PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)])
         else:
             return list(result[self.contains(result)])
 
@@ -563,7 +558,7 @@ class PolygonTensor(PolytopeTensor):
                 e[ind] = cast(PlaneTensor, e[ind]).parallel(o)
             elif not e.contains(o):
                 # use parallel hyperplane for projection to avoid rescaling
-                e = cast(PlaneTensor, e.parallel(o))
+                e = e.parallel(o)
             m = e.basis_matrix
             points = matvec(np.expand_dims(m, -3), points)
 
