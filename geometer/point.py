@@ -374,7 +374,7 @@ class PointLikeTensor(ProjectiveTensor, ABC):
     @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
         if not isinstance(other, PointLikeTensor):
-            return super().__add__(other)
+            return super().__sub__(other)
         a, b = self.normalized_array, other.normalized_array
         result = a[..., :-1] - b[..., :-1]
         result = np.append(result, np.maximum(a[..., -1:], b[..., -1:]), axis=-1)

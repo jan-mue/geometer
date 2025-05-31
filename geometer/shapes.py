@@ -77,10 +77,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
         """The facets of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         slices = (slice(None),) * first_polygon_index
-        return [
-            self._cast_polytope(cast(Tensor, self[(*slices, i)]), self.pdim - 1)
-            for i in range(self.shape[first_polygon_index])
-        ]  # type: ignore[index]
+        return [self._cast_polytope(self[(*slices, i)], self.pdim - 1) for i in range(self.shape[first_polygon_index])]  # type: ignore[index]
 
     @property
     def _edges(self) -> np.ndarray:
@@ -124,7 +121,9 @@ class PolytopeTensor(PointLikeTensor, ABC):
 
     @override
     def __sub__(self, other: Tensor | npt.ArrayLike) -> Tensor:
-        return self + (-cast(Tensor, other))
+        if not isinstance(other, PointTensor):
+            return super().__sub__(other)
+        return self + (-other)
 
     @staticmethod
     def _cast_polytope(tensor: Tensor, pdim: int) -> PolytopeTensor:
@@ -200,7 +199,11 @@ class SegmentTensor(PolytopeTensor):
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if len(args) == 2:
             a, b = args
-            a, b = np.broadcast_arrays(cast(Tensor, a).array, cast(Tensor, b).array)
+            if isinstance(a, Tensor):
+                a = a.array
+            if isinstance(b, Tensor):
+                b = b.array
+            a, b = np.broadcast_arrays(a, b)
             kwargs["copy"] = False
             super().__init__(np.stack([a, b], axis=-2), pdim=1, **kwargs)
         else:
@@ -303,7 +306,7 @@ class SegmentTensor(PolytopeTensor):
             ind = ~result.is_zero() & self.contains(result)
 
         if result.free_indices > 0:
-            return list(cast(Tensor, result[ind]))
+            return list(result[ind])
         if ind:
             return [result]
         return []
@@ -396,9 +399,9 @@ class PolygonTensor(PolytopeTensor):
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if all(isinstance(x, SegmentTensor) for x in args):
-            args = tuple(cast(Tensor, s).array[..., 0, :] for s in args)
+            args = tuple(s.array[..., 0, :] for s in args)
         if len(args) > 1:
-            args = tuple(cast(Tensor, a).array for a in args)
+            args = tuple(a.array if isinstance(a, Tensor) else a for a in args)
             args = np.broadcast_arrays(*args)
             kwargs["copy"] = False
             args = (np.stack(args, axis=-2),)
@@ -533,7 +536,7 @@ class PolygonTensor(PolytopeTensor):
                     ]
                 )
             else:
-                return list(cast(Tensor, result[self.contains(result) & other.contains(result)]))
+                return list(result[self.contains(result) & other.contains(result)])
         try:
             result = self._plane.meet(other)
         except LinearDependenceError as e:
@@ -543,11 +546,11 @@ class PolygonTensor(PolytopeTensor):
             return list(
                 cast(
                     Tensor,
-                    result[PolygonCollection.from_tensor(cast(Tensor, self[~e.dependent_values])).contains(result)],
+                    result[PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)],
                 )
             )
         else:
-            return list(cast(Tensor, result[self.contains(result)]))
+            return list(result[self.contains(result)])
 
     def _normalized_projection(self) -> np.ndarray:
         points = self.array
