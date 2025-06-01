@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.1](https://github.com/jan-mue/geometer/compare/v0.4.1...v0.4.1) (2025-06-01)
+
+### Bug Fixes
+
+* Rename version file ([#162](https://github.com/jan-mue/geometer/issues/162)) ([5f70f06](https://github.com/jan-mue/geometer/commit/5f70f06a54e8f746ebf69ab80c49263b80f86cb9))
+* Use correct artifact name in CI ([#159](https://github.com/jan-mue/geometer/issues/159)) ([8dbadd4](https://github.com/jan-mue/geometer/commit/8dbadd4cdeceb7fb39ce548cf8cfb7247a8e07d6))
+
+
+### Miscellaneous Chores
+
+* release 0.4.1 ([dd25567](https://github.com/jan-mue/geometer/commit/dd2556741bf00f59acb412b4b0f36a925aa52d11))
+
 ## [0.4.0](https://github.com/jan-mue/geometer/compare/v0.3.0...v0.4.0) (2025-06-01)
 
 
