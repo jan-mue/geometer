@@ -1,4 +1,3 @@
-from geometer.__version__ import __version__
 from geometer.curve import Circle, Cone, Conic, Cylinder, Ellipse, Quadric, QuadricCollection, Sphere
 from geometer.operators import (
     angle,
@@ -48,3 +47,4 @@ from geometer.transformation import (
     scaling,
     translation,
 )
+from geometer.version import __version__
