@@ -49,7 +49,7 @@ Source = "https://github.com/jan-mue/geometer"
 Changelog = "https://github.com/jan-mue/geometer/releases"
 
 [tool.hatch.version]
-path = "geometer/__version__.py"
+path = "geometer/version.py"
 
 [tool.ruff]
 target-version = "py39"
