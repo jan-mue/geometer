@@ -1,12 +1,5 @@
 # Changelog
 
-## [0.4.1](https://github.com/jan-mue/geometer/compare/v0.4.0...v0.4.1) (2025-06-01)
-
-
-### Bug Fixes
-
-* Use correct artifact name in CI ([#159](https://github.com/jan-mue/geometer/issues/159)) ([8dbadd4](https://github.com/jan-mue/geometer/commit/8dbadd4cdeceb7fb39ce548cf8cfb7247a8e07d6))
-
 ## [0.4.0](https://github.com/jan-mue/geometer/compare/v0.3.0...v0.4.0) (2025-06-01)
 
 
