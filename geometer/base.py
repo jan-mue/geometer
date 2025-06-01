@@ -112,28 +112,15 @@ class Tensor:
 
     @classmethod
     def _get_collection_class(cls) -> type[TensorCollection[Self]]:
-        def find_deepest(
-            current_class: type[TensorCollection[Self]], deepest_element_class: type[Tensor] = Tensor
-        ) -> tuple[type[TensorCollection[Self]] | None, type[Tensor]]:
-            deepest_class = None
-            if cls is current_class._element_class:
-                return current_class, current_class._element_class
-            if issubclass(cls, current_class._element_class) and issubclass(
-                current_class._element_class, deepest_element_class
-            ):
-                deepest_element_class = current_class._element_class
-                deepest_class = current_class
+        def find_class(current_class: type[TensorCollection[Self]]) -> type[TensorCollection[Self]] | None:
+            if current_class._element_class is cls:
+                return current_class
             for subclass in current_class.__subclasses__():
-                deeper_subclass, deeper_element_class = find_deepest(subclass, deepest_element_class)
-                if cls is deeper_element_class:
-                    return deeper_subclass, deeper_element_class
-                if deeper_subclass is not None and issubclass(deeper_element_class, deepest_element_class):
-                    deepest_class = deeper_subclass
-                    deepest_element_class = deeper_element_class
+                if result_class := find_class(subclass):
+                    return result_class
+            return None
 
-            return deepest_class, deepest_element_class
-
-        result, _ = find_deepest(TensorCollection)
+        result = find_class(TensorCollection)
         if result is None:
             raise TypeError(f"No TensorCollection found for {cls.__name__}")
         return result
