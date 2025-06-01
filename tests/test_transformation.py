@@ -5,6 +5,7 @@ from geometer import (
     Circle,
     Line,
     Point,
+    PointCollection,
     Transformation,
     TransformationCollection,
     angle,
@@ -113,6 +114,14 @@ class TestTransformation:
 
 
 class TestTransformationCollection:
+    def test_translation(self) -> None:
+        p = Point(0, 1)
+        t = TransformationCollection([translation(2, 1)] * 2)
+        result = t * p
+
+        assert isinstance(result, PointCollection)
+        assert result == PointCollection([Point(2, 2), Point(2, 2)])
+
     def test_inverse(self) -> None:
         E = TransformationCollection([np.eye(4)] * 10)
         M = TransformationCollection([rotation(np.pi, axis=Point(0, 1, 0))] * 10)

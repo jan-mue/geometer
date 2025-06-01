@@ -23,7 +23,7 @@ from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-    from geometer.transformation import Transformation, TransformationTensor
+    from geometer.transformation import Transformation, TransformationCollection, TransformationTensor
     from geometer.utils.typing import NDArrayParameters, NumericalArray, NumericalDType, Shape, TensorIndex
 
 EQ_TOL_REL = 1e-15
@@ -110,13 +110,41 @@ class Tensor:
         if not is_numerical_dtype(self.dtype):
             raise TypeError(f"The dtype of a Tensor must be a numeric dtype, not {self.dtype.name}")
 
+    @classmethod
+    def _get_collection_class(cls) -> type[TensorCollection[Self]]:
+        def find_deepest(
+            current_class: type[TensorCollection[Self]], depth: int = 0
+        ) -> tuple[int, type[TensorCollection[Self]] | None]:
+            max_depth = -1
+            deepest_class = None
+
+            if hasattr(current_class, "_element_class") and current_class._element_class is cls:
+                max_depth = depth
+                deepest_class = current_class
+
+            for subclass in current_class.__subclasses__():
+                sub_depth, sub_class = find_deepest(subclass, depth + 1)
+                if sub_depth > max_depth:
+                    max_depth = sub_depth
+                    deepest_class = sub_class
+
+            return max_depth, deepest_class
+
+        _, result = find_deepest(TensorCollection)
+        if result is None:
+            raise TypeError(f"No TensorCollection found for {cls.__name__}")
+        return result
+
     @overload
     def __apply__(self, transformation: Transformation) -> Self: ...
 
     @overload
-    def __apply__(self, transformation: TransformationTensor) -> BoundTensor | TensorCollection | Self: ...
+    def __apply__(self, transformation: TransformationCollection) -> Self | TensorCollection[Self]: ...
 
-    def __apply__(self, transformation: TransformationTensor) -> BoundTensor | TensorCollection | Self:
+    @overload
+    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Self]: ...
+
+    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Self]:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
@@ -124,12 +152,9 @@ class Tensor:
             edges.extend((inv.copy(), self) for _ in range(ts[1]))
         diagram = TensorDiagram(*edges)
         result_tensor = diagram.calculate()
-        if (
-            result_tensor.shape != self.shape
-            or result_tensor._covariant_indices != self._covariant_indices
-            or result_tensor._contravariant_indices != self._contravariant_indices
-        ):
-            return result_tensor
+        if result_tensor.free_indices > self.free_indices:
+            collection_class = self._get_collection_class()
+            return collection_class(result_tensor, copy=None)
         result = self.copy()
         result.array = result_tensor.array
         return result

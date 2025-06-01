@@ -3,13 +3,13 @@ from __future__ import annotations
 import math
 from abc import ABC
 from itertools import combinations
-from typing import TYPE_CHECKING, TypeVar, cast, overload
+from typing import TYPE_CHECKING, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import override
+from typing_extensions import Self, override
 
-from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, BoundTensor, Tensor, TensorCollection
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, Tensor, TensorCollection
 from geometer.exceptions import IncompatibleShapeError, LinearDependenceError, NotCoplanar
 from geometer.operators import angle, dist, harmonic_set
 from geometer.point import (
@@ -24,7 +24,7 @@ from geometer.point import (
     join,
     meet,
 )
-from geometer.transformation import Transformation, TransformationTensor, rotation, translation
+from geometer.transformation import TransformationTensor, rotation, translation
 from geometer.utils import det, distinct, is_multiple, matmul, matvec
 
 if TYPE_CHECKING:
@@ -211,16 +211,10 @@ class SegmentTensor(PolytopeTensor):
 
         self._line = join(*self.vertices)
 
-    @overload
-    def __apply__(self, transformation: Transformation) -> SegmentTensor: ...
-
-    @overload
-    def __apply__(self, transformation: TransformationTensor) -> BoundTensor | TensorCollection | SegmentTensor: ...
-
     @override
-    def __apply__(self, transformation: TransformationTensor) -> BoundTensor | TensorCollection | SegmentTensor:
+    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Self]:
         result = super().__apply__(transformation)
-        if not isinstance(result, SegmentTensor):
+        if not isinstance(result, type(self)):
             return result
         result._line = transformation.apply(result._line)  # type: ignore[assignment]
         return result

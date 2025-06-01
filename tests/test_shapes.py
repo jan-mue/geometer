@@ -3,6 +3,7 @@ import numpy as np
 from geometer import (
     Cuboid,
     Line,
+    LineCollection,
     Point,
     PointCollection,
     Polygon,
@@ -12,6 +13,7 @@ from geometer import (
     Segment,
     SegmentCollection,
     Simplex,
+    TransformationCollection,
     Triangle,
     dist,
     rotation,
@@ -96,8 +98,16 @@ class TestSegment:
         s = Segment(p, q)
 
         r = rotation(np.pi / 2)
+        rotated_line = r.apply(s._line)
         assert r * s == Segment(p, Point(-2, 2))
-        assert r.apply(s)._line == r.apply(s._line)
+        assert r.apply(s)._line == rotated_line
+
+        t = TransformationCollection([r] * 3).expand_dims(1)
+        result = t * s
+
+        assert isinstance(result, SegmentCollection)
+        assert result == SegmentCollection([Segment(p, Point(-2, 2))] * 3)
+        assert result._line == LineCollection([rotated_line, rotated_line, rotated_line])
 
     def test_getitem(self) -> None:
         p = Point(0, 0)
