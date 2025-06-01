@@ -220,7 +220,52 @@ def join(
 ) -> PlaneCollection: ...
 
 
-# TODO: add overloads for more non-collection and collection subtypes
+@overload
+def join(
+    *args: Unpack[tuple[Point, Line]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> Plane: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[Line, Point]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> Plane: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointCollection, LineTensor]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneCollection: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[LineTensor, PointCollection]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneCollection: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[PointTensor, LineCollection]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneCollection: ...
+
+
+@overload
+def join(
+    *args: Unpack[tuple[LineCollection, PointTensor]],
+    _check_dependence: bool = ...,
+    _normalize_result: bool = ...,
+) -> PlaneCollection: ...
 
 
 @overload
@@ -408,6 +453,12 @@ class PointLikeTensor(ProjectiveTensor, ABC):
         result = np.append(result, self.array[..., -1:] != 0, axis=-1)
         return PointCollection.from_array(result)
 
+    @override
+    def __neg__(self) -> PointCollection | Point:
+        result = -self.normalized_array[..., :-1]
+        result = np.append(result, self.array[..., -1:] != 0, axis=-1)
+        return PointCollection.from_array(result)
+
 
 class PointTensor(PointLikeTensor, ABC):
     """Represents points in a projective space of arbitrary dimension.
@@ -500,6 +551,30 @@ class Point(PointTensor, BoundTensor):
     def join(self, *others: PointTensor | LineTensor) -> SubspaceTensor:
         return join(self, *others)
 
+    @overload
+    def __mul__(self, other: NumericalScalar) -> Point: ...
+
+    @overload
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
+
+    @override  # type: ignore[misc]
+    def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        return super().__mul__(other)
+
+    @overload
+    def __truediv__(self, other: NumericalScalar) -> Point: ...
+
+    @overload
+    def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
+
+    @override  # type: ignore[misc]
+    def __truediv__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        return super().__truediv__(other)
+
+    @override
+    def __neg__(self) -> Point:
+        return cast(Point, super().__neg__())
+
 
 class PointCollection(PointTensor, TensorCollection[Point]):
     _element_class = Point
@@ -528,6 +603,9 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     def __init__(self, *args: Tensor | npt.ArrayLike, tensor_rank: int = 1, **kwargs: Unpack[TensorParameters]) -> None:
         kwargs.setdefault("covariant", False)
         super().__init__(*args, tensor_rank=tensor_rank, **kwargs)
+
+    @overload
+    def meet(self, other: LineCollection) -> PointCollection: ...
 
     @overload
     def meet(self, other: LineTensor) -> PointTensor: ...
@@ -702,7 +780,7 @@ class Subspace(SubspaceTensor, BoundTensor, ABC):
         return super().meet(other)
 
 
-SubspaceT = TypeVar("SubspaceT", bound=Subspace)
+SubspaceT = TypeVar("SubspaceT", covariant=True, bound=Subspace)
 
 
 class SubspaceCollection(SubspaceTensor, TensorCollection[SubspaceT], Generic[SubspaceT], ABC):
@@ -737,6 +815,12 @@ class LineTensor(SubspaceTensor, ABC):
     def _matrix_transform(self, m: npt.ArrayLike) -> LineTensor:
         result = super()._matrix_transform(m)
         return cast(LineTensor, result)
+
+    @overload
+    def meet(self, other: SubspaceCollection[SubspaceT]) -> PointCollection: ...
+
+    @overload
+    def meet(self, other: SubspaceTensor) -> PointTensor: ...
 
     @override
     def meet(self, other: SubspaceTensor) -> PointTensor:
@@ -1122,7 +1206,11 @@ def infty_hyperplane(dimension: Literal[2]) -> Line: ...
 
 
 @overload
-def infty_hyperplane(dimension: int) -> Plane: ...
+def infty_hyperplane(dimension: Literal[3]) -> Plane: ...
+
+
+@overload
+def infty_hyperplane(dimension: int) -> Line | Plane: ...
 
 
 def infty_hyperplane(dimension: int) -> Line | Plane:

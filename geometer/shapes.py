@@ -3,13 +3,13 @@ from __future__ import annotations
 import math
 from abc import ABC
 from itertools import combinations
-from typing import TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar, cast, overload
 
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import override
 
-from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, Tensor, TensorCollection
+from geometer.base import EQ_TOL_ABS, EQ_TOL_REL, BoundTensor, Tensor, TensorCollection
 from geometer.exceptions import IncompatibleShapeError, LinearDependenceError, NotCoplanar
 from geometer.operators import angle, dist, harmonic_set
 from geometer.point import (
@@ -24,7 +24,7 @@ from geometer.point import (
     join,
     meet,
 )
-from geometer.transformation import TransformationTensor, rotation, translation
+from geometer.transformation import Transformation, TransformationTensor, rotation, translation
 from geometer.utils import det, distinct, is_multiple, matmul, matvec
 
 if TYPE_CHECKING:
@@ -77,7 +77,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
         """The facets of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
         slices = (slice(None),) * first_polygon_index
-        return [self._cast_polytope(self[(*slices, i)], self.pdim - 1) for i in range(self.shape[first_polygon_index])]  # type: ignore[index]
+        return [self._cast_polytope(self[(*slices, i)], self.pdim - 1) for i in range(self.shape[first_polygon_index])]  # type: ignore[index, arg-type]
 
     @property
     def _edges(self) -> np.ndarray:
@@ -170,10 +170,10 @@ class Polytope(PolytopeTensor, ABC):
     pass
 
 
-PolytopeT = TypeVar("PolytopeT", bound=Polytope)
+PolytopeT = TypeVar("PolytopeT", covariant=True, bound=Polytope)
 
 
-class PolytopeCollection(PolytopeTensor, TensorCollection[PolytopeT], ABC):
+class PolytopeCollection(PolytopeTensor, TensorCollection[PolytopeT], ABC):  # type: ignore[misc]
     @override
     def _validate_tensor(self) -> None:
         super()._validate_tensor()
@@ -211,10 +211,18 @@ class SegmentTensor(PolytopeTensor):
 
         self._line = join(*self.vertices)
 
+    @overload
+    def __apply__(self, transformation: Transformation) -> SegmentTensor: ...
+
+    @overload
+    def __apply__(self, transformation: TransformationTensor) -> BoundTensor | TensorCollection | SegmentTensor: ...
+
     @override
-    def __apply__(self, transformation: TransformationTensor) -> SegmentTensor:
+    def __apply__(self, transformation: TransformationTensor) -> BoundTensor | TensorCollection | SegmentTensor:
         result = super().__apply__(transformation)
-        result._line = transformation.apply(result._line)
+        if not isinstance(result, SegmentTensor):
+            return result
+        result._line = transformation.apply(result._line)  # type: ignore[assignment]
         return result
 
     @override
@@ -306,7 +314,7 @@ class SegmentTensor(PolytopeTensor):
             ind = ~result.is_zero() & self.contains(result)
 
         if result.free_indices > 0:
-            return list(result[ind])
+            return list(cast(PointCollection, result[ind]))
         if ind:
             return [result]
         return []
@@ -327,7 +335,7 @@ class Segment(SegmentTensor, Polytope):
     pass
 
 
-class SegmentCollection(SegmentTensor, PolytopeCollection[Segment]):
+class SegmentCollection(SegmentTensor, PolytopeCollection[Segment]):  # type: ignore[misc]
     _element_class = Segment
 
     @override
@@ -350,13 +358,18 @@ class Simplex(Polytope):
 
     # TODO: return only instances of type Simplex
     def __new__(cls, *args: Point, **kwargs: Unpack[PolytopeParameters]) -> PolytopeTensor:  # type: ignore[misc]
+        expected_pdim = len(args) - 1
+        pdim = kwargs.pop("pdim", expected_pdim)
+        if pdim != expected_pdim:
+            raise ValueError(f"A simplex with {len(args)} points must have pdim={expected_pdim}, but got pdim={pdim}.")
+
         if len(args) == 2:
-            return Segment(*args, **kwargs)
+            return Segment(*args, **kwargs)  # type: ignore[misc]
 
         return super(PolytopeTensor, cls).__new__(cls)
 
-    def __init__(self, *args: Point, **kwargs: Unpack[NDArrayParameters]) -> None:
-        kwargs.setdefault("pdim", len(args) - 1)  # type: ignore[typeddict-item]
+    def __init__(self, *args: Point, **kwargs: Unpack[PolytopeParameters]) -> None:
+        kwargs.setdefault("pdim", len(args) - 1)
         if len(args) > 3:
             args = [Simplex(*x) for x in combinations(args, len(args) - 1)]  # type: ignore[assignment]
         super().__init__(*args, **kwargs)
@@ -369,7 +382,7 @@ class Simplex(Polytope):
         n, k = points.shape
 
         if n == k:
-            return 1 / math.factorial(n - 1) * abs(det(points))
+            return 1 / math.factorial(n - 1) * abs(det(points))  # type: ignore[operator]
 
         indices = np.triu_indices(n)
         distances = points[indices[0]] - points[indices[1]]
@@ -399,7 +412,7 @@ class PolygonTensor(PolytopeTensor):
 
     def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
         if all(isinstance(x, SegmentTensor) for x in args):
-            args = tuple(s.array[..., 0, :] for s in args)
+            args = tuple(s.array[..., 0, :] for s in args)  # type: ignore[union-attr]
         if len(args) > 1:
             args = tuple(a.array if isinstance(a, Tensor) else a for a in args)
             args = np.broadcast_arrays(*args)
@@ -407,13 +420,6 @@ class PolygonTensor(PolytopeTensor):
             args = (np.stack(args, axis=-2),)
         super().__init__(*args, pdim=2, **kwargs)
         self._plane = cast(PlaneTensor, join(*self.vertices[: self.dim]) if self.dim > 2 else None)
-
-    @override
-    def __apply__(self, transformation: TransformationTensor) -> PolygonTensor:
-        result = super().__apply__(transformation)
-        if result.dim > 2:
-            result._plane = cast(PlaneTensor, join(*result.vertices[: result.dim]))
-        return result
 
     @override
     @property
@@ -529,23 +535,23 @@ class PolygonTensor(PolytopeTensor):
                 if isinstance(other, SegmentTensor):
                     other = cast(SegmentTensor, other[~e.dependent_values])
                 result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other._line)
-                return list(
+                return list(  # type: ignore[call-overload]
                     result[
-                        PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)
+                        PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)  # type: ignore[arg-type]
                         & other.contains(result)
                     ]
                 )
             else:
-                return list(result[self.contains(result) & other.contains(result)])
+                return list(result[self.contains(result) & other.contains(result)])  # type: ignore[call-overload]
         try:
             result = self._plane.meet(other)
         except LinearDependenceError as e:
             if other.free_indices > 0:
                 other = cast(LineTensor | SegmentTensor, other[~e.dependent_values])
-            result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other)
-            return list(result[PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)])
+            result = cast(PlaneTensor, self._plane[~e.dependent_values]).meet(other)  # type: ignore[arg-type]
+            return list(result[PolygonCollection.from_tensor(self[~e.dependent_values]).contains(result)])  # type: ignore[arg-type, call-overload]
         else:
-            return list(result[self.contains(result)])
+            return list(result[self.contains(result)])  # type: ignore[call-overload]
 
     def _normalized_projection(self) -> np.ndarray:
         points = self.array
@@ -575,7 +581,7 @@ class PolygonTensor(PolytopeTensor):
     def angles(self) -> list[npt.NDArray[np.float64]]:
         """The interior angles of the polygon."""
         result = []
-        a = self.edges[-1]
+        a = cast(Segment, self.edges[-1])
         for b in self.edges:
             result.append(angle(a.vertices[1], a.vertices[0], b.vertices[1]))
             a = b
@@ -593,7 +599,7 @@ class Polygon(PolygonTensor, Polytope):
         return Point(*np.average(centroids, weights=weights, axis=0))
 
 
-class PolygonCollection(PolygonTensor, PolytopeCollection[Polygon]):
+class PolygonCollection(PolygonTensor, PolytopeCollection[Polygon]):  # type: ignore[misc]
     _element_class = Polygon
 
 
@@ -688,12 +694,12 @@ class Triangle(Polygon, Simplex):
 
         if np.isscalar(area):
             if area < 0:  # type: ignore[operator]
-                return lambda1 <= 0 and lambda3 <= 0
-            return lambda1 >= 0 and lambda3 >= 0
+                return lambda1 <= 0 and lambda3 <= 0  # type: ignore[return-value]
+            return lambda1 >= 0 and lambda3 >= 0  # type: ignore[return-value]
 
         ind = area < 0
-        result[ind] &= (lambda1[ind] <= 0) & (lambda3[ind] <= 0)
-        result[~ind] &= (lambda1[~ind] >= 0) & (lambda3[~ind] >= 0)
+        result[ind] &= (lambda1[ind] <= 0) & (lambda3[ind] <= 0)  # type: ignore[index]
+        result[~ind] &= (lambda1[~ind] >= 0) & (lambda3[~ind] >= 0)  # type: ignore[index]
 
         return result
 

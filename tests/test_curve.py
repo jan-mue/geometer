@@ -227,7 +227,7 @@ class TestSphere:
         p = Point(0, 0, 2)
 
         assert s + p == Sphere(p)
-        assert s - p == Sphere(-p)  # type: ignore[arg-type]
+        assert s - p == Sphere(-p)
 
 
 class TestCone:
@@ -301,7 +301,7 @@ class TestQuadricCollection:
 
         assert np.all(s.contains(p) == [True, False])
 
-    def test_components(self) -> None:
+    def test_components_from_lines(self) -> None:
         l = Line(1, 2, 3)
         m = Line(4, 5, 6)
         g = Line(3, 2, 1)
@@ -310,12 +310,13 @@ class TestQuadricCollection:
         q = QuadricCollection([Conic.from_lines(l, m), Conic.from_lines(g, h)])
         assert q.components == [LineCollection([m, g]), LineCollection([l, h])]
 
+    def test_components_from_planes(self) -> None:
         e = Plane(1, 2, 3, 4)
         f = Plane(4, 3, 2, 1)
-        g = Plane(5, 6, 7, 8)  # type: ignore[assignment]
-        h = Plane(8, 7, 6, 5)  # type: ignore[assignment]
+        g = Plane(5, 6, 7, 8)
+        h = Plane(8, 7, 6, 5)
 
-        q = QuadricCollection([Quadric.from_planes(e, f), Quadric.from_planes(g, h)])  # type: ignore[arg-type]
+        q = QuadricCollection([Quadric.from_planes(e, f), Quadric.from_planes(g, h)])
         assert q.components == [PlaneCollection([e, g]), PlaneCollection([f, h])]
 
     def test_intersect(self) -> None:

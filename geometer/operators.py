@@ -148,7 +148,7 @@ def harmonic_set(a: PointTensor, b: PointTensor, c: PointTensor) -> PointTensor:
 
     m = join(o, c)
     p = o + 1 / 2 * m.direction
-    result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))  # type: ignore[call-arg]
+    result = l.meet(join(meet(o.join(a), p.join(b)), meet(o.join(b), p.join(a))))  # type: ignore[call-arg, attr-defined]
 
     if n > 3:
         return result._matrix_transform(np.swapaxes(basis, -1, -2))
@@ -184,7 +184,7 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
     if len(args) == 3:
         a, b, c = args
         if a.dim > 2:
-            e = join(*args)  # type: ignore[call-arg, misc]
+            e = join(*args)  # type: ignore[call-arg, arg-type, misc]
             basis = e.basis_matrix
             a = a._matrix_transform(basis)  # type: ignore[assignment]
             b = b._matrix_transform(basis)  # type: ignore[assignment]
@@ -216,18 +216,18 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
                 y = a.join(y)  # type: ignore[assignment]
 
         if a.dim > 2:
-            e = join(x, y)  # type: ignore[call-arg, assignment]
+            e = join(x, y)  # type: ignore[call-arg, arg-type, assignment]
             basis = e.basis_matrix
             a = a._matrix_transform(basis)
-            b = x.meet(infty_plane)._matrix_transform(basis)
-            c = y.meet(infty_plane)._matrix_transform(basis)
+            b = x.meet(infty_plane)._matrix_transform(basis)  # type: ignore[union-attr]
+            c = y.meet(infty_plane)._matrix_transform(basis)  # type: ignore[union-attr]
         else:
-            b = x.meet(infty)
-            c = y.meet(infty)
+            b = x.meet(infty)  # type: ignore[union-attr]
+            c = y.meet(infty)  # type: ignore[union-attr]
     else:
         raise ValueError(f"Expected 2 or 3 arguments, got {len(args)}.")
 
-    return np.real(1 / 2j * np.log(crossratio(b, c, I, J, a)))
+    return np.real(1 / 2j * np.log(crossratio(b, c, I, J, a)))  # type: ignore[arg-type]
 
 
 def angle_bisectors(l: LineTensor, m: LineTensor) -> tuple[LineTensor, LineTensor]:

@@ -161,7 +161,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
         return np.isclose(det(self.array), 0, atol=EQ_TOL_ABS)
 
     @property
-    def components(self) -> list[PointTensor | LineTensor | PlaneTensor]:
+    def components(self) -> list[Point | PointCollection] | list[Line | LineCollection] | list[Plane | PlaneCollection]:
         """The components of a degenerate quadric."""
         # Algorithm adapted from Perspectives on Projective Geometry, Section 11.1
         n = self.shape[-1]
@@ -206,9 +206,9 @@ class QuadricTensor(ProjectiveTensor, ABC):
     def intersect(self, other: LineCollection) -> list[PointCollection] | list[LineCollection]: ...
 
     @overload
-    def intersect(self, other: LineTensor) -> list[PointTensor] | list[LineTensor]: ...
+    def intersect(self, other: LineTensor) -> list[Point | PointCollection] | list[Line | LineCollection]: ...
 
-    def intersect(self, other: LineTensor) -> list[PointCollection | Point] | list[LineTensor]:
+    def intersect(self, other: LineTensor) -> list[Point | PointCollection] | list[Line | LineCollection]:  # type: ignore[misc]
         """Calculates points of intersection of a line with the quadric.
 
         This method also returns complex points of intersection, even if the quadric and the line do not intersect in
@@ -253,11 +253,10 @@ class QuadricTensor(ProjectiveTensor, ABC):
                 p, q = QuadricCollection.from_array(b, is_dual=not self.is_dual).components  # type: ignore[call-arg]
         else:
             if self.is_dual:
-                e, f = cast(PointTensor, e), cast(PointTensor, f)
-                p, q = e.join(other), f.join(other)
+                p, q = cast(PointTensor, e).join(other), cast(PointTensor, f).join(other)  # type: ignore[assignment]
             else:
-                e, f = cast(Union[LineTensor, PlaneTensor], e), cast(Union[LineTensor, PlaneTensor], f)
-                p, q = e.meet(other), f.meet(other)
+                p = cast(Union[LineTensor, PlaneTensor], e).meet(other)  # type: ignore[assignment]
+                q = cast(Union[LineTensor, PlaneTensor], f).meet(other)  # type: ignore[assignment]
 
         if p.free_indices == 0 and p == q:
             return [p]  # type: ignore[return-value]
@@ -420,7 +419,7 @@ class Conic(Quadric):
     @overload
     def intersect(self, other: LineTensor) -> list[PointTensor]: ...
 
-    @override
+    @override  # type: ignore[misc]
     def intersect(self, other: LineTensor | Conic) -> list[PointTensor]:
         """Calculates points of intersection with the conic.
 
@@ -452,7 +451,7 @@ class Conic(Quadric):
 
             result = self.intersect(g)  # type: ignore[arg-type]
             result += [x for x in self.intersect(h) if x not in result]  # type: ignore[arg-type]
-            return result
+            return result  # type: ignore[return-value]
 
         return super().intersect(other)  # type: ignore[return-value]
 
@@ -494,8 +493,8 @@ class Conic(Quadric):
         if isinstance(i, Line) and isinstance(j, Line):
             return (i.meet(j),)
 
-        i1, i2 = i
-        j1, j2 = j
+        i1, i2 = i  # type: ignore[misc]
+        j1, j2 = j  # type: ignore[misc]
         f1, f2 = i1.meet(j1), i2.meet(j2)
         g1, g2 = i1.meet(j2), i2.meet(j1)
 
