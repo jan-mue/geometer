@@ -113,24 +113,27 @@ class Tensor:
     @classmethod
     def _get_collection_class(cls) -> type[TensorCollection[Self]]:
         def find_deepest(
-            current_class: type[TensorCollection[Self]], depth: int = 0
-        ) -> tuple[int, type[TensorCollection[Self]] | None]:
-            max_depth = -1
+            current_class: type[TensorCollection[Self]], deepest_element_class: type[Tensor] = Tensor
+        ) -> tuple[type[TensorCollection[Self]] | None, type[Tensor]]:
             deepest_class = None
-
-            if hasattr(current_class, "_element_class") and current_class._element_class is cls:
-                max_depth = depth
+            if cls is current_class._element_class:
+                return current_class, current_class._element_class
+            if issubclass(cls, current_class._element_class) and issubclass(
+                current_class._element_class, deepest_element_class
+            ):
+                deepest_element_class = current_class._element_class
                 deepest_class = current_class
-
             for subclass in current_class.__subclasses__():
-                sub_depth, sub_class = find_deepest(subclass, depth + 1)
-                if sub_depth > max_depth:
-                    max_depth = sub_depth
-                    deepest_class = sub_class
+                deeper_subclass, deeper_element_class = find_deepest(subclass, deepest_element_class)
+                if cls is deeper_element_class:
+                    return deeper_subclass, deeper_element_class
+                if deeper_subclass is not None and issubclass(deeper_element_class, deepest_element_class):
+                    deepest_class = deeper_subclass
+                    deepest_element_class = deeper_element_class
 
-            return max_depth, deepest_class
+            return deepest_class, deepest_element_class
 
-        _, result = find_deepest(TensorCollection)
+        result, _ = find_deepest(TensorCollection)
         if result is None:
             raise TypeError(f"No TensorCollection found for {cls.__name__}")
         return result
