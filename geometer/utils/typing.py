@@ -25,10 +25,21 @@ class NDArrayParameters(TypedDict, total=False):
     like: npt.ArrayLike
 
 
-class TensorParameters(NDArrayParameters):
+class TensorParameters(NDArrayParameters, total=False):
     covariant: bool | Iterable[int]
 
 
-NumericalDType: TypeAlias = Union[np.number, np.bool_]
-NumericalArray: TypeAlias = npt.NDArray[NumericalDType]
-NumericalScalar: TypeAlias = Union[Number, np.number, np.bool_, NumericalArray]  # TODO: restrict array shape
+class PolytopeParameters(NDArrayParameters, total=False):
+    pdim: int
+
+
+class QuadricParameters(NDArrayParameters, total=False):
+    is_dual: bool
+    normalize_matrix: bool
+
+
+NumericalScalarType: TypeAlias = Union[np.number, np.bool_]
+NumericalDType: TypeAlias = np.dtype[NumericalScalarType]
+NumericalArray: TypeAlias = npt.NDArray[NumericalScalarType]
+ScalarNumericalArray: TypeAlias = np.ndarray[tuple[()], NumericalDType]
+NumericalScalar: TypeAlias = Union[Number, np.number, np.bool_, ScalarNumericalArray]

@@ -4,6 +4,34 @@ from geometer.base import KroneckerDelta, LeviCivitaTensor, Tensor, TensorCollec
 
 
 class TestTensor:
+    def test_eq(self) -> None:
+        a = Tensor(1, 1)
+        b = Tensor(2, 3)
+
+        assert a == a
+        assert a == Tensor([1, 1])
+        assert a == [1, 1]
+        assert a == np.array([1, 1])
+        assert a != 1
+        assert a != np.array(1)
+        assert a != Tensor(1)
+        assert a != ["foo", "bar"]
+        assert a != ["1", "1"]
+        assert a != [None, None]
+
+        assert b != a
+        assert b != Tensor(3, 4, covariant=[0])
+        assert b != Tensor([])
+        assert b != np.array([])
+        assert b != []
+        assert b != Tensor([[2, 3]])
+        assert b != Tensor([[2], [3]])
+        assert b == b
+
+        assert Tensor([]) == Tensor([])
+        assert Tensor([]) == np.array([])
+        assert Tensor([]) == []
+
     def test_arithmetic(self) -> None:
         a = Tensor(2, 3)
         b = Tensor(5, 4)
@@ -30,10 +58,10 @@ class TestTensor:
         a = Tensor([[1, 2], [3, 4]], covariant=[0])
 
         assert a[0, 1] == 2
-        assert a[None, 1] == [[3, 4]]
-        assert a[None, 1].tensor_shape == (0, 1)
+        assert a[None, 1] == [[3, 4]]  # type: ignore[index]
+        assert a[None, 1].tensor_shape == (0, 1)  # type: ignore[union-attr, index]
         assert a[::-1, 0] == [3, 1]
-        assert a[::-1, 0].tensor_shape == (1, 0)
+        assert a[::-1, 0].tensor_shape == (1, 0)  # type: ignore[union-attr]
         assert a[True] == Tensor([a])
         assert a[False] == Tensor(np.empty((0, 2, 2)))
 
@@ -48,22 +76,22 @@ class TestTensor:
 class TestTensorCollection:
     def test_init(self) -> None:
         # numpy array
-        a = TensorCollection[Tensor](np.ones((1, 2, 3)), tensor_rank=1)
+        a = TensorCollection(np.ones((1, 2, 3)), tensor_rank=1)
         assert len(a) == 1
         assert a.size == 2
 
         # nested list of numbers
-        a = TensorCollection[Tensor]([[1, 2], [3, 4]], tensor_rank=1)
+        a = TensorCollection([[1, 2], [3, 4]], tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
         # nested tuple of numbers
-        a = TensorCollection[Tensor](((1, 2), (3, 4)), tensor_rank=1)
+        a = TensorCollection(((1, 2), (3, 4)), tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
         # nested list of Tensor objects
-        a = TensorCollection[Tensor]([[Tensor(1, 2, 3), Tensor(3, 4, 5)]], tensor_rank=1)
+        a = TensorCollection([[Tensor(1, 2, 3), Tensor(3, 4, 5)]], tensor_rank=1)
         assert a.shape == (1, 2, 3)
         assert len(a) == 1
         assert a.size == 2
@@ -73,14 +101,14 @@ class TestTensorCollection:
             def __array__(self) -> np.ndarray:
                 return np.array([Tensor(1, 2), Tensor(3, 4)])
 
-        a = TensorCollection[Tensor](A(), tensor_rank=1)
+        a = TensorCollection(A(), tensor_rank=1)
         assert len(a) == 2
         assert a.size == 2
 
     def test_getitem(self) -> None:
-        a = TensorCollection[Tensor]([[1, 2], [3, 4]])
-        b = TensorCollection[Tensor]([[5, 6], [7, 8]])
-        c = TensorCollection[Tensor]([a, b], tensor_rank=1)
+        a = TensorCollection([[1, 2], [3, 4]])
+        b = TensorCollection([[5, 6], [7, 8]])
+        c = TensorCollection([a, b], tensor_rank=1)
 
         assert c[0] == a
         assert c[1] == b
@@ -89,7 +117,7 @@ class TestTensorCollection:
         assert c[:, 0, 0] == [1, 5]
 
     def test_expand_dims(self) -> None:
-        a = TensorCollection[Tensor]([[1, 2], [3, 4]])
+        a = TensorCollection([[1, 2], [3, 4]])
         b = a.expand_dims(0)
 
         assert b.shape == (1, 2, 2)

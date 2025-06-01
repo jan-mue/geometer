@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import TYPE_CHECKING, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import overload, override
 
 from geometer.base import (
     BoundTensor,
@@ -24,15 +25,15 @@ if TYPE_CHECKING:
     from typing_extensions import Unpack
 
     from geometer.curve import Conic
-    from geometer.utils.typing import NDArrayParameters, TensorIndex
+    from geometer.utils.typing import NumericalScalarType, TensorParameters
 
 
 @overload
-def identity(dim: int, collection_dims: Literal[None] = None) -> Transformation: ...
+def identity(dim: int, collection_dims: Literal[None] = ...) -> Transformation: ...
 
 
 @overload
-def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationCollection: ...
+def identity(dim: int, collection_dims: tuple[int, ...] | None = ...) -> TransformationCollection: ...
 
 
 def identity(dim: int, collection_dims: tuple[int, ...] | None = None) -> TransformationTensor:
@@ -67,7 +68,7 @@ def affine_transform(matrix: npt.ArrayLike | None = None, offset: npt.ArrayLike 
 
     """
     n = 2
-    dtype = np.int_
+    dtype: np.dtype[NumericalScalarType] = np.dtype(np.int_)
 
     if not np.isscalar(offset):
         offset = np.asarray(offset)
@@ -118,7 +119,7 @@ def rotation(angle: float | np.float64, axis: Point | None = None) -> Transforma
     return affine_transform(result)
 
 
-def translation(*coordinates: Tensor | npt.ArrayLike) -> Transformation:
+def translation(*coordinates: BoundTensor | npt.ArrayLike) -> Transformation:
     """Returns a projective transformation that represents a translation by the given coordinates.
 
     Args:
@@ -128,6 +129,7 @@ def translation(*coordinates: Tensor | npt.ArrayLike) -> Transformation:
         The translation.
 
     """
+    # TODO: support point collections
     offset = Point(*coordinates)
     return affine_transform(offset=offset.normalized_array[:-1])
 
@@ -171,7 +173,7 @@ def reflection(axis: Subspace) -> Transformation:
     x = base[ind, :-1] / base[ind, -1]
     x = Point(*x)
 
-    return translation(x) * p * translation(-x)
+    return translation(x) * p * translation(-x)  # type: ignore[return-value]
 
 
 class TransformationTensor(ProjectiveTensor, ABC):
@@ -187,7 +189,7 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
     """
 
-    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> None:
+    def __init__(self, *args: Tensor | npt.ArrayLike, **kwargs: Unpack[TensorParameters]) -> None:
         kwargs.setdefault("covariant", [0])
         super().__init__(*args, tensor_rank=2, **kwargs)
         if self.tensor_shape != (1, 1):
@@ -195,12 +197,13 @@ class TransformationTensor(ProjectiveTensor, ABC):
         if self.shape[-1] != self.shape[-2]:
             raise ValueError(f"Expected quadratic matrix, but last two dimensions are {self.shape[-2:]}")
 
-    def __apply__(self, transformation: TransformationTensor) -> TransformationTensor:
+    @override
+    def __apply__(self, transformation: TransformationTensor) -> TransformationCollection | Transformation:
         return TransformationCollection.from_array(matmul(transformation.array, self.array))
 
     T = TypeVar("T", bound=Tensor)
 
-    def apply(self, other: T) -> T:
+    def apply(self, other: T) -> BoundTensor | TensorCollection | T:
         """Apply the transformation to another object.
 
         Args:
@@ -223,12 +226,16 @@ class TransformationTensor(ProjectiveTensor, ABC):
     @overload
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor: ...
 
+    @override
     def __mul__(self, other: Tensor | npt.ArrayLike) -> Tensor:
+        if not isinstance(other, Tensor):
+            other = Tensor(other, copy=False)
         try:
             return self.apply(other)
         except NotImplementedError:
             return super().__mul__(other)
 
+    @override
     def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
         if power == 0:
             if self.free_indices == 0:
@@ -239,14 +246,6 @@ class TransformationTensor(ProjectiveTensor, ABC):
 
         result = super().__pow__(power, modulo)
         return type(self)(result, copy=None)
-
-    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
-        result = super().__getitem__(index)
-
-        if not isinstance(result, Tensor) or result.tensor_shape != (1, 1):
-            return result
-
-        return TransformationCollection.from_tensor(result)
 
     def inverse(self) -> TransformationTensor:
         """Calculates the inverse projective transformation.
@@ -331,6 +330,12 @@ class Transformation(TransformationTensor, BoundTensor):
         d2 = p if q == c2 else q
 
         return cls.from_points((a1, a2), (b1, b2), (c1, c2), (d1, d2))
+
+    T = TypeVar("T", bound=Tensor)
+
+    @override
+    def apply(self, other: T) -> T:
+        return super().apply(other)  # type: ignore[return-value]
 
 
 class TransformationCollection(TransformationTensor, TensorCollection[Transformation]):

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Iterable, Iterator, Sized
+from collections.abc import Iterable, Iterator, Sequence, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import TypeVar, Unpack, overload, override
 
 from geometer.exceptions import IncompatibleShapeError, TensorComputationError
 from geometer.utils import (
@@ -20,10 +21,10 @@ from geometer.utils import (
 from geometer.utils.ops_dispatch import maybe_dispatch_ufunc_to_dunder_op
 
 if TYPE_CHECKING:
-    from typing_extensions import Self, Unpack
+    from typing_extensions import Self
 
-    from geometer.transformation import TransformationTensor
-    from geometer.utils.typing import NDArrayParameters, NumericalDType, Shape, TensorIndex
+    from geometer.transformation import Transformation, TransformationCollection, TransformationTensor
+    from geometer.utils.typing import NDArrayParameters, NumericalArray, NumericalDType, Shape, TensorIndex
 
 EQ_TOL_REL = 1e-15
 EQ_TOL_ABS = 1e-8
@@ -53,7 +54,7 @@ class Tensor:
 
     """
 
-    array: npt.NDArray[NumericalDType]
+    array: NumericalArray
     _covariant_indices: set[int]
     _contravariant_indices: set[int]
 
@@ -107,17 +108,45 @@ class Tensor:
 
     def _validate_tensor(self) -> None:
         if not is_numerical_dtype(self.dtype):
-            raise TypeError(f"The dtype of a Tensor must be a numeric dtype not {self.dtype.name}")
+            raise TypeError(f"The dtype of a Tensor must be a numeric dtype, not {self.dtype.name}")
 
-    def __apply__(self, transformation: TransformationTensor) -> Self:
+    @classmethod
+    def _get_collection_class(cls) -> type[TensorCollection[Self]]:
+        def find_class(current_class: type[TensorCollection[Self]]) -> type[TensorCollection[Self]] | None:
+            if current_class._element_class is cls:
+                return current_class
+            for subclass in current_class.__subclasses__():
+                if result_class := find_class(subclass):
+                    return result_class
+            return None
+
+        result = find_class(TensorCollection)
+        if result is None:
+            raise TypeError(f"No TensorCollection found for {cls.__name__}")
+        return result
+
+    @overload
+    def __apply__(self, transformation: Transformation) -> Self: ...
+
+    @overload
+    def __apply__(self, transformation: TransformationCollection) -> Self | TensorCollection[Self]: ...
+
+    @overload
+    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Self]: ...
+
+    def __apply__(self, transformation: TransformationTensor) -> Self | TensorCollection[Self]:
         ts = self.tensor_shape
         edges: list[tuple[Tensor, Tensor]] = [(self, transformation.copy()) for _ in range(ts[0])]
         if ts[1] > 0:
             inv = transformation.inverse()
             edges.extend((inv.copy(), self) for _ in range(ts[1]))
         diagram = TensorDiagram(*edges)
+        result_tensor = diagram.calculate()
+        if result_tensor.free_indices > self.free_indices:
+            collection_class = self._get_collection_class()
+            return collection_class(result_tensor, copy=None)
         result = self.copy()
-        result.array = diagram.calculate().array
+        result.array = result_tensor.array
         return result
 
     @property
@@ -126,7 +155,7 @@ class Tensor:
         return self.array.shape
 
     @property
-    def dtype(self) -> np.dtype[NumericalDType]:
+    def dtype(self) -> NumericalDType:
         """The dtype of the underlying numpy array, same as ``self.array.dtype``."""
         return self.array.dtype
 
@@ -237,6 +266,7 @@ class Tensor:
         axes = tuple(self._covariant_indices) + tuple(self._contravariant_indices)
         return np.all(np.isclose(self.array, 0, atol=tol), axis=axes)
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.array.tolist()})"
 
@@ -294,9 +324,22 @@ class Tensor:
             elif old_axis in self._contravariant_indices:
                 contravariant_indices.append(new_axis)
 
+        covariant_indices_set = set(covariant_indices)
+        contravariant_indices_set = set(contravariant_indices)
+
+        result_tensor: Self | Tensor
+        if (
+            self._covariant_indices == covariant_indices_set
+            and self._contravariant_indices == contravariant_indices_set
+        ):
+            result_tensor = self.copy()
+            result_tensor.array = result
+            result_tensor._validate_tensor()
+            return result_tensor
+
         result_tensor = Tensor(result, copy=None)
-        result_tensor._covariant_indices = set(covariant_indices)
-        result_tensor._contravariant_indices = set(contravariant_indices)
+        result_tensor._covariant_indices = covariant_indices_set
+        result_tensor._contravariant_indices = contravariant_indices_set
 
         return result_tensor
 
@@ -323,10 +366,9 @@ class Tensor:
         return TensorDiagram((self, other)).calculate()
 
     def __pow__(self, power: int, modulo: int | None = None) -> Tensor:
-        if modulo is not None or not isinstance(power, int) or power < 1:
+        if power < 1:
             return NotImplemented
-
-        if power == 1:
+        elif power == 1:
             return self.copy()
 
         d = TensorDiagram()
@@ -362,11 +404,13 @@ class Tensor:
     def __neg__(self) -> Tensor:
         return self * (-1)
 
+    @override
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Tensor):
-            other = other.array
+        other = np.asanyarray(other)
+        if self.shape != other.shape:
+            return False
         try:
-            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)  # type: ignore[arg-type]
+            return np.allclose(self.array, other, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS)
         except TypeError:
             return NotImplemented
 
@@ -393,6 +437,7 @@ class Tensor:
 class BoundTensor(Tensor):
     """A tensor without free indices."""
 
+    @override
     def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices != 0:
@@ -401,11 +446,11 @@ class BoundTensor(Tensor):
             )
 
 
-T = TypeVar("T", bound=Tensor)
+TensorT = TypeVar("TensorT", bound=Tensor, covariant=True, default=Tensor)
 
 
-class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
-    """A collection of tensors."""
+class TensorCollection(Tensor, Generic[TensorT], Sized, Iterable[TensorT]):
+    """A collection of tensors of type TensorT. The shape of axes after axis 0 must be compatible with tensors of type TensorT."""
 
     _element_class: ClassVar[type[Tensor]] = Tensor
 
@@ -418,6 +463,7 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
     ) -> None:
         super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
 
+    @override
     def _validate_tensor(self) -> None:
         super()._validate_tensor()
         if self.free_indices == 0:
@@ -426,8 +472,8 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
             )
 
     @classmethod
-    def from_tensor(cls, tensor: Tensor, **kwargs: Unpack[NDArrayParameters]) -> Self | T:
-        """Construct an object from another tensor. If the tensor has no free indices, an object of type T is returned.
+    def from_tensor(cls, tensor: Tensor, **kwargs: Unpack[NDArrayParameters]) -> Self | TensorT:
+        """Construct an object from another tensor. If the tensor has no free indices, an object of type TensorT is returned.
 
         By default the array in the tensor is not copied.
 
@@ -446,8 +492,8 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
             return cls._element_class(tensor, **kwargs)  # type: ignore[return-value]
 
     @classmethod
-    def from_array(cls, array: npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> Self | T:
-        """Try to construct a new collection from an array. If the rank is too low, an object of type T is returned.
+    def from_array(cls, array: npt.ArrayLike, **kwargs: Unpack[NDArrayParameters]) -> Self | TensorT:
+        """Try to construct a new collection from an array. If the rank is too low, an object of type TensorT is returned.
 
         By default the array is not copied.
 
@@ -491,21 +537,39 @@ class TensorCollection(Tensor, Generic[T], Sized, Iterable[T]):
         """The number of tensors in the tensor collection, i.e. the product of the size of all collection axes."""
         return np.prod([self.shape[i] for i in range(self.free_indices)], dtype=int)
 
+    @overload
+    def __getitem__(self, index: int | np.int_) -> TensorT: ...
+
+    @overload
+    def __getitem__(self, index: Sequence[int] | Sequence[np.int_] | Sequence[bool] | Sequence[np.bool_]) -> Self: ...
+
+    @overload
+    def __getitem__(self, index: npt.NDArray[np.int_] | npt.NDArray[np.bool_]) -> Tensor: ...
+
+    @overload
+    def __getitem__(self, index: TensorIndex) -> Tensor | np.generic: ...
+
+    @override
     def __getitem__(self, index: TensorIndex) -> Tensor | np.generic:
         result = super().__getitem__(index)
 
         if not isinstance(result, Tensor):
             return result
 
-        if result.free_indices > 0:
-            return TensorCollection(result, copy=None)
+        if isinstance(index, (int, np.int_)):
+            return self._element_class(result, copy=None)
 
-        return self._element_class(result, copy=None)
+        if result.free_indices == 0 or isinstance(result, type(self)):
+            return result
 
+        return TensorCollection(result, copy=None)
+
+    @override
     def __len__(self) -> int:
         return len(self.array)
 
-    def __iter__(self) -> Iterator[T]:
+    @override
+    def __iter__(self) -> Iterator[TensorT]:
         for i in range(len(self)):
             yield self[i]
 
@@ -534,6 +598,7 @@ class LeviCivitaTensor(BoundTensor):
 
     """
 
+    array: npt.NDArray[np.int8]
     _cache: ClassVar[dict[int, np.ndarray]] = {}
 
     def __init__(self, size: int, covariant: bool = True) -> None:
@@ -574,6 +639,7 @@ class KroneckerDelta(BoundTensor):
 
     """
 
+    array: npt.NDArray[np.int_]
     _cache: ClassVar[dict[tuple[int, int], np.ndarray]] = {}
 
     def __init__(self, n: int, p: int = 1) -> None:
@@ -583,7 +649,7 @@ class KroneckerDelta(BoundTensor):
             array = self._cache[(p, n)]
         elif p == n:
             e = LeviCivitaTensor(n)
-            array = np.tensordot(e.array, e.array, 0)  # type: ignore[arg-type]
+            array = np.tensordot(e.array, e.array, 0)
 
             self._cache[(p, n)] = array
         else:
@@ -698,7 +764,7 @@ class TensorDiagram:
 
         self._contraction_list.append((source_index, target_index, i, j))
 
-    def calculate(self) -> Tensor:
+    def calculate(self) -> BoundTensor | TensorCollection:
         """Calculates the result of the diagram.
 
         Returns:
@@ -734,7 +800,10 @@ class TensorDiagram:
         n_free = len(result_indices[0])
         n_cov = len(result_indices[1])
 
-        return Tensor(result, covariant=range(n_cov), tensor_rank=result.ndim - n_free, copy=None)
+        if n_free > 0:
+            return TensorCollection(result, covariant=range(n_cov), tensor_rank=result.ndim - n_free, copy=False)
+
+        return BoundTensor(result, covariant=range(n_cov), copy=None)
 
     def copy(self) -> TensorDiagram:
         result = TensorDiagram()
@@ -762,18 +831,24 @@ class ProjectiveTensor(Tensor, ABC):
         super().__init__(*args, covariant=covariant, tensor_rank=tensor_rank, **kwargs)
         if self.rank == 0:
             raise ValueError("A projective tensor cannot be of rank 0")
+        if self.shape[-1] == 0:
+            raise ValueError("A projective tensor cannot have trailing dimension 0")
         if not 0 < self.dim <= 3:
             raise ValueError(f"Only dimensions 1, 2 and 3 are supported, got dimension {self.dim}")
 
+    @override
     def __eq__(self, other: object) -> bool:
-        if is_numerical_scalar(other):
+        try:
+            is_scalar = is_numerical_scalar(other)  # type: ignore[arg-type]
+        except TypeError:
+            # other is not an array-like
+            return NotImplemented
+
+        if is_scalar:
             return super().__eq__(other)
 
         if not isinstance(other, Tensor):
-            try:
-                other = Tensor(other)  # type: ignore[arg-type]
-            except TypeError:
-                return NotImplemented
+            other = Tensor(other)  # type: ignore[arg-type]
 
         if self.shape != other.shape:
             return False

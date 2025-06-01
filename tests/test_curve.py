@@ -69,7 +69,7 @@ class TestConic:
 
         conic1 = Conic.from_points(a, b, c, d, e)
         cr = crossratio(a, b, c, d, e)
-        conic2 = Conic.from_crossratio(cr, a, b, c, d)
+        conic2 = Conic.from_crossratio(cr, a, b, c, d)  # type: ignore[arg-type]
 
         assert conic1 == conic2
 
@@ -131,7 +131,7 @@ class TestCircle:
         assert c.intersect(l) == [Point(-2, 2), Point(2, 2)]
         assert c.intersect(l - Point(0, 2)) == [Point(0, 0)]
 
-        l = LineCollection([Line(Point(-1, 2), Point(1, 2)), Line(Point(0, 2), Point(0, 0))])
+        l = LineCollection([Line(Point(-1, 2), Point(1, 2)), Line(Point(0, 2), Point(0, 0))])  # type: ignore[assignment]
         assert c.intersect(l) == [
             PointCollection([Point(-2, 2), Point(0, 0)]),
             PointCollection([Point(2, 2), Point(0, 4)]),
@@ -202,7 +202,7 @@ class TestSphere:
         assert s.intersect(l) == [Point(-2, 0, 2), Point(2, 0, 2)]
         assert s.intersect(l - Point(0, 0, 2)) == [Point(0, 0, 0)]
 
-        l = LineCollection([Line(Point(-1, 0, 2), Point(1, 0, 2)), Line(Point(0, 0, 0), Point(0, 0, 2))])
+        l = LineCollection([Line(Point(-1, 0, 2), Point(1, 0, 2)), Line(Point(0, 0, 0), Point(0, 0, 2))])  # type: ignore[assignment]
         assert s.intersect(l) == [
             PointCollection([Point(-2, 0, 2), Point(0, 0, 0)]),
             PointCollection([Point(2, 0, 2), Point(0, 0, 4)]),
@@ -301,7 +301,7 @@ class TestQuadricCollection:
 
         assert np.all(s.contains(p) == [True, False])
 
-    def test_components(self) -> None:
+    def test_components_from_lines(self) -> None:
         l = Line(1, 2, 3)
         m = Line(4, 5, 6)
         g = Line(3, 2, 1)
@@ -310,6 +310,7 @@ class TestQuadricCollection:
         q = QuadricCollection([Conic.from_lines(l, m), Conic.from_lines(g, h)])
         assert q.components == [LineCollection([m, g]), LineCollection([l, h])]
 
+    def test_components_from_planes(self) -> None:
         e = Plane(1, 2, 3, 4)
         f = Plane(4, 3, 2, 1)
         g = Plane(5, 6, 7, 8)

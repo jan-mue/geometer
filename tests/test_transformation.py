@@ -5,6 +5,7 @@ from geometer import (
     Circle,
     Line,
     Point,
+    PointCollection,
     Transformation,
     TransformationCollection,
     angle,
@@ -25,10 +26,10 @@ class TestTransformation:
         l = Line(p1, p3)
 
         M = Transformation.from_points(
-            (p1, p1 + Point(1, 1)),
-            (p2, p2 + Point(1, 1)),
-            (p3, p3 + Point(1, 1)),
-            (p4, p4 + Point(1, 1)),
+            (p1, p1 + Point(1, 1)),  # type: ignore[arg-type]
+            (p2, p2 + Point(1, 1)),  # type: ignore[arg-type]
+            (p3, p3 + Point(1, 1)),  # type: ignore[arg-type]
+            (p4, p4 + Point(1, 1)),  # type: ignore[arg-type]
         )
 
         assert M * p3 == Point(1, 2)
@@ -113,6 +114,14 @@ class TestTransformation:
 
 
 class TestTransformationCollection:
+    def test_translation(self) -> None:
+        p = Point(0, 1)
+        t = TransformationCollection([translation(2, 1)] * 2)
+        result = t * p
+
+        assert isinstance(result, PointCollection)
+        assert result == PointCollection([Point(2, 2), Point(2, 2)])
+
     def test_inverse(self) -> None:
         E = TransformationCollection([np.eye(4)] * 10)
         M = TransformationCollection([rotation(np.pi, axis=Point(0, 1, 0))] * 10)
