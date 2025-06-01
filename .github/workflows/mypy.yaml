@@ -24,5 +24,13 @@ jobs:
           enable-cache: true
           version: "0.7.8"
 
+      - name: Cache mypy cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .mypy_cache
+          key: ${{ runner.os }}-mypy-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-
+
       - name: Run mypy
         run: uv run mypy geometer tests
