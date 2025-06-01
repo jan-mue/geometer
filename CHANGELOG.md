@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/jan-mue/geometer/compare/v0.4.1...v0.5.0) (2025-06-01)
+
+
+### Features
+
+* Full type checking with mypy ([#134](https://github.com/jan-mue/geometer/issues/134)) ([8830d29](https://github.com/jan-mue/geometer/commit/8830d2967fd4fff080e6647b881e75b89b2e4c19))
+* introduce semantic prs, codespell and add some type hints ([#130](https://github.com/jan-mue/geometer/issues/130)) ([366dcf9](https://github.com/jan-mue/geometer/commit/366dcf9d3f816f47fe0c9d3d57a0c0257aa0398d))
+* release package with github action ([bcdad1d](https://github.com/jan-mue/geometer/commit/bcdad1d5b6d0fd5440044872c24f1728811e0c90))
+* Upgrade to NumPy 2.x ([#154](https://github.com/jan-mue/geometer/issues/154)) ([9e58b27](https://github.com/jan-mue/geometer/commit/9e58b2725150450ee2e89a50988e05744e4bad2b))
+* use release please ([#131](https://github.com/jan-mue/geometer/issues/131)) ([393504e](https://github.com/jan-mue/geometer/commit/393504e60415903196a6a8ac4cf3e458b6c7b4f8))
+
+
+### Bug Fixes
+
+* Add type annotations for test code ([#142](https://github.com/jan-mue/geometer/issues/142)) ([dca6a7e](https://github.com/jan-mue/geometer/commit/dca6a7eef05d45a494736f1716820eec56cf9705))
+* configure release please ([4fd5df1](https://github.com/jan-mue/geometer/commit/4fd5df186bc7877af4e848af25239a2901389454))
+* configure release please ([5b257bb](https://github.com/jan-mue/geometer/commit/5b257bbbe099e96152c84bfceac68b205a6f3073))
+* Enable additional Ruff rules and fix any issues ([#141](https://github.com/jan-mue/geometer/issues/141)) ([9a45908](https://github.com/jan-mue/geometer/commit/9a4590864c2d875c66b03cb4db2ea5b11b32b181))
+* Rename version file ([#162](https://github.com/jan-mue/geometer/issues/162)) ([5f70f06](https://github.com/jan-mue/geometer/commit/5f70f06a54e8f746ebf69ab80c49263b80f86cb9))
+* Use correct artifact name in CI ([#159](https://github.com/jan-mue/geometer/issues/159)) ([8dbadd4](https://github.com/jan-mue/geometer/commit/8dbadd4cdeceb7fb39ce548cf8cfb7247a8e07d6))
+
 ## [0.4.0](https://github.com/jan-mue/geometer/compare/v0.3.0...v0.4.0) (2025-06-01)
 
 
