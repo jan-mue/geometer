@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Generic, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -784,7 +784,7 @@ SubspaceT = TypeVar("SubspaceT", covariant=True, bound=Subspace)
 
 
 class SubspaceCollection(SubspaceTensor, TensorCollection[SubspaceT], Generic[SubspaceT], ABC):
-    _element_class: ClassVar[type[Subspace]] = Subspace
+    pass
 
 
 class LineTensor(SubspaceTensor, ABC):
