@@ -1,5 +1,6 @@
-from collections.abc import Generator, Iterable
-from typing import TypeVar
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TypeVar
 
 from geometer.utils.indexing import normalize_index, posify_index, sanitize_index
 from geometer.utils.math import (
@@ -17,6 +18,9 @@ from geometer.utils.math import (
     outer,
     roots,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable
 
 T = TypeVar("T")
 

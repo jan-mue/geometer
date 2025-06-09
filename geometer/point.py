@@ -877,7 +877,7 @@ class LineTensor(SubspaceTensor, ABC):
         """A matrix with orthonormal basis vectors as rows."""
         if self.dim == 2:
             a = self.base_point.array
-            b = np.cross(self.array, a)  # type: ignore[arg-type]
+            b = np.cross(self.array, a)
             m = [a / np.linalg.norm(a, axis=-1, keepdims=True), b / np.linalg.norm(b, axis=-1, keepdims=True)]
             return np.stack(m, axis=-2)
         return super().basis_matrix
@@ -995,7 +995,7 @@ class LineTensor(SubspaceTensor, ABC):
 
                 basis = plane.basis_matrix
                 line_pts = matmul(l.basis_matrix, basis, transpose_b=True)
-                l = LineCollection.from_array(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]))  # type: ignore[arg-type]
+                l = LineCollection.from_array(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]))
 
             p = PointCollection.from_array(
                 np.append(l.array[..., :-1], np.zeros(l.shape[:-1] + (1,), dtype=l.dtype), axis=-1)
@@ -1093,8 +1093,8 @@ class PlaneTensor(SubspaceTensor):
         a = tuple(np.delete(ind, np.ravel_multi_index((*tuple(np.indices(s)[:-1]), i), s)).reshape(s[:-1] + (-1,)))
         result[(*ind_short, i.squeeze())] = self.array[a]
         b = np.arange(n - 1).reshape((1,) * (len(self.shape) - 1) + (n - 1,))
-        result[(*a, b)] = -self.array[(*ind_short, i.squeeze(), None)]  # type: ignore[misc, index]
-        q, r = np.linalg.qr(result)  # type: ignore[arg-type]
+        result[(*a, b)] = -self.array[(*ind_short, i.squeeze(), None)]  # type: ignore[misc]
+        q, r = np.linalg.qr(result)
         return np.swapaxes(q, -1, -2)
 
     @override
