@@ -1,6 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
-from numpy.random import Generator
+
+if TYPE_CHECKING:
+    from numpy.random import Generator
 
 
 @pytest.fixture(scope="session")
