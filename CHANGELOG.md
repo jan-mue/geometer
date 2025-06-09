@@ -22,23 +22,14 @@
 * release package with github action ([bcdad1d](https://github.com/jan-mue/geometer/commit/bcdad1d5b6d0fd5440044872c24f1728811e0c90))
 * Upgrade to NumPy 2.x ([#154](https://github.com/jan-mue/geometer/issues/154)) ([9e58b27](https://github.com/jan-mue/geometer/commit/9e58b2725150450ee2e89a50988e05744e4bad2b))
 * use release please ([#131](https://github.com/jan-mue/geometer/issues/131)) ([393504e](https://github.com/jan-mue/geometer/commit/393504e60415903196a6a8ac4cf3e458b6c7b4f8))
+* Dropped support for Python 3.5, 3.6, 3.7 and 3.8
 
 
 ### Bug Fixes
 
 * Add type annotations for test code ([#142](https://github.com/jan-mue/geometer/issues/142)) ([dca6a7e](https://github.com/jan-mue/geometer/commit/dca6a7eef05d45a494736f1716820eec56cf9705))
-* configure release please ([4fd5df1](https://github.com/jan-mue/geometer/commit/4fd5df186bc7877af4e848af25239a2901389454))
-* configure release please ([5b257bb](https://github.com/jan-mue/geometer/commit/5b257bbbe099e96152c84bfceac68b205a6f3073))
 * Enable additional Ruff rules and fix any issues ([#141](https://github.com/jan-mue/geometer/issues/141)) ([9a45908](https://github.com/jan-mue/geometer/commit/9a4590864c2d875c66b03cb4db2ea5b11b32b181))
-
-## 0.4 - unreleased
-
-### New Features
-
-- Add type hints to code base
-- Muted warnings for invalid values in crossratio and other functions
-- NumPy 1.22+ required
-- Dropped support for Python 3.5, 3.6 and 3.7
+* Muted warnings for invalid values in crossratio and other functions
 
 ## 0.3.4 - released (17.4.2022)
 
