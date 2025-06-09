@@ -51,6 +51,9 @@ Issues = "https://github.com/jan-mue/geometer/issues"
 Source = "https://github.com/jan-mue/geometer"
 Changelog = "https://github.com/jan-mue/geometer/releases"
 
+[tool.hatch.build]
+packages = ["geometer"]
+
 [tool.hatch.version]
 path = "geometer/version.py"
 
