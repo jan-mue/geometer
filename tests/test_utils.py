@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 from geometer.utils import adjugate, det, inv, is_multiple, null_space, orth, roots

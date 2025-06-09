@@ -1,8 +1,11 @@
 # Adapted from https://github.com/pandas-dev/pandas/blob/main/pandas/_libs/ops_dispatch.pyx
 # See license at https://github.com/pandas-dev/pandas/blob/main/LICENSE
-from typing import Any, Literal
+from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING, Any, Literal
+
+if TYPE_CHECKING:
+    import numpy as np
 
 DISPATCHED_UFUNCS = {
     "add",
