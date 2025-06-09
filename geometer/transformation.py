@@ -279,8 +279,8 @@ class Transformation(TransformationTensor, BoundTensor):
         b = [y.array for x, y in args]
         m1 = np.column_stack(a[:-1])
         m2 = np.column_stack(b[:-1])
-        d1 = np.linalg.solve(m1, a[-1])  # type: ignore[arg-type]
-        d2 = np.linalg.solve(m2, b[-1])  # type: ignore[arg-type]
+        d1 = np.linalg.solve(m1, a[-1])
+        d2 = np.linalg.solve(m2, b[-1])
         t1 = m1.dot(np.diag(d1))
         t2 = m2.dot(np.diag(d2))
 

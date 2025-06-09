@@ -198,7 +198,7 @@ class Tensor:
         covariant = list(self._covariant_indices) + [offset + i for i in other._covariant_indices]
         contravariant = list(self._contravariant_indices) + [offset + i for i in other._contravariant_indices]
 
-        result = np.tensordot(self.array, other.array, 0)  # type: ignore[arg-type]
+        result = np.tensordot(self.array, other.array, 0)
         result = np.transpose(result, axes=covariant + contravariant)
         return Tensor(result, covariant=range(len(covariant)), copy=None)
 
