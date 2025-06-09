@@ -494,10 +494,10 @@ class PolygonTensor(PolytopeTensor):
         # ignore intersections of downward edges that end on the ray
         v1 = edges.array[..., 0, :]
         v2 = edges.array[..., 1, :]
-        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(  # type: ignore[operator]
+        v1_intersections = (v1[..., 1] <= v2[..., 1]) & is_multiple(
             intersections.array, v1, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1
         )
-        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(  # type: ignore[operator]
+        v2_intersections = (v2[..., 1] <= v1[..., 1]) & is_multiple(
             intersections.array, v2, atol=EQ_TOL_ABS, rtol=EQ_TOL_REL, axis=-1
         )
 

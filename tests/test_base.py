@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 from geometer.base import KroneckerDelta, LeviCivitaTensor, Tensor, TensorCollection, TensorDiagram

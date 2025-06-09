@@ -1,5 +1,6 @@
 # Most of this file is taken from https://github.com/dask/dask/blob/main/dask/array/slicing.py
 # See license at https://github.com/dask/dask/blob/master/LICENSE.txt
+from __future__ import annotations
 
 import math
 from numbers import Integral, Number
