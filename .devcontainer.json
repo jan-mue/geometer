@@ -12,9 +12,18 @@
         "telemetry.telemetryLevel": "off",
         "workbench.colorTheme": "GitHub Dark",
         "files.autoSave": "afterDelay",
-        "chat.agent.enabled": true,
         "git.autofetch": true,
-        "git.confirmSync": false
+        "git.confirmSync": false,
+        "python.analysis.typeCheckingMode": "standard",
+        "chat.agent.enabled": true,
+        "chat.mcp.enabled": true,
+        "mcp": {
+            "servers": {
+                "DeepWiki": {
+                    "url": "https://mcp.deepwiki.com/sse"
+                }
+            }
+        }
     },
 
     // Add the IDs of extensions you want installed when the container is created.
@@ -33,7 +42,7 @@
     ],
 
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "uv sync --frozen && uv tool install pre-commit && pre-commit install",
+    "postCreateCommand": "uv sync --frozen && uv tool install pre-commit --with pre-commit-uv && pre-commit install",
 
     // Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
     "remoteUser": "vscode",
