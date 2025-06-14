@@ -28,9 +28,7 @@ jobs:
           version: "0.7.8"
 
       - name: Run tests with pytest
-        run: |
-          uv run coverage run -m pytest tests
-          uv run coverage xml
+        run: uv run pytest --cov tests
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
