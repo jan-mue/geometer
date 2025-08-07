@@ -39,7 +39,7 @@ urls.Source = "https://github.com/jan-mue/geometer"
 [dependency-groups]
 dev = [
     "coverage==7.9.2",
-    "mypy==1.17.0",
+    "mypy==1.17.1",
     "pytest==8.4.1",
 ]
 docs = [
