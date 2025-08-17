@@ -81,7 +81,7 @@ def is_multiple(
         new_axes = tuple(range(-1, -len(axis) - 1, -1))
         a = np.moveaxis(a, axis, new_axes)
         b = np.moveaxis(b, axis, new_axes)
-        new_shape = a.shape[: -len(axis)] + (-1,)
+        new_shape = (*a.shape[: -len(axis)], -1)
         a = np.reshape(a, new_shape)
         b = np.reshape(b, new_shape)
         axis = -1
@@ -124,7 +124,7 @@ def hat_matrix(*args: npt.ArrayLike) -> np.ndarray:
 
     n = int(1 + np.sqrt(1 + 8 * x.shape[-1])) // 2
 
-    result = np.zeros(x.shape[:-1] + (n, n), x.dtype)
+    result = np.zeros((*x.shape[:-1], n, n), x.dtype)
 
     i: npt.ArrayLike
     j: npt.ArrayLike
@@ -208,7 +208,7 @@ def adjugate(A: npt.ArrayLike) -> npt.NDArray[np.number]:
         result[..., ::2, 1::2] *= -1
         return result
 
-    from geometer.base import LeviCivitaTensor, Tensor, TensorDiagram
+    from geometer.base import LeviCivitaTensor, Tensor, TensorDiagram  # noqa: PLC0415
 
     e1 = LeviCivitaTensor(n, False)
     e2 = LeviCivitaTensor(n, False)
