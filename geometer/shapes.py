@@ -68,7 +68,7 @@ class PolytopeTensor(PointLikeTensor, ABC):
     def vertices(self) -> list[PointTensor]:
         """The vertices of the polytope."""
         first_polygon_index = self.rank - max(self.pdim - 1, 1) - 1
-        new_shape = self.shape[:first_polygon_index] + (-1, self.shape[-1])
+        new_shape = (*self.shape[:first_polygon_index], -1, self.shape[-1])
         array = self.array.reshape(new_shape)
         return list(distinct(PointCollection.from_array(x) for x in np.moveaxis(array, -2, 0)))
 
@@ -460,14 +460,14 @@ class PolygonTensor(PolytopeTensor):
             i = np.expand_dims(i, -1)
             s = self.array.shape
             arr = np.delete(self.array, np.ravel_multi_index((*tuple(np.indices(s[:-1])), i), s))
-            arr = arr.reshape(s[:-1] + (-1,))
+            arr = arr.reshape((*s[:-1], -1))
 
             if isinstance(other, Point) and i.ndim == 1:
                 other = Point(np.delete(other.array, i), copy=None)
             else:
-                s = other.shape[:-1] + (1, other.shape[-1])
+                s = (*other.shape[:-1], 1, other.shape[-1])
                 other = np.delete(other.array, np.ravel_multi_index((*tuple(np.indices(s[:-1])), i), s))  # type: ignore[assignment]
-                other = PointCollection(other.reshape(s[:-2] + (-1,)), copy=None)  # type: ignore[attr-defined]
+                other = PointCollection(other.reshape((*s[:-2], -1)), copy=None)  # type: ignore[attr-defined]
 
             # TODO: only test coplanar points
             return coplanar & PolygonCollection.from_array(arr).contains(other)

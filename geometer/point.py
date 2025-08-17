@@ -98,7 +98,7 @@ def _join_meet_duality(
                         result = Tensor(array[i[0], ...], covariant=False, copy=None)
                     else:
                         # extract the point of intersection
-                        result = Tensor(array[(slice(None),) + i[1:]], copy=None)
+                        result = Tensor(array[(slice(None), *i[1:])], copy=None)
                 else:
                     max_ind = np.abs(array).reshape((np.prod(array.shape[: coplanar.ndim]), -1)).argmax(1)
                     i = np.unravel_index(max_ind, array.shape[coplanar.ndim :])
@@ -109,7 +109,7 @@ def _join_meet_duality(
                         result_rank = result_array.ndim - coplanar.ndim
                         result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=None)
                     else:
-                        result = Tensor(array[indices + (slice(None),) + i[1:]], tensor_rank=1, copy=None)
+                        result = Tensor(array[(*indices, slice(None), *i[1:])], tensor_rank=1, copy=None)
 
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
@@ -375,7 +375,7 @@ class PointLikeTensor(ProjectiveTensor, ABC):
     ) -> None:
         super().__init__(*args, tensor_rank=tensor_rank, **kwargs)
         if homogenize is True:
-            self.array = np.append(self.array, np.ones(self.shape[:-1] + (1,), self.dtype), axis=-1)
+            self.array = np.append(self.array, np.ones((*self.shape[:-1], 1), self.dtype), axis=-1)
         if self.tensor_shape != (1, 0):
             raise ValueError(f"Expected tensor of type (1, 0), but is {self.tensor_shape}")
 
@@ -627,7 +627,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
         if not isinstance(other, PointTensor):
             return super().__add__(other)
 
-        from geometer.transformation import translation
+        from geometer.transformation import translation  # noqa: PLC0415
 
         return translation(other).apply(self)
 
@@ -646,7 +646,7 @@ class SubspaceTensor(ProjectiveTensor, ABC):
     @property
     def basis_matrix(self) -> npt.NDArray[np.number]:
         x = self.array
-        x = x.reshape(x.shape[: self.free_indices] + (-1, x.shape[-1]))
+        x = x.reshape((*x.shape[: self.free_indices], -1, x.shape[-1]))
         return np.swapaxes(null_space(x, self.shape[-1] - self.rank + self.free_indices), -1, -2)
 
     def _matrix_transform(self, m: npt.ArrayLike) -> SubspaceTensor:
@@ -998,7 +998,7 @@ class LineTensor(SubspaceTensor, ABC):
                 l = LineCollection.from_array(np.cross(line_pts[..., 0, :], line_pts[..., 1, :]))
 
             p = PointCollection.from_array(
-                np.append(l.array[..., :-1], np.zeros(l.shape[:-1] + (1,), dtype=l.dtype), axis=-1)
+                np.append(l.array[..., :-1], np.zeros((*l.shape[:-1], 1), dtype=l.dtype), axis=-1)
             )
 
             if n > 3:
@@ -1086,11 +1086,11 @@ class PlaneTensor(SubspaceTensor):
     def basis_matrix(self) -> np.ndarray:
         n = self.dim + 1
         i = np.argmax(np.abs(self.array) > EQ_TOL_ABS, axis=-1, keepdims=True)
-        result = np.zeros(self.shape[:-1] + (n, n - 1), dtype=self.dtype)
+        result = np.zeros((*self.shape[:-1], n, n - 1), dtype=self.dtype)
         ind = np.indices(self.shape)
         ind_short = np.indices(self.shape[:-1], sparse=True)
         s = ind.shape
-        a = tuple(np.delete(ind, np.ravel_multi_index((*tuple(np.indices(s)[:-1]), i), s)).reshape(s[:-1] + (-1,)))
+        a = tuple(np.delete(ind, np.ravel_multi_index((*tuple(np.indices(s)[:-1]), i), s)).reshape((*s[:-1], -1)))
         result[(*ind_short, i.squeeze())] = self.array[a]
         b = np.arange(n - 1).reshape((1,) * (len(self.shape) - 1) + (n - 1,))
         result[(*a, b)] = -self.array[(*ind_short, i.squeeze(), None)]  # type: ignore[misc]
@@ -1118,11 +1118,11 @@ class PlaneTensor(SubspaceTensor):
         p = l.base_point
         polars = LineCollection.from_array(p.array)
 
-        from geometer.curve import absolute_conic
+        from geometer.curve import absolute_conic  # noqa: PLC0415
 
         p1, p2 = absolute_conic.intersect(polars)
-        p1 = PointCollection.from_array(np.append(p1.array, np.zeros(p1.shape[:-1] + (1,)), axis=-1))
-        p2 = PointCollection.from_array(np.append(p2.array, np.zeros(p2.shape[:-1] + (1,)), axis=-1))
+        p1 = PointCollection.from_array(np.append(p1.array, np.zeros((*p1.shape[:-1], 1)), axis=-1))
+        p2 = PointCollection.from_array(np.append(p2.array, np.zeros((*p2.shape[:-1], 1)), axis=-1))
 
         l1 = p1.join(pt)
         l2 = p2.join(pt)
@@ -1155,7 +1155,7 @@ class PlaneTensor(SubspaceTensor):
             raise NotImplementedError(f"Expected dimension 3 but found dimension {self.dim}.")
 
         direction_array = self.array[..., :-1]
-        direction_array = np.append(direction_array, np.zeros(self.shape[:-1] + (1,), dtype=self.dtype), axis=-1)
+        direction_array = np.append(direction_array, np.zeros((*self.shape[:-1], 1), dtype=self.dtype), axis=-1)
         direction = PointCollection.from_array(direction_array)
         return through.join(direction)
 

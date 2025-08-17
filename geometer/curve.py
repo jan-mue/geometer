@@ -186,7 +186,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
         t = self.array + m
 
         # components are in the non-zero rows and columns (up to scalar multiple)
-        i = np.unravel_index(np.abs(t).reshape(t.shape[:-2] + (-1,)).argmax(axis=-1), t.shape[-2:])
+        i = np.unravel_index(np.abs(t).reshape((*t.shape[:-2], -1)).argmax(axis=-1), t.shape[-2:])
         p, q = t[indices + i[:1]], t[(*indices, slice(None), i[1])]
 
         if self.dim > 2 and not np.all(is_multiple(outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, axis=(-2, -1))):
@@ -233,7 +233,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
 
         if not reducible:
             if self.dim > 2:
-                arr = other.array.reshape(other.shape[: -other.tensor_shape[1]] + (-1, self.dim + 1))
+                arr = other.array.reshape((*other.shape[: -other.tensor_shape[1]], -1, self.dim + 1))
 
                 if isinstance(other, Line):
                     i = arr.nonzero()[0][0]
@@ -677,7 +677,7 @@ class Cone(Quadric):
         if radius == 0:
             raise ValueError("The radius of a cone can not be zero.")
 
-        from geometer.operators import angle, dist
+        from geometer.operators import angle, dist  # noqa: PLC0415
 
         h = dist(vertex, base_center)
         c = (radius / h) ** 2

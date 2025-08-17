@@ -199,7 +199,7 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
             polar = LineCollection.from_array(p.array[..., :-1])
             tangent_points = absolute_conic.intersect(polar)
             tangent_points = [
-                PointCollection.from_array(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1))
+                PointCollection.from_array(np.append(p.array, np.zeros((*p.shape[:-1], 1)), axis=-1))
                 for p in tangent_points
             ]
             i = l.join(p.join(tangent_points[0]))
@@ -328,7 +328,7 @@ def dist(
     if isinstance(p, PlaneTensor) and isinstance(q, SubspaceTensor):
         return dist(p, cast(PointCollection, PointCollection.from_array(q.basis_matrix[0, :])))
 
-    from geometer.shapes import PolygonTensor, Polyhedron, SegmentTensor
+    from geometer.shapes import PolygonTensor, Polyhedron, SegmentTensor  # noqa: PLC0415
 
     if isinstance(p, PointTensor) and isinstance(q, SegmentTensor):
         return dist(q, p)
@@ -412,7 +412,7 @@ def is_perpendicular(
         polar = LineCollection.from_array(p.array[..., :-1])
         tangent_points = absolute_conic.intersect(polar)
         tangent_points = [
-            PointCollection.from_array(np.append(p.array, np.zeros(p.shape[:-1] + (1,)), axis=-1))
+            PointCollection.from_array(np.append(p.array, np.zeros((*p.shape[:-1], 1)), axis=-1))
             for p in tangent_points
         ]
         i = x.join(p.join(tangent_points[0]))
