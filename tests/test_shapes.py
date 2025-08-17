@@ -475,6 +475,6 @@ class TestPolygonCollection:
         points = rng.random((60, 50, 3))
 
         p1 = PolygonCollection(points)
-        p2 = PolygonCollection([Polygon(*[Point(p) for p in poly]) for poly in points])  # type: ignore[attr-defined]
+        p2 = PolygonCollection([Polygon(*[Point(p) for p in poly]) for poly in points])
 
         assert p1 == p2
