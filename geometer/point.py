@@ -98,7 +98,7 @@ def _join_meet_duality(
                         result = Tensor(array[i[0], ...], covariant=False, copy=None)
                     else:
                         # extract the point of intersection
-                        result = Tensor(array[(slice(None), *i[1:])], copy=None)
+                        result = Tensor(array[(slice(None),) + i[1:]], copy=None)  # noqa: RUF005
                 else:
                     max_ind = np.abs(array).reshape((np.prod(array.shape[: coplanar.ndim]), -1)).argmax(1)
                     i = np.unravel_index(max_ind, array.shape[coplanar.ndim :])
@@ -109,7 +109,7 @@ def _join_meet_duality(
                         result_rank = result_array.ndim - coplanar.ndim
                         result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=None)
                     else:
-                        result = Tensor(array[(*indices, slice(None), *i[1:])], tensor_rank=1, copy=None)
+                        result = Tensor(array[indices + (slice(None),) + i[1:]], tensor_rank=1, copy=None)  # noqa: RUF005
 
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
