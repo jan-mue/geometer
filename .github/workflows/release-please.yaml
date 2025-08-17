@@ -21,7 +21,6 @@ jobs:
         with:
           token: ${{ secrets.RELEASE_PLEASE_PAT }}
           release-type: python
-          skip-labeling: true
 
   build:
     if: ${{ needs.release-please.outputs.release_created }}
