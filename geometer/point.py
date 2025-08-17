@@ -105,7 +105,7 @@ def _join_meet_duality(
                     i = tuple(np.reshape(x, array.shape[: coplanar.ndim]) for x in i)  # type: ignore[misc]
                     indices = tuple(np.indices(array.shape[: coplanar.ndim]))
                     if not intersect_lines:
-                        result_array = array[(*indices, i[0], Ellipsis)]  # type: ignore[arg-type]
+                        result_array = array[(*indices, i[0], Ellipsis)]
                         result_rank = result_array.ndim - coplanar.ndim
                         result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=None)
                     else:
@@ -951,7 +951,7 @@ class LineTensor(SubspaceTensor, ABC):
             arr = matvec(m, pt.array)
             arr_sort = np.argsort(np.abs(arr), axis=-1)
             arr_ind = tuple(np.indices(arr.shape)[:-1])
-            m = m[(*arr_ind, arr_sort, slice(None))]  # type: ignore[arg-type]
+            m = m[(*arr_ind, arr_sort, slice(None))]
             pt = PointCollection(arr[(*arr_ind, arr_sort)], copy=None)
             l = self._matrix_transform(m)
         l1 = join(I, pt, _normalize_result=False)
