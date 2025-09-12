@@ -40,7 +40,7 @@ urls.Source = "https://github.com/jan-mue/geometer"
 dev = [
     "coverage==7.10.6",
     "mypy==1.17.1",
-    "pytest==8.4.1",
+    "pytest==8.4.2",
 ]
 docs = [
     "sphinx==7.4.7; python_version<'3.10'",
