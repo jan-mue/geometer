@@ -110,6 +110,7 @@ lint.ignore = [
     "PLR5501", # use `elif` instead of `else` then `if`, to reduce indentation
     "PLW1641", # Object does not implement `__hash__` method, numpy arrays are not hashable
     "PLW2901", # for loop variable overwritten
+    "RUF059",  # Unpacked variable is never used
     "TC006",   # Add quotes to type expression in `typing.cast()`
 ]
 lint.per-file-ignores."__init__.py" = [ "F401" ]
