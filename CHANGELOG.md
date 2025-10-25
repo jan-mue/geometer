@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.2](https://github.com/jan-mue/geometer/compare/v0.4.1...v0.4.2) (2025-10-25)
+
+
+### Bug Fixes
+
+* Configure Hatch to only include relevant files in dist ([#171](https://github.com/jan-mue/geometer/issues/171)) ([28ee231](https://github.com/jan-mue/geometer/commit/28ee231c7fdbd33bc25f024c171026fd0b323bc3))
+* Delayed evaluation of type annotations and updated type ignore comments ([1629b11](https://github.com/jan-mue/geometer/commit/1629b11fbf2d4b0c333af1319f382ba31ea951c3))
+
+
+### Documentation
+
+* Add CONTRIBUTING.md ([#219](https://github.com/jan-mue/geometer/issues/219)) ([2bd84dc](https://github.com/jan-mue/geometer/commit/2bd84dc8d02dfbf66e3e29571101d403c5608763))
+
 ## [0.4.1](https://github.com/jan-mue/geometer/compare/v0.4.1...v0.4.1) (2025-06-01)
 
 ### Bug Fixes
