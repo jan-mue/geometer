@@ -111,7 +111,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
 
         """
         m = outer(e.array, f.array)
-        m += m.T  # type: ignore[misc]
+        m += m.T  # type: ignore[arg-type]
         return cls(m, normalize_matrix=True)
 
     def tangent(self, at: PointTensor) -> PlaneTensor:
@@ -167,6 +167,7 @@ class QuadricTensor(ProjectiveTensor, ABC):
         n = self.shape[-1]
         indices = tuple(np.indices(self.shape[:-2]))
 
+        p: npt.NDArray[np.number]
         if n == 3:
             b = adjugate(self.array)
             i = np.argmax(np.abs(np.diagonal(b, axis1=-2, axis2=-1)), axis=-1)
@@ -317,7 +318,7 @@ class Conic(Quadric):
 
         """
         m = outer(g.array, h.array)
-        m += m.T  # type: ignore[misc]
+        m += m.T  # type: ignore[arg-type]
         return Conic(m, normalize_matrix=True)
 
     @classmethod
@@ -406,7 +407,7 @@ class Conic(Quadric):
         bc = adjugate([np.ones(3), b.array, c.array])[:, 0]
 
         matrix = outer(ac, bd) - cr * outer(ad, bc)
-        matrix += matrix.T  # type: ignore[misc]
+        matrix += matrix.T  # type: ignore[arg-type]
 
         return cls(matrix, normalize_matrix=True)
 

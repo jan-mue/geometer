@@ -105,7 +105,7 @@ def _join_meet_duality(
                     i = tuple(np.reshape(x, array.shape[: coplanar.ndim]) for x in i)  # type: ignore[misc]
                     indices = tuple(np.indices(array.shape[: coplanar.ndim]))
                     if not intersect_lines:
-                        result_array = array[(*indices, i[0], Ellipsis)]
+                        result_array = array[(*indices, i[0], Ellipsis)]  # type: ignore[arg-type]
                         result_rank = result_array.ndim - coplanar.ndim
                         result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=None)
                     else:

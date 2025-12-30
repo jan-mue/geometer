@@ -144,7 +144,7 @@ def scaling(*factors: npt.ArrayLike) -> Transformation:
         The scaling transformation.
 
     """
-    return affine_transform(np.diag(factors))  # type: ignore[arg-type]
+    return affine_transform(np.diag(factors))
 
 
 def reflection(axis: Subspace) -> Transformation:
