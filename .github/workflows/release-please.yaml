@@ -5,15 +5,15 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
+
     steps:
       - name: Run release-please
         id: release
@@ -26,9 +26,14 @@ jobs:
     if: ${{ needs.release-please.outputs.release_created }}
     needs: release-please
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
@@ -59,6 +64,7 @@ jobs:
       url: https://test.pypi.org/p/geometer
     permissions:
       id-token: write
+
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -80,6 +86,7 @@ jobs:
       url: https://pypi.org/p/geometer
     permissions:
       id-token: write
+
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0

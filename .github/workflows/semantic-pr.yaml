@@ -1,18 +1,23 @@
 name: Semantic PR Check
 on:
+  # pull_request_target is safe here because:
+  # 1. No PR code is checked out
+  # 2. Only validates PR title (no code execution from PR)
+  # 3. Minimal permissions (pull-requests: read)
+  # zizmor: ignore[dangerous-triggers]
   pull_request_target:
     types:
       - opened
       - edited
       - synchronize
 
-permissions:
-  pull-requests: read
-
 jobs:
   validate-pr-title:
     name: Validate PR title
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+
     steps:
       - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         env:
