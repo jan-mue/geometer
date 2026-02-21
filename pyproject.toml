@@ -31,7 +31,6 @@ dependencies = [
     "numpy>=2.0",
     "typing-extensions>=4.6.1,<5.0.0",
 ]
-
 urls.Changelog = "https://github.com/jan-mue/geometer/releases"
 urls.Documentation = "https://github.com/jan-mue/geometer#readme"
 urls.Issues = "https://github.com/jan-mue/geometer/issues"
@@ -62,7 +61,6 @@ line-length = 120
 exclude = [
     "docs",
 ]
-
 lint.select = [
     "A",    # flake8-builtins
     "ARG",  # flake8-unused-arguments
@@ -116,7 +114,7 @@ lint.ignore = [
 ]
 lint.per-file-ignores."__init__.py" = [ "F401" ]
 lint.per-file-ignores."tests/**" = [ "D", "S101" ]
-lint.unfixable = [  ]
+lint.unfixable = []
 lint.flake8-tidy-imports.ban-relative-imports = "all"
 lint.isort.known-first-party = [ "geometer" ]
 lint.pydocstyle.convention = "google"
@@ -128,6 +126,7 @@ ignore-words-list = "nin"
 indent = 4
 column_width = 120
 keep_full_version = true
+expand_tables = [ "tool.mypy.overrides", "tool.coverage.report", "tool.hatch.build", "tool.hatch.version" ]
 
 [tool.coverage.report]
 exclude_also = [
@@ -142,8 +141,8 @@ exclude_also = [
 plugins = [ "numpy.typing.mypy_plugin" ]
 strict = true
 implicit_reexport = true
-disallow_any_generics = false # TODO
-warn_return_any = false # TODO
+disallow_any_generics = false  # TODO
+warn_return_any = false  # TODO
 enable_error_code = [
     "explicit-override",
     "ignore-without-code",
