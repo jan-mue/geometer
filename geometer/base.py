@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Iterable, Iterator, Sequence, Sized
+from collections.abc import Callable, Iterable, Iterator, Sequence, Sized
 from itertools import permutations
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -781,7 +781,9 @@ class TensorDiagram:
         # Split the indices and insert the arrays
         args: list[npt.ArrayLike] = []
         result_indices: tuple[list[int], list[int], list[int]] = ([], [], [])
-        for i, (node, ind, offset) in enumerate(zip(self._nodes, self._unused_indices, self._node_positions)):
+        for i, (node, ind, offset) in enumerate(
+            zip(self._nodes, self._unused_indices, self._node_positions, strict=False)
+        ):
             if node.free_indices > 0:
                 free_ind = list(reversed(range(node.free_indices)))
                 for j, k in enumerate(free_ind[: len(result_indices[0])]):

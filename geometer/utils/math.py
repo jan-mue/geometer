@@ -9,7 +9,9 @@ import numpy.typing as npt
 from numpy.lib.scimath import sqrt as csqrt
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeGuard, Unpack
+    from typing import TypeGuard
+
+    from typing_extensions import Unpack
 
     from geometer.utils.typing import NumericalDType, NumericalScalar
 
