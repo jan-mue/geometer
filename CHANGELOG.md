@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/jan-mue/geometer/compare/v0.4.2...v0.5.0) (2026-02-21)
+
+
+### Features
+
+* Drop support for Python 3.9 ([#390](https://github.com/jan-mue/geometer/issues/390)) ([35218ea](https://github.com/jan-mue/geometer/commit/35218ea20df6db6c4c9eb23b79d00961772f560a))
+
+
+### Bug Fixes
+
+* Update code to use Python 3.10 features ([#392](https://github.com/jan-mue/geometer/issues/392)) ([31c5de2](https://github.com/jan-mue/geometer/commit/31c5de22f5a680c2543819d3f90c2d4815fc4eec))
+
 ## [0.4.2](https://github.com/jan-mue/geometer/compare/v0.4.1...v0.4.2) (2025-10-25)
 
 
