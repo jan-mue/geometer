@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from numbers import Number
-from typing import TYPE_CHECKING, Literal, TypedDict, Union
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 import numpy as np
 from numpy import typing as npt
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
-IntegerIndex1D: TypeAlias = Union[int, np.int_, slice, Sequence[int], Sequence[np.int_], npt.NDArray[np.int_]]
-BooleanIndex1D: TypeAlias = Union[bool, np.bool_, slice, Sequence[bool], Sequence[np.bool_], npt.NDArray[np.bool_]]
-TensorIndex: TypeAlias = Union[IntegerIndex1D, BooleanIndex1D, tuple[IntegerIndex1D, ...], tuple[BooleanIndex1D, ...]]
+IntegerIndex1D: TypeAlias = int | np.int_ | slice | Sequence[int] | Sequence[np.int_] | npt.NDArray[np.int_]
+BooleanIndex1D: TypeAlias = bool | np.bool_ | slice | Sequence[bool] | Sequence[np.bool_] | npt.NDArray[np.bool_]
+TensorIndex: TypeAlias = IntegerIndex1D | BooleanIndex1D | tuple[IntegerIndex1D, ...] | tuple[BooleanIndex1D, ...]
 Shape: TypeAlias = tuple[int, ...]
 
 
@@ -38,8 +38,8 @@ class QuadricParameters(NDArrayParameters, total=False):
     normalize_matrix: bool
 
 
-NumericalScalarType: TypeAlias = Union[np.number, np.bool_]
+NumericalScalarType: TypeAlias = np.number | np.bool_
 NumericalDType: TypeAlias = np.dtype[NumericalScalarType]
 NumericalArray: TypeAlias = npt.NDArray[NumericalScalarType]
 ScalarNumericalArray: TypeAlias = np.ndarray[tuple[()], NumericalDType]
-NumericalScalar: TypeAlias = Union[Number, np.number, np.bool_, ScalarNumericalArray]
+NumericalScalar: TypeAlias = Number | np.number | np.bool_ | ScalarNumericalArray

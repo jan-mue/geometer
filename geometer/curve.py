@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from abc import ABC
 from itertools import combinations
-from typing import TYPE_CHECKING, Union, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -256,8 +256,8 @@ class QuadricTensor(ProjectiveTensor, ABC):
             if self.is_dual:
                 p, q = cast(PointTensor, e).join(other), cast(PointTensor, f).join(other)  # type: ignore[assignment]
             else:
-                p = cast(Union[LineTensor, PlaneTensor], e).meet(other)  # type: ignore[assignment]
-                q = cast(Union[LineTensor, PlaneTensor], f).meet(other)  # type: ignore[assignment]
+                p = cast(LineTensor | PlaneTensor, e).meet(other)  # type: ignore[assignment]
+                q = cast(LineTensor | PlaneTensor, f).meet(other)  # type: ignore[assignment]
 
         if p.free_indices == 0 and p == q:
             return [p]  # type: ignore[return-value]
