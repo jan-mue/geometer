@@ -126,15 +126,6 @@ column_width = 120
 keep_full_version = true
 expand_tables = [ "tool.mypy.overrides", "tool.coverage.report", "tool.hatch.build", "tool.hatch.version" ]
 
-[tool.coverage.report]
-exclude_also = [
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@(abc\\.)?abstractmethod",
-    "@(typing(_extensions)?\\.)?overload",
-]
-
 [tool.mypy]
 plugins = [ "numpy.typing.mypy_plugin" ]
 strict = true
@@ -160,3 +151,12 @@ disable_error_code = [
 module = "geometer.utils.indexing"
 ignore_errors = true
 ignore_missing_imports = true
+
+[tool.coverage.report]
+exclude_also = [
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
+    "@(typing(_extensions)?\\.)?overload",
+]
