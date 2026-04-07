@@ -1,7 +1,7 @@
 rules:
   secrets-outside-env:
     ignore:
-      - tests.yaml:44:22
+      - tests.yaml:52:22
 # TODO: uncomment when supported by zizmor
 #    config:
 #      allow:

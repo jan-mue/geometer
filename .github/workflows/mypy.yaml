@@ -29,7 +29,10 @@ jobs:
           version: "0.11.2"
           enable-cache: true
 
-      - name: Cache mypy cache
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Restore mypy cache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: .mypy_cache
@@ -38,4 +41,4 @@ jobs:
             ${{ runner.os }}-mypy-
 
       - name: Run mypy
-        run: uv run mypy geometer tests
+        run: uv run --no-sync mypy geometer tests
