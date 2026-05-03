@@ -1,37 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:best-practices",
-    ":automergeMinor"
-  ],
-  "minimumReleaseAge": "7 days",
-  "labels": [
-    "dependencies"
-  ],
-  "vulnerabilityAlerts": {
-    "labels": [
-      "type:security"
-    ],
-    "minimumReleaseAge": null
-  },
-  "pre-commit": {
-    "enabled": true
-  },
-  "lockFileMaintenance": {
-    "enabled": true
-  },
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Update uv version in setup-uv action",
-      "managerFilePatterns": [
-        "/\\.github/workflows/.+\\.ya?ml$/"
-      ],
-      "matchStrings": [
-        "uses: astral-sh/setup-uv@[^\\s]+(?:\\s+#[^\\n]*)?[\\s\\S]*?version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "astral-sh/uv"
-    }
-  ]
+  "extends": ["github>jan-mue/renovate-config"]
 }
