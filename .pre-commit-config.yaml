@@ -46,6 +46,6 @@ repos:
         args: [--fix]
         exclude: CHANGELOG\.md
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.24.1
+    rev: v1.25.0
     hooks:
       - id: zizmor
