@@ -127,11 +127,11 @@ keep_full_version = true
 expand_tables = [ "tool.mypy.overrides", "tool.coverage.report", "tool.hatch.build", "tool.hatch.version" ]
 
 [tool.mypy]
-plugins = [ "numpy.typing.mypy_plugin" ]
-strict = true
-implicit_reexport = true
 disallow_any_generics = false  # TODO
 warn_return_any = false  # TODO
+disable_error_code = [
+    "override",
+]
 enable_error_code = [
     "explicit-override",
     "ignore-without-code",
@@ -143,14 +143,14 @@ enable_error_code = [
     "unused-awaitable",
     "unused-ignore",
 ]
-disable_error_code = [
-    "override",
-]
+implicit_reexport = true
+strict = true
+plugins = [ "numpy.typing.mypy_plugin" ]
 
 [[tool.mypy.overrides]]
 module = "geometer.utils.indexing"
-ignore_errors = true
 ignore_missing_imports = true
+ignore_errors = true
 
 [tool.coverage.report]
 exclude_also = [
