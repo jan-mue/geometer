@@ -28,7 +28,7 @@ repos:
       - id: check-readthedocs
       - id: check-renovate
   - repo: https://github.com/google/yamlfmt
-    rev: b5ca1890231d5e1e5181fef75a1be609d1e25029 # frozen: v0.21.0
+    rev: 21ca5323a9c87ee37a434e0ca908efc0a89daa07 # frozen: v0.21.0
     hooks:
       - id: yamlfmt
   - repo: https://github.com/rhysd/actionlint
