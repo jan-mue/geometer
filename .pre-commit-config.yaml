@@ -10,7 +10,7 @@ repos:
       - id: check-yaml
       - id: mixed-line-ending
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 77039ccbba72c8aede339c5f8ae29b42aced0a2e # frozen: v0.15.18
+    rev: 745be0411e3c150e246d527e531e5a221b8c3462 # frozen: v0.15.19
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
