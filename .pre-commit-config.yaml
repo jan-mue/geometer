@@ -36,7 +36,7 @@ repos:
     hooks:
       - id: actionlint
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: f073523dfd27b01ec7997cc970a2a7b36c303460 # frozen: v2.25.0
+    rev: 0c8c15d8fe996493035be407c5cf4a288cf6bf8e # frozen: v2.25.1
     hooks:
       - id: pyproject-fmt
   - repo: https://github.com/DavidAnson/markdownlint-cli2
