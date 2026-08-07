@@ -204,7 +204,7 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
             ]
             i = l.join(p.join(tangent_points[0]))
             j = l.join(p.join(tangent_points[1]))
-            return 1 / 2j * np.log(crossratio(x, y, i, j))
+            return np.real(1 / 2j * np.log(crossratio(x, y, i, j)))
 
         if isinstance(x, LineTensor) and isinstance(y, LineTensor):
             a = x.meet(y)
@@ -343,11 +343,11 @@ def dist(
         if p.dim > 2:
             r = p._plane.project(q)
             return np.where(p.contains(r), dist(r, q), result)
-        return result
+        return result  # type: ignore[return-value]
     if isinstance(p, PointTensor) and isinstance(q, Polyhedron):
         return dist(q, p)
     if isinstance(p, Polyhedron) and isinstance(q, PointTensor):
-        return np.min([dist(f, q) for f in p.faces], axis=0)
+        return np.min([dist(f, q) for f in p.faces], axis=0)  # type: ignore[return-value]
 
     raise TypeError(f"Unsupported types {type(p)} and {type(q)}.")
 

@@ -100,16 +100,16 @@ def _join_meet_duality(
                         # extract the point of intersection
                         result = Tensor(array[(slice(None),) + i[1:]], copy=None)  # noqa: RUF005
                 else:
-                    max_ind = np.abs(array).reshape((np.prod(array.shape[: coplanar.ndim]), -1)).argmax(1)
-                    i = np.unravel_index(max_ind, array.shape[coplanar.ndim :])
-                    i = tuple(np.reshape(x, array.shape[: coplanar.ndim]) for x in i)  # type: ignore[misc]
+                    lin_idx = np.abs(array).reshape((np.prod(array.shape[: coplanar.ndim]), -1)).argmax(1)  # type: ignore[arg-type]
+                    idx = np.unravel_index(lin_idx, array.shape[coplanar.ndim :])
+                    idx = tuple(np.reshape(x, array.shape[: coplanar.ndim]) for x in idx)
                     indices = tuple(np.indices(array.shape[: coplanar.ndim]))
                     if not intersect_lines:
-                        result_array = array[(*indices, i[0], Ellipsis)]  # type: ignore[arg-type]
+                        result_array = array[(*indices, idx[0], Ellipsis)]  # type: ignore[arg-type]
                         result_rank = result_array.ndim - coplanar.ndim
                         result = Tensor(result_array, covariant=False, tensor_rank=result_rank, copy=None)
                     else:
-                        result = Tensor(array[indices + (slice(None),) + i[1:]], tensor_rank=1, copy=None)  # noqa: RUF005
+                        result = Tensor(array[indices + (slice(None),) + idx[1:]], tensor_rank=1, copy=None)  # noqa: RUF005
 
             elif intersect_lines or n == 4:
                 # can't intersect lines that are not coplanar and can't join skew lines in 3D
@@ -150,7 +150,13 @@ def _join_meet_duality(
     raise RuntimeError(f"Unexpected tensor of type {result.tensor_shape}")
 
 
-def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
+ShapeT = TypeVar("ShapeT", bound=tuple[int, ...])
+DTypeT = TypeVar("DTypeT", bound=np.dtype)
+
+
+def _divide_by_power_of_two(
+    array: np.ndarray[ShapeT, DTypeT], power: npt.NDArray[np.int_] | int
+) -> np.ndarray[ShapeT, DTypeT]:
     if array.dtype.kind == "c":
         rm, re = np.frexp(array.real)
         im, ie = np.frexp(array.imag)
@@ -163,7 +169,7 @@ def _divide_by_power_of_two(array: np.ndarray, power: int) -> np.ndarray:
 
     mantissa, exponent = np.frexp(array)
     exponent -= power
-    return np.ldexp(mantissa, exponent)
+    return np.ldexp(mantissa, exponent)  # type: ignore[return-value]
 
 
 @overload
