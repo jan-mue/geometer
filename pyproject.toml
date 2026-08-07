@@ -121,10 +121,10 @@ lint.pydocstyle.convention = "google"
 ignore-words-list = "nin"
 
 [tool.pyproject-fmt]
-indent = 4
 column_width = 120
+indent = 4
 keep_full_version = true
-expand_tables = [ "tool.mypy.overrides", "tool.coverage.report", "tool.hatch.build", "tool.hatch.version" ]
+expand_tables = [ "tool.coverage.report", "tool.hatch.build", "tool.hatch.version", "tool.mypy.overrides" ]
 
 [tool.mypy]
 disallow_any_generics = false  # TODO
