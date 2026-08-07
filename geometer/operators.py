@@ -184,7 +184,7 @@ def angle(*args: PointTensor | LineTensor | PlaneTensor) -> npt.NDArray[np.float
     if len(args) == 3:
         a, b, c = args
         if a.dim > 2:
-            e = join(*args)  # type: ignore[call-arg, arg-type, misc]
+            e = join(*args)  # type: ignore[call-arg, arg-type]
             basis = e.basis_matrix
             a = a._matrix_transform(basis)  # type: ignore[assignment]
             b = b._matrix_transform(basis)  # type: ignore[assignment]
