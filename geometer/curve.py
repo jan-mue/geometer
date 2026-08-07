@@ -187,8 +187,8 @@ class QuadricTensor(ProjectiveTensor, ABC):
         t = self.array + m
 
         # components are in the non-zero rows and columns (up to scalar multiple)
-        i = np.unravel_index(np.abs(t).reshape((*t.shape[:-2], -1)).argmax(axis=-1), t.shape[-2:])
-        p, q = t[indices + i[:1]], t[(*indices, slice(None), i[1])]
+        max_idx = np.unravel_index(np.abs(t).reshape((*t.shape[:-2], -1)).argmax(axis=-1), t.shape[-2:])
+        p, q = t[indices + max_idx[:1]], t[(*indices, slice(None), max_idx[1])]
 
         if self.dim > 2 and not np.all(is_multiple(outer(q, p), t, rtol=EQ_TOL_REL, atol=EQ_TOL_ABS, axis=(-2, -1))):
             raise NotReducible("Quadric has no decomposition in 2 components.")

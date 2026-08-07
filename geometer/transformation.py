@@ -164,7 +164,7 @@ def reflection(axis: Subspace) -> Transformation:
         return identity(axis.dim)
 
     v = axis.array[:-1]
-    v = v / np.linalg.norm(v)  # type: ignore[operator]
+    v = v / np.linalg.norm(v)
 
     p = affine_transform(np.eye(axis.dim) - 2 * outer(v, v.conj()))
 
