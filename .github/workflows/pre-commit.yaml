@@ -23,6 +23,11 @@ jobs:
           fetch-depth: ${{ env.CAN_PUSH == 'true' && '0' || '1' }}
           persist-credentials: false
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: pyproject.toml
+
       - name: Run pre-commit
         id: pre-commit
         uses: tox-dev/action-pre-commit-uv@e09b8958484dfe71f4ac3bc7afb230ba506402ec # v1.0.5
