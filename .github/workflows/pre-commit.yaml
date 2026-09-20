@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+env:
+  CAN_PUSH: ${{ github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'renovate/') }}
+
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
@@ -16,12 +19,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ env.CAN_PUSH == 'true' && github.head_ref || '' }}
+          fetch-depth: ${{ env.CAN_PUSH == 'true' && '0' || '1' }}
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: pyproject.toml
-
       - name: Run pre-commit
-        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+        id: pre-commit
+        uses: tox-dev/action-pre-commit-uv@e09b8958484dfe71f4ac3bc7afb230ba506402ec # v1.0.5
+        continue-on-error: true
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get PR Push token
+        id: pr-push
+        if: env.CAN_PUSH == 'true' && steps.changes.outputs.changed == 'true'
+        uses: tiangolo/pr-push@ff4e51a433de4c22bbf90597e069e8247b9203d2 # 0.0.1
+
+      - name: Commit and push pre-commit fixes
+        if: env.CAN_PUSH == 'true' && steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.pr-push.outputs.token }}
+        run: |
+          git config user.name "pr-push[bot]"
+          git config user.email "pr-push[bot]@users.noreply.github.com"
+          gh auth setup-git
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: apply pre-commit fixes"
+            git push
+          fi
+
+      - name: Fail on pre-commit errors
+        if: steps.pre-commit.outcome == 'failure'
+        run: exit 1
