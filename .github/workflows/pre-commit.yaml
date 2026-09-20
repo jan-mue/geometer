@@ -49,7 +49,6 @@ jobs:
         if: env.CAN_PUSH == 'true' && steps.changes.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ steps.pr-push.outputs.token }}
-          HEAD_REF: ${{ github.head_ref }}
         run: |
           git config user.name "pr-push[bot]"
           git config user.email "pr-push[bot]@users.noreply.github.com"
@@ -60,9 +59,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: apply pre-commit fixes"
-            git fetch origin "$HEAD_REF"
-            git rebase --onto FETCH_HEAD HEAD~1 HEAD
-            git push origin "HEAD:$HEAD_REF"
+            git push
           fi
 
       - name: Fail on pre-commit errors
