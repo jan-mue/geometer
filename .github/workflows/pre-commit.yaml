@@ -19,8 +19,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.CAN_PUSH == 'true' && github.head_ref || '' }}
-          fetch-depth: ${{ env.CAN_PUSH == 'true' && '0' || '1' }}
           persist-credentials: false
 
       - name: Set up Python
@@ -51,8 +49,10 @@ jobs:
         if: env.CAN_PUSH == 'true' && steps.changes.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ steps.pr-push.outputs.token }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           git config user.name "pr-push[bot]"
+          git config user.email "pr-push[bot]@users.noreply.github.com"
           git config user.email "pr-push[bot]@users.noreply.github.com"
           gh auth setup-git
           git add -A
@@ -60,7 +60,9 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: apply pre-commit fixes"
-            git push
+            git fetch origin "$HEAD_REF"
+            git rebase --onto FETCH_HEAD HEAD~1 HEAD
+            git push origin "HEAD:$HEAD_REF"
           fi
 
       - name: Fail on pre-commit errors
