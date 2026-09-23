@@ -59,13 +59,13 @@ is_perpendicular(m, n)
 
 # Angles and distances (euclidean)
 a = angle(l, Point(1, 0))
-p + 2*dist(p, q)*Point(np.cos(a), np.sin(a))
+p + 2 * dist(p, q) * Point(np.cos(a), np.sin(a))
 # Point(4, 6)
 
 # Transformations
 t1 = translation(0, -1)
 t2 = rotation(-np.pi)
-t1*t2*p
+t1 * t2 * p
 # Point(-2, -5)
 
 # Collections of points and lines
@@ -73,7 +73,7 @@ coordinates = np.random.randint(100, size=(1000, 2))
 points = PointCollection([Point(x, y) for x, y in coordinates])
 lines = points.join(-points)
 zero = PointCollection(np.zeros((1000, 2)), homogenize=True)
-lines.meet(rotation(np.pi/2)*lines) == zero
+lines.meet(rotation(np.pi / 2) * lines) == zero
 # True
 
 # Ellipses/Quadratic forms
@@ -89,7 +89,7 @@ ellipse = Conic.from_foci(c, d, bound=b)
 # Geometric shapes
 o = Point(0, 0)
 x, y = Point(1, 0), Point(0, 1)
-r = Rectangle(o, x, x+y, y)
+r = Rectangle(o, x, x + y, y)
 r.area
 # 1
 
@@ -113,8 +113,8 @@ c.area
 # 6
 
 # Cross ratios
-t = rotation(np.pi/16)
-crossratio(q, t*q, t**2 * q, t**3 * q, p)
+t = rotation(np.pi / 16)
+crossratio(q, t * q, t**2 * q, t**3 * q, p)
 # 1.4408954235712448
 
 # Higher dimensions
@@ -126,7 +126,6 @@ E = Plane(p1, p2, p3, p4)
 l = Line(Point(0, 0, 0, 0), Point(1, 2, 3, 4))
 E.meet(l)
 # Point(0, 0, 0, 0)
-
 ```
 
 ## References
