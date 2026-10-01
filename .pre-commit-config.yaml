@@ -23,7 +23,7 @@ repos:
           - tomli
         args: [--write-changes]
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 99f2dd369364da7ed3ac536504132b3db2e7a3b1 # frozen: 0.38.1
+    rev: 0494aa7fa1314e98913a41227d8f0a515b2c1049 # frozen: 0.38.2
     hooks:
       - id: check-readthedocs
       - id: check-renovate
