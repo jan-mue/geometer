@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.4.1 (2026-10-23)
+
+
+### Features
+
+* Drop support for Python 3.9 ([#390](https://github.com/jan-mue/geometer/issues/390)) ([35218ea](https://github.com/jan-mue/geometer/commit/35218ea20df6db6c4c9eb23b79d00961772f560a))
+* Full type checking with mypy ([#134](https://github.com/jan-mue/geometer/issues/134)) ([8830d29](https://github.com/jan-mue/geometer/commit/8830d2967fd4fff080e6647b881e75b89b2e4c19))
+* Upgrade to NumPy 2.x ([#154](https://github.com/jan-mue/geometer/issues/154)) ([9e58b27](https://github.com/jan-mue/geometer/commit/9e58b2725150450ee2e89a50988e05744e4bad2b))
+
+
+### Bug Fixes
+
+* Configure Hatch to only include relevant files in dist ([#171](https://github.com/jan-mue/geometer/issues/171)) ([28ee231](https://github.com/jan-mue/geometer/commit/28ee231c7fdbd33bc25f024c171026fd0b323bc3))
+* Delayed evaluation of type annotations and updated type ignore comments ([1629b11](https://github.com/jan-mue/geometer/commit/1629b11fbf2d4b0c333af1319f382ba31ea951c3))
+* Rename version file ([#162](https://github.com/jan-mue/geometer/issues/162)) ([5f70f06](https://github.com/jan-mue/geometer/commit/5f70f06a54e8f746ebf69ab80c49263b80f86cb9))
+* Update code to use Python 3.10 features ([#392](https://github.com/jan-mue/geometer/issues/392)) ([31c5de2](https://github.com/jan-mue/geometer/commit/31c5de22f5a680c2543819d3f90c2d4815fc4eec))
+* Use correct artifact name in CI ([#159](https://github.com/jan-mue/geometer/issues/159)) ([8dbadd4](https://github.com/jan-mue/geometer/commit/8dbadd4cdeceb7fb39ce548cf8cfb7247a8e07d6))
+
+
+### Documentation
+
+* Add CONTRIBUTING.md ([#219](https://github.com/jan-mue/geometer/issues/219)) ([2bd84dc](https://github.com/jan-mue/geometer/commit/2bd84dc8d02dfbf66e3e29571101d403c5608763))
+
+
+### Miscellaneous Chores
+
+* release 0.4.1 ([dd25567](https://github.com/jan-mue/geometer/commit/dd2556741bf00f59acb412b4b0f36a925aa52d11))
+
 ## [0.4.2](https://github.com/jan-mue/geometer/compare/v0.4.1...v0.4.2) (2025-10-25)
 
 
