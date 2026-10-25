@@ -56,7 +56,6 @@ packages = [ "geometer" ]
 
 [tool.uv]
 exclude-newer = "7 days"
-# Receive certificate trust-store security updates without delay.
 exclude-newer-package.certifi = false
 
 [tool.ruff]
