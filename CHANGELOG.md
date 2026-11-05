@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.0 (2026-11-05)
+
+
+### Features
+
+* Drop support for Python 3.9 ([#390](https://github.com/jan-mue/geometer/issues/390)) ([35218ea](https://github.com/jan-mue/geometer/commit/35218ea20df6db6c4c9eb23b79d00961772f560a))
+
+
+### Bug Fixes
+
+* Configure Hatch to only include relevant files in dist ([#171](https://github.com/jan-mue/geometer/issues/171)) ([28ee231](https://github.com/jan-mue/geometer/commit/28ee231c7fdbd33bc25f024c171026fd0b323bc3))
+* Delayed evaluation of type annotations and updated type ignore comments ([1629b11](https://github.com/jan-mue/geometer/commit/1629b11fbf2d4b0c333af1319f382ba31ea951c3))
+* Update code to use Python 3.10 features ([#392](https://github.com/jan-mue/geometer/issues/392)) ([31c5de2](https://github.com/jan-mue/geometer/commit/31c5de22f5a680c2543819d3f90c2d4815fc4eec))
+
+
+### Documentation
+
+* Add CONTRIBUTING.md ([#219](https://github.com/jan-mue/geometer/issues/219)) ([2bd84dc](https://github.com/jan-mue/geometer/commit/2bd84dc8d02dfbf66e3e29571101d403c5608763))
+
 ## [0.4.2](https://github.com/jan-mue/geometer/compare/v0.4.1...v0.4.2) (2025-10-25)
 
 
