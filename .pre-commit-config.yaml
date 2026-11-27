@@ -40,7 +40,7 @@ repos:
     hooks:
       - id: pyproject-fmt
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: c01a1853c19b175aee6a09f24e2ad9b748c485ad # frozen: v0.24.1
+    rev: d4df4cec471ce155946474590d7b95920f623ccb # frozen: v0.24.2
     hooks:
       - id: markdownlint-cli2
         args: [--fix]
